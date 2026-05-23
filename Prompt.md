@@ -50,3 +50,21 @@ Añadir marcado Schema.org tipo `Organization` para la empresa.
 
 ### Resultado
 El marcado estructurado de organizacion queda mas completo y util para buscadores tradicionales y motores generativos.
+
+## Actualizacion 2026-05-23 (sitio completo HealthCore)
+
+### Solicitud del cliente
+Crear sitio web profesional, responsive y accesible para HealthCore con stack HTML5 semantico + Tailwind CDN + JavaScript Vanilla, incluyendo landing y formulario con validaciones completas.
+
+### Cambios aplicados
+- Se reconstruyo `index.html` completo con enfoque mobile-first y estructura semantica: `header`, `nav`, `main`, `section`, `article`, `footer`.
+- Se implemento header sticky con navegacion desktop y menu movil accesible (toggle con JS vanilla).
+- Se agregaron secciones solicitadas: Hero, Servicios, Beneficios, Experiencia del Paciente y CTA final.
+- Se incluyeron metadatos SEO: `title`, `meta description`, `keywords`, Open Graph y Twitter cards.
+- Se implemento JSON-LD tipo `MedicalBusiness` con nombre, telefono, direccion, area de servicio y sitio web.
+- Se reconstruyo `application.html` con formulario semantico profesional usando `fieldset`, `legend`, labels y campos requeridos.
+- Se agregaron campos personales y medicos completos, consentimiento obligatorio y botones de envio + reset.
+- Se reescribio `validation.js` con validacion en tiempo real, blur y submit, mensajes especificos por campo y estado visual de error/exito.
+
+### Resultado
+Sitio funcional listo para ejecutar localmente, con experiencia responsive en movil/tablet/desktop y base solida de accesibilidad, SEO y validacion de formulario.
