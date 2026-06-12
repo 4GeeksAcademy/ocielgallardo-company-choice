@@ -68,3 +68,36 @@ Crear sitio web profesional, responsive y accesible para HealthCore con stack HT
 
 ### Resultado
 Sitio funcional listo para ejecutar localmente, con experiencia responsive en movil/tablet/desktop y base solida de accesibilidad, SEO y validacion de formulario.
+
+## Actualizacion 2026-06-12 (TypeScript: modelos y filtros iniciales)
+
+### Solicitud del cliente
+Leer los archivos de contexto y comenzar implementacion en TypeScript basada en `company-choice.md`, creando interfaces de entidades y funciones de filtrado en la estructura `src/` definida.
+
+### Rama de trabajo
+- Se creo la rama: `feature/healthcore-ts-models-filters`.
+
+### Cambios aplicados
+- Se creo `src/types/models.ts` con interfaces y tipos para las entidades del caso HealthCore:
+	- Empresa, DepartamentoInteres, RetoProyecto, Paciente, Cita, Factura.
+	- PrediccionNoShow, PrediccionRechazoFactura, AlertaCritica.
+	- Tipos de apoyo para categoria, estado y filtros criticos.
+- Se creo `src/utils/collections.ts` con funciones de filtrado para busqueda individual y filtros combinados:
+	- `buscarUnoPorId`.
+	- `filtrarPorCategoria`, `filtrarPorEstado`, `filtrarPorRangoProbabilidad`.
+	- `filtrarCriticos` (multiples criterios en una sola consulta).
+- Se creo `src/utils/search.ts` con algoritmos de busqueda:
+	- Busqueda lineal generica y por campo.
+	- Busqueda binaria por valor numerico en colecciones ordenadas.
+- Se creo `src/utils/transformations.ts` con agregaciones para reportes:
+	- Tasa de no-show.
+	- Tasa de rechazo de facturas.
+	- Generacion de alertas criticas y agrupacion por estado.
+- Se creo `src/utils/validations.ts` con validaciones de negocio base:
+	- Validacion de probabilidades en rango 0-1.
+	- Validaciones para citas, facturas y predicciones criticas.
+
+### Resultado
+Queda lista la base TypeScript de entidades y utilidades para continuar con siguientes iteraciones (datos de prueba, integracion UI/API, tests y reglas avanzadas).
+
+
