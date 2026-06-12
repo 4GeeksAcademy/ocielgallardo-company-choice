@@ -1,65 +1,65 @@
 import {
-  AlertaCritica,
-  Cita,
-  Factura,
-  PrediccionNoShow,
-  PrediccionRechazoFactura,
+  Appointment,
+  CriticalAlert,
+  Invoice,
+  InvoiceRejectionPrediction,
+  NoShowPrediction,
 } from "../types/models";
 
 /** Calcula el porcentaje de citas marcadas como no-show. */
-export function calcularTasaNoShow(citas: Cita[]): number {
-  if (citas.length === 0) return 0;
-  const noShows = citas.filter((cita) => cita.estado === "no-show").length;
-  return Number(((noShows / citas.length) * 100).toFixed(2));
+export function calculateNoShowRate(appointments: Appointment[]): number {
+  if (appointments.length === 0) return 0;
+  const noShows = appointments.filter((appointment) => appointment.status === "no-show").length;
+  return Number(((noShows / appointments.length) * 100).toFixed(2));
 }
 
 /** Calcula el porcentaje de facturas con estado rechazado. */
-export function calcularTasaRechazoFacturas(facturas: Factura[]): number {
-  if (facturas.length === 0) return 0;
-  const rechazadas = facturas.filter((factura) => factura.estado === "rechazada").length;
-  return Number(((rechazadas / facturas.length) * 100).toFixed(2));
+export function calculateInvoiceRejectionRate(invoices: Invoice[]): number {
+  if (invoices.length === 0) return 0;
+  const rejected = invoices.filter((invoice) => invoice.status === "rejected").length;
+  return Number(((rejected / invoices.length) * 100).toFixed(2));
 }
 
 /**
  * Convierte predicciones criticas en alertas operativas.
- * Genera alertas para riesgo de no-show y de rechazo de factura.
+ * Genera alertas para riesgo de no-show y rechazo de factura.
  */
-export function generarAlertasCriticas(
-  prediccionesNoShow: PrediccionNoShow[],
-  prediccionesRechazo: PrediccionRechazoFactura[]
-): AlertaCritica[] {
-  // Alertas provenientes del flujo de citas.
-  const alertasNoShow: AlertaCritica[] = prediccionesNoShow
-    .filter((prediccion) => prediccion.esCritica)
-    .map((prediccion) => ({
-      idAlerta: `alerta-noshow-${prediccion.idPrediccion}`,
-      categoria: "no-show",
-      referenciaId: prediccion.idCita,
-      nivelRiesgo: prediccion.probabilidad,
-      estado: "abierta",
-      fechaISO: new Date().toISOString(),
+export function generateCriticalAlerts(
+  noShowPredictions: NoShowPrediction[],
+  invoiceRejectionPredictions: InvoiceRejectionPrediction[]
+): CriticalAlert[] {
+  // Alertas generadas desde el flujo de citas.
+  const noShowAlerts: CriticalAlert[] = noShowPredictions
+    .filter((prediction) => prediction.isCritical)
+    .map((prediction) => ({
+      alertId: `alert-noshow-${prediction.predictionId}`,
+      category: "no-show",
+      referenceId: prediction.appointmentId,
+      riskLevel: prediction.probability,
+      status: "open",
+      dateISO: new Date().toISOString(),
     }));
 
-  // Alertas provenientes del flujo de facturacion.
-  const alertasRechazo: AlertaCritica[] = prediccionesRechazo
-    .filter((prediccion) => prediccion.esCritica)
-    .map((prediccion) => ({
-      idAlerta: `alerta-rechazo-${prediccion.idPrediccion}`,
-      categoria: "rechazo-factura",
-      referenciaId: prediccion.idFactura,
-      nivelRiesgo: prediccion.probabilidad,
-      estado: "abierta",
-      fechaISO: new Date().toISOString(),
+  // Alertas generadas desde el flujo de facturacion.
+  const rejectionAlerts: CriticalAlert[] = invoiceRejectionPredictions
+    .filter((prediction) => prediction.isCritical)
+    .map((prediction) => ({
+      alertId: `alert-rejection-${prediction.predictionId}`,
+      category: "invoice-rejection",
+      referenceId: prediction.invoiceId,
+      riskLevel: prediction.probability,
+      status: "open",
+      dateISO: new Date().toISOString(),
     }));
 
-  return [...alertasNoShow, ...alertasRechazo];
+  return [...noShowAlerts, ...rejectionAlerts];
 }
 
 /** Agrupa alertas por estado para simplificar reportes y dashboards. */
-export function agruparAlertasPorEstado(alertas: AlertaCritica[]): Record<string, AlertaCritica[]> {
-  return alertas.reduce<Record<string, AlertaCritica[]>>((acumulador, alerta) => {
-    if (!acumulador[alerta.estado]) acumulador[alerta.estado] = [];
-    acumulador[alerta.estado].push(alerta);
-    return acumulador;
+export function groupAlertsByStatus(alerts: CriticalAlert[]): Record<string, CriticalAlert[]> {
+  return alerts.reduce<Record<string, CriticalAlert[]>>((accumulator, alert) => {
+    if (!accumulator[alert.status]) accumulator[alert.status] = [];
+    accumulator[alert.status].push(alert);
+    return accumulator;
   }, {});
 }

@@ -1,71 +1,71 @@
 import {
-  Cita,
-  Factura,
-  PrediccionNoShow,
-  PrediccionRechazoFactura,
+  Appointment,
+  Invoice,
+  InvoiceRejectionPrediction,
+  NoShowPrediction,
 } from "../types/models";
 
-/** Valida que una probabilidad sea numerica y este en rango [0, 1]. */
-export function validarProbabilidad(valor: number, campo: string): string[] {
-  const errores: string[] = [];
-  if (Number.isNaN(valor)) errores.push(`${campo}: el valor no puede ser NaN.`);
-  if (valor < 0 || valor > 1) errores.push(`${campo}: debe estar entre 0 y 1.`);
-  return errores;
+/** Valida que una probabilidad sea numerica y este en el rango [0, 1]. */
+export function validateProbability(value: number, field: string): string[] {
+  const errors: string[] = [];
+  if (Number.isNaN(value)) errors.push(`${field}: value cannot be NaN.`);
+  if (value < 0 || value > 1) errors.push(`${field}: must be between 0 and 1.`);
+  return errors;
 }
 
 /** Valida campos minimos requeridos para una cita. */
-export function validarCita(cita: Cita): string[] {
-  const errores: string[] = [];
-  if (!cita.idCita.trim()) errores.push("idCita es obligatorio.");
-  if (!cita.idPaciente.trim()) errores.push("idPaciente es obligatorio.");
-  if (!cita.fechaISO.trim()) errores.push("fechaISO es obligatoria.");
-  errores.push(...validarProbabilidad(cita.probabilidadNoShow, "probabilidadNoShow"));
-  return errores;
+export function validateAppointment(appointment: Appointment): string[] {
+  const errors: string[] = [];
+  if (!appointment.appointmentId.trim()) errors.push("appointmentId is required.");
+  if (!appointment.patientId.trim()) errors.push("patientId is required.");
+  if (!appointment.dateISO.trim()) errors.push("dateISO is required.");
+  errors.push(...validateProbability(appointment.noShowProbability, "noShowProbability"));
+  return errors;
 }
 
 /** Valida campos minimos requeridos para una factura. */
-export function validarFactura(factura: Factura): string[] {
-  const errores: string[] = [];
-  if (!factura.idFactura.trim()) errores.push("idFactura es obligatorio.");
-  if (!factura.idPaciente.trim()) errores.push("idPaciente es obligatorio.");
-  if (factura.monto <= 0) errores.push("monto debe ser mayor que 0.");
-  if (factura.codigosFacturacion.length === 0) {
-    errores.push("codigosFacturacion requiere al menos un codigo.");
+export function validateInvoice(invoice: Invoice): string[] {
+  const errors: string[] = [];
+  if (!invoice.invoiceId.trim()) errors.push("invoiceId is required.");
+  if (!invoice.patientId.trim()) errors.push("patientId is required.");
+  if (invoice.amount <= 0) errors.push("amount must be greater than 0.");
+  if (invoice.billingCodes.length === 0) {
+    errors.push("billingCodes requires at least one code.");
   }
-  errores.push(...validarProbabilidad(factura.probabilidadRechazo, "probabilidadRechazo"));
-  return errores;
+  errors.push(...validateProbability(invoice.rejectionProbability, "rejectionProbability"));
+  return errors;
 }
 
 /**
- * Valida prediccion de no-show.
- * Regla clave: esCritica debe coincidir con probabilidad >= umbralCritico.
+ * Valida la prediccion de no-show.
+ * Regla clave: isCritical debe coincidir con probability >= criticalThreshold.
  */
-export function validarPrediccionNoShow(prediccion: PrediccionNoShow): string[] {
-  const errores = validarProbabilidad(prediccion.probabilidad, "probabilidad");
-  errores.push(...validarProbabilidad(prediccion.umbralCritico, "umbralCritico"));
+export function validateNoShowPrediction(prediction: NoShowPrediction): string[] {
+  const errors = validateProbability(prediction.probability, "probability");
+  errors.push(...validateProbability(prediction.criticalThreshold, "criticalThreshold"));
 
-  const calculado = prediccion.probabilidad >= prediccion.umbralCritico;
-  if (prediccion.esCritica !== calculado) {
-    errores.push("esCritica debe coincidir con probabilidad >= umbralCritico.");
+  const expected = prediction.probability >= prediction.criticalThreshold;
+  if (prediction.isCritical !== expected) {
+    errors.push("isCritical must match probability >= criticalThreshold.");
   }
 
-  return errores;
+  return errors;
 }
 
 /**
- * Valida prediccion de rechazo de factura.
- * Regla clave: esCritica debe coincidir con probabilidad >= umbralCritico.
+ * Valida la prediccion de rechazo de factura.
+ * Regla clave: isCritical debe coincidir con probability >= criticalThreshold.
  */
-export function validarPrediccionRechazoFactura(
-  prediccion: PrediccionRechazoFactura
+export function validateInvoiceRejectionPrediction(
+  prediction: InvoiceRejectionPrediction
 ): string[] {
-  const errores = validarProbabilidad(prediccion.probabilidad, "probabilidad");
-  errores.push(...validarProbabilidad(prediccion.umbralCritico, "umbralCritico"));
+  const errors = validateProbability(prediction.probability, "probability");
+  errors.push(...validateProbability(prediction.criticalThreshold, "criticalThreshold"));
 
-  const calculado = prediccion.probabilidad >= prediccion.umbralCritico;
-  if (prediccion.esCritica !== calculado) {
-    errores.push("esCritica debe coincidir con probabilidad >= umbralCritico.");
+  const expected = prediction.probability >= prediction.criticalThreshold;
+  if (prediction.isCritical !== expected) {
+    errors.push("isCritical must match probability >= criticalThreshold.");
   }
 
-  return errores;
+  return errors;
 }

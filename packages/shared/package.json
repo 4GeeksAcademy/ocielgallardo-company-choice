@@ -5,7 +5,9 @@
   "description": "Shared types for AI Engineering transversal projects",
   "main": "index.ts",
   "types": "index.ts",
-  "scripts": {},
+  "scripts": {
+    "test:types:models": "npx -y -p typescript tsc --noEmit ../../src/types/models.ts ../../src/types/models.type-test.ts --strict"
+  },
   "keywords": [
     "types",
     "shared"

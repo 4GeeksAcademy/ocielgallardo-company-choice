@@ -100,4 +100,30 @@ Leer los archivos de contexto y comenzar implementacion en TypeScript basada en 
 ### Resultado
 Queda lista la base TypeScript de entidades y utilidades para continuar con siguientes iteraciones (datos de prueba, integracion UI/API, tests y reglas avanzadas).
 
+## Texto fijo (NO BORRAR, MANTENER COMO FOOTER): comando de test para `models.ts`
+
+### Objetivo
+Validar rapidamente los tipos de `src/types/models.ts` y su archivo de pruebas de tipos.
+
+### Comando fijo recomendado
+Ejecutar desde `packages/shared`:
+
+```bash
+npm run test:types:models
+```
+
+### Paso a paso para principiantes
+1. Abrir terminal en la raiz del proyecto.
+2. Entrar a la carpeta del paquete:
+	- `cd /workspaces/ocielgallardo-company-choice/packages/shared`
+3. Ejecutar el test:
+	- `npm run test:types:models`
+4. Resultado esperado:
+	- Si no aparece ningun error TypeScript, la validacion paso correctamente.
+
+### Comando equivalente (referencia)
+```bash
+npx -y -p typescript tsc --noEmit ../../src/types/models.ts ../../src/types/models.type-test.ts --strict
+```
+
 

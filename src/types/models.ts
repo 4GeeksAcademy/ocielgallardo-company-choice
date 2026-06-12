@@ -1,138 +1,138 @@
-/** Departamentos clave elegidos para el proyecto. */
-export type DepartamentoNombre =
-  | "Experiencias del paciente y Acceso"
-  | "Ciclo de Ingresos y Facturación";
+/** Departamentos clave seleccionados para el proyecto. */
+export type DepartmentName =
+  | "Patient Experience and Access"
+  | "Revenue Cycle and Billing";
 
 /** Estados de avance del reto principal. */
-export type EstadoReto = "pendiente" | "en-progreso" | "completado";
+export type ChallengeStatus = "pending" | "in-progress" | "completed";
 
-/** Estados posibles de una cita medica. */
-export type EstadoCita =
-  | "programada"
-  | "confirmada"
-  | "cancelada"
+/** Estados posibles de una cita. */
+export type AppointmentStatus =
+  | "scheduled"
+  | "confirmed"
+  | "canceled"
   | "no-show"
-  | "completada";
+  | "completed";
 
 /** Estados posibles de una factura en el ciclo de ingresos. */
-export type EstadoFactura =
-  | "borrador"
-  | "enviada"
-  | "aceptada"
-  | "rechazada"
-  | "pagada";
+export type InvoiceStatus =
+  | "draft"
+  | "submitted"
+  | "accepted"
+  | "rejected"
+  | "paid";
 
-/** Estado operativo de una prediccion del agente. */
-export type EstadoPrediccion = "pendiente" | "accionado" | "descartado";
+/** Estado operativo de una prediccion de IA. */
+export type PredictionStatus = "pending" | "actioned" | "discarded";
 
-/** Categorias de riesgo critico que monitorea el proyecto. */
-export type CategoriaRiesgo = "no-show" | "rechazo-factura";
+/** Categorias de riesgo critico monitoreadas por el proyecto. */
+export type RiskCategory = "no-show" | "invoice-rejection";
 
 /** Datos base de la empresa seleccionada. */
-export interface Empresa {
+export interface Company {
   id: string;
-  nombre: "HealthCore";
-  sector: "salud";
-  razonEleccion: string;
+  name: "HealthCore";
+  sector: "healthcare";
+  reasonForChoosing: string;
   vision: string;
-  aportePortafolio: string;
-  trabajaConDatosSensibles: true;
+  portfolioContribution: string;
+  handlesSensitiveData: true;
 }
 
-/** Departamento de interes y su metrica principal. */
-export interface DepartamentoInteres {
+/** Departamento de enfoque y su metrica principal. */
+export interface FocusDepartment {
   id: string;
-  nombre: DepartamentoNombre;
-  problemaPrincipal: string;
-  tasaActualPorcentaje: number;
+  name: DepartmentName;
+  mainProblem: string;
+  currentRatePercentage: number;
 }
 
 /** Definicion del reto central del proyecto. */
-export interface RetoProyecto {
+export interface ProjectChallenge {
   id: string;
-  descripcion: "Sistema inteligente que predice pérdidas de ingresos y actúa automáticamente para evitarlas.";
-  estado: EstadoReto;
+  description: "Intelligent system that predicts revenue losses and acts automatically to prevent them.";
+  status: ChallengeStatus;
 }
 
-/** Datos minimos de paciente para predicciones operativas. */
-export interface Paciente {
-  idPaciente: string;
-  nombreCompleto: string;
-  telefono?: string;
+/** Datos minimos del paciente para predicciones operativas. */
+export interface Patient {
+  patientId: string;
+  fullName: string;
+  phone?: string;
   email?: string;
-  historialMedicoResumen: string;
-  sede: string;
-  pais: "EE.UU." | "Reino Unido";
-  estado: "activo" | "inactivo";
+  medicalHistorySummary: string;
+  clinicSite: string;
+  country: "US" | "United Kingdom";
+  status: "active" | "inactive";
 }
 
 /** Cita usada para modelar riesgo de no-show. */
-export interface Cita {
-  idCita: string;
-  idPaciente: string;
-  fechaISO: string;
-  sede: string;
-  pais: "EE.UU." | "Reino Unido";
-  categoria: "Experiencias del paciente y Acceso";
-  estado: EstadoCita;
-  probabilidadNoShow: number;
+export interface Appointment {
+  appointmentId: string;
+  patientId: string;
+  dateISO: string;
+  clinicSite: string;
+  country: "US" | "United Kingdom";
+  category: "Patient Experience and Access";
+  status: AppointmentStatus;
+  noShowProbability: number;
 }
 
 /** Factura usada para modelar riesgo de rechazo. */
-export interface Factura {
-  idFactura: string;
-  idPaciente: string;
-  fechaEmisionISO: string;
-  categoria: "Ciclo de Ingresos y Facturación";
-  estado: EstadoFactura;
-  monto: number;
-  moneda: "USD" | "GBP";
-  codigosFacturacion: string[];
-  probabilidadRechazo: number;
+export interface Invoice {
+  invoiceId: string;
+  patientId: string;
+  issueDateISO: string;
+  category: "Revenue Cycle and Billing";
+  status: InvoiceStatus;
+  amount: number;
+  currency: "USD" | "GBP";
+  billingCodes: string[];
+  rejectionProbability: number;
 }
 
-/** Prediccion previa a la cita para prevenir no-shows. */
-export interface PrediccionNoShow {
-  idPrediccion: string;
-  idCita: string;
-  probabilidad: number;
-  umbralCritico: number;
-  esCritica: boolean;
-  accionRecomendada: "recordatorio" | "confirmacion" | "reprogramacion";
-  estado: EstadoPrediccion;
+/** Prediccion realizada antes de la cita para prevenir no-shows. */
+export interface NoShowPrediction {
+  predictionId: string;
+  appointmentId: string;
+  probability: number;
+  criticalThreshold: number;
+  isCritical: boolean;
+  recommendedAction: "reminder" | "confirmation" | "reschedule";
+  status: PredictionStatus;
 }
 
-/** Prediccion previa al envio de factura para prevenir rechazos. */
-export interface PrediccionRechazoFactura {
-  idPrediccion: string;
-  idFactura: string;
-  probabilidad: number;
-  umbralCritico: number;
-  esCritica: boolean;
-  accionRecomendada: "validar" | "corregir" | "enviar";
-  estado: EstadoPrediccion;
+/** Prediccion realizada antes de enviar la factura para prevenir rechazos. */
+export interface InvoiceRejectionPrediction {
+  predictionId: string;
+  invoiceId: string;
+  probability: number;
+  criticalThreshold: number;
+  isCritical: boolean;
+  recommendedAction: "validate" | "correct" | "submit";
+  status: PredictionStatus;
 }
 
-/** Alerta operacional cuando una prediccion supera umbral critico. */
-export interface AlertaCritica {
-  idAlerta: string;
-  categoria: CategoriaRiesgo;
-  referenciaId: string;
-  nivelRiesgo: number;
-  estado: "abierta" | "en-proceso" | "cerrada";
-  fechaISO: string;
+/** Alerta operacional creada cuando una prediccion supera el umbral critico. */
+export interface CriticalAlert {
+  alertId: string;
+  category: RiskCategory;
+  referenceId: string;
+  riskLevel: number;
+  status: "open" | "in-progress" | "closed";
+  dateISO: string;
 }
 
-/** Rango numerico util para filtros de probabilidad. */
-export interface RangoNumerico {
+/** Rango numerico usado en filtros de probabilidad. */
+export interface NumericRange {
   min?: number;
   max?: number;
 }
 
 /** Filtros combinables para consultas de elementos criticos. */
-export interface FiltroCritico {
-  categoria?: string;
-  estado?: string;
-  rangoProbabilidad?: RangoNumerico;
-  soloCriticos?: boolean;
+export interface CriticalFilter {
+  category?: string;
+  status?: string;
+  probabilityRange?: NumericRange;
+  onlyCritical?: boolean;
 }
