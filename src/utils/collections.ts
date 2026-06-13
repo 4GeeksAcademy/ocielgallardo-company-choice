@@ -5,6 +5,32 @@ type WithCategory = { category: string };
 type WithStatus = { status: string };
 type WithProbability = { probability: number; isCritical?: boolean };
 
+/** Direccion de ordenamiento permitida. */
+export type SortDirection = "asc" | "desc";
+
+/** Regla para ordenar por uno o mas campos. */
+export interface SortRule<T> {
+  field: keyof T;
+  direction?: SortDirection;
+}
+
+/** Compara valores primitivos y retorna -1, 0 o 1. */
+function compareValues(a: unknown, b: unknown): number {
+  if (a === b) return 0;
+  if (a === undefined || a === null) return -1;
+  if (b === undefined || b === null) return 1;
+
+  if (typeof a === "number" && typeof b === "number") {
+    return a - b;
+  }
+
+  if (typeof a === "boolean" && typeof b === "boolean") {
+    return Number(a) - Number(b);
+  }
+
+  return String(a).localeCompare(String(b));
+}
+
 /** Busca un unico elemento por un campo identificador (id). */
 export function findOneById<T extends { [key: string]: string }>(
   items: T[],
@@ -64,5 +90,36 @@ export function filterCritical<T extends WithCategory & WithStatus & WithProbabi
 
     if (filters.onlyCritical && !item.isCritical) return false;
     return true;
+  });
+}
+
+/** Ordena un array por un campo en orden ascendente o descendente. */
+export function sortByField<T>(
+  items: T[],
+  field: keyof T,
+  direction: SortDirection = "asc"
+): T[] {
+  const multiplier = direction === "asc" ? 1 : -1;
+  return [...items].sort((left, right) => {
+    const base = compareValues(left[field], right[field]);
+    return base * multiplier;
+  });
+}
+
+/**
+ * Ordena un array por multiples campos en cascada.
+ * Si el primer campo empata, se usa el siguiente, y asi sucesivamente.
+ */
+export function sortByMultipleFields<T>(items: T[], rules: SortRule<T>[]): T[] {
+  if (rules.length === 0) return [...items];
+
+  return [...items].sort((left, right) => {
+    for (const rule of rules) {
+      const direction = rule.direction ?? "asc";
+      const multiplier = direction === "asc" ? 1 : -1;
+      const base = compareValues(left[rule.field], right[rule.field]);
+      if (base !== 0) return base * multiplier;
+    }
+    return 0;
   });
 }

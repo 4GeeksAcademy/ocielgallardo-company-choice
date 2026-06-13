@@ -126,4 +126,23 @@ npm run test:types:models
 npx -y -p typescript tsc --noEmit ../../src/types/models.ts ../../src/types/models.type-test.ts --strict
 ```
 
+## Actualizacion 2026-06-13 (ordenamientos y busquedas)
+
+### Solicitud del cliente
+Implementar funciones de ordenamiento (ascendente, descendente y multicampo), validar busqueda lineal para arrays desordenados y busqueda binaria para arrays previamente ordenados. Mantener codigo en ingles y comentarios en español.
+
+### Cambios aplicados
+- Se actualizo `src/utils/collections.ts` con utilidades de ordenamiento:
+	- `sortByField` para ordenar por un campo en `asc` o `desc`.
+	- `sortByMultipleFields` para ordenar por multiples campos en cascada.
+	- Tipos auxiliares `SortDirection` y `SortRule<T>`.
+	- Comparador interno reutilizable para numeros, booleanos y texto.
+- Se actualizo `src/utils/search.ts` para cubrir explicitamente los escenarios de busqueda:
+	- `linearSearchUnsorted` para arrays desordenados.
+	- `binarySearchByField` para arrays ya ordenados por un campo.
+	- Se conservaron `linearSearch`, `linearSearchByField` y `binarySearchByNumber`.
+
+### Resultado
+El proyecto ya cuenta con filtros, ordenamientos y busquedas esenciales para trabajar colecciones en diferentes criterios con una base simple y reutilizable.
+
 

@@ -6,6 +6,17 @@ export function linearSearch<T>(items: T[], predicate: (item: T) => boolean): T 
   return undefined;
 }
 
+/**
+ * Busqueda lineal para arrays desordenados.
+ * Revisa elemento por elemento hasta encontrar coincidencia.
+ */
+export function linearSearchUnsorted<T>(
+  unsortedItems: T[],
+  predicate: (item: T) => boolean
+): T | undefined {
+  return linearSearch(unsortedItems, predicate);
+}
+
 /** Atajo para buscar por igualdad de un campo especifico. */
 export function linearSearchByField<T, K extends keyof T>(
   items: T[],
@@ -34,6 +45,32 @@ export function binarySearchByNumber<T>(
 
     if (value === target) return sortedItems[mid];
     if (value < target) left = mid + 1;
+    else right = mid - 1;
+  }
+
+  return undefined;
+}
+
+/**
+ * Busqueda binaria por campo para arrays previamente ordenados por ese mismo campo.
+ * Soporta campos numericos y de texto.
+ */
+export function binarySearchByField<T, K extends keyof T>(
+  sortedItems: T[],
+  field: K,
+  target: T[K]
+): T | undefined {
+  let left = 0;
+  let right = sortedItems.length - 1;
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    const value = sortedItems[mid][field];
+
+    if (value === target) return sortedItems[mid];
+
+    const compare = String(value).localeCompare(String(target));
+    if (compare < 0) left = mid + 1;
     else right = mid - 1;
   }
 
