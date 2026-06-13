@@ -100,6 +100,48 @@ Leer los archivos de contexto y comenzar implementacion en TypeScript basada en 
 ### Resultado
 Queda lista la base TypeScript de entidades y utilidades para continuar con siguientes iteraciones (datos de prueba, integracion UI/API, tests y reglas avanzadas).
 
+
+## Actualizacion 2026-06-13 (ordenamientos y busquedas)
+
+### Solicitud del cliente
+Implementar funciones de ordenamiento (ascendente, descendente y multicampo), validar busqueda lineal para arrays desordenados y busqueda binaria para arrays previamente ordenados. Mantener codigo en ingles y comentarios en español.
+
+### Cambios aplicados
+- Se actualizo `src/utils/collections.ts` con utilidades de ordenamiento:
+	- `sortByField` para ordenar por un campo en `asc` o `desc`.
+	- `sortByMultipleFields` para ordenar por multiples campos en cascada.
+	- Tipos auxiliares `SortDirection` y `SortRule<T>`.
+	- Comparador interno reutilizable para numeros, booleanos y texto.
+- Se actualizo `src/utils/search.ts` para cubrir explicitamente los escenarios de busqueda:
+	- `linearSearchUnsorted` para arrays desordenados.
+	- `binarySearchByField` para arrays ya ordenados por un campo.
+	- Se conservaron `linearSearch`, `linearSearchByField` y `binarySearchByNumber`.
+
+### Resultado
+El proyecto ya cuenta con filtros, ordenamientos y busquedas esenciales para trabajar colecciones en diferentes criterios con una base simple y reutilizable.
+
+## Actualizacion 2026-06-13 (validaciones de negocio contextuales)
+
+### Solicitud del cliente
+Implementar validaciones de negocio antes de procesar datos, alineadas a `CONTEXT.md` y `company-choice.md`, con funciones de responsabilidad unica, tipos explicitos y reglas fieles al contexto.
+
+### Cambios aplicados
+- Se reforzo `src/utils/validations.ts` con reglas de negocio especificas de HealthCore:
+	- Benchmarks contextuales: no-show `22%` y rechazo de facturacion `14%`.
+	- Alcance geografico permitido: `US` y `United Kingdom`.
+	- Validaciones por entidad: `Company`, `ProjectChallenge`, `FocusDepartment`, `Patient`, `Appointment`, `Invoice`, `NoShowPrediction`, `InvoiceRejectionPrediction`.
+	- Validaciones de consistencia por contexto:
+		- `Appointment.category` debe ser `Patient Experience and Access`.
+		- `Invoice.category` debe ser `Revenue Cycle and Billing`.
+		- Moneda por pais del paciente (`US -> USD`, `United Kingdom -> GBP`) cuando se dispone del pais.
+		- Umbral critico de predicciones no inferior a baseline contextual (`0.22` no-show, `0.14` rechazo).
+- Se agrego funcion orquestadora `validateRecordBeforeProcessing(...)` para ejecutar validaciones previas de forma centralizada.
+- Se mantuvo el principio de responsabilidad unica con funciones auxiliares pequenas (texto requerido, rangos, valor exacto, alcance de pais y consistencia moneda-pais).
+
+### Resultado
+La capa de validaciones ahora es contextual (no generica), tipada explicitamente y lista para usarse como puerta de control antes de procesar objetos del dominio.
+
+
 ## Texto fijo (NO BORRAR, MANTENER COMO FOOTER): comando de test para `models.ts`
 
 ### Objetivo
@@ -125,24 +167,4 @@ npm run test:types:models
 ```bash
 npx -y -p typescript tsc --noEmit ../../src/types/models.ts ../../src/types/models.type-test.ts --strict
 ```
-
-## Actualizacion 2026-06-13 (ordenamientos y busquedas)
-
-### Solicitud del cliente
-Implementar funciones de ordenamiento (ascendente, descendente y multicampo), validar busqueda lineal para arrays desordenados y busqueda binaria para arrays previamente ordenados. Mantener codigo en ingles y comentarios en español.
-
-### Cambios aplicados
-- Se actualizo `src/utils/collections.ts` con utilidades de ordenamiento:
-	- `sortByField` para ordenar por un campo en `asc` o `desc`.
-	- `sortByMultipleFields` para ordenar por multiples campos en cascada.
-	- Tipos auxiliares `SortDirection` y `SortRule<T>`.
-	- Comparador interno reutilizable para numeros, booleanos y texto.
-- Se actualizo `src/utils/search.ts` para cubrir explicitamente los escenarios de busqueda:
-	- `linearSearchUnsorted` para arrays desordenados.
-	- `binarySearchByField` para arrays ya ordenados por un campo.
-	- Se conservaron `linearSearch`, `linearSearchByField` y `binarySearchByNumber`.
-
-### Resultado
-El proyecto ya cuenta con filtros, ordenamientos y busquedas esenciales para trabajar colecciones en diferentes criterios con una base simple y reutilizable.
-
 
