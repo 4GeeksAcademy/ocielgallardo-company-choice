@@ -19,13 +19,103 @@ This repository is the **starter template** for transversal projects. You will w
 
 ---
 
+## Current implementation progress (HealthCore)
+
+This repository is no longer only a skeleton. It now includes concrete deliverables for the HealthCore scenario, covering Milestone 1 (Web) and core parts of Milestone 2 (Programming).
+
+### 1) Web deliverables completed
+
+- Full responsive landing page in `index.html`.
+- Semantic structure (`header`, `nav`, `main`, `section`, `article`, `footer`).
+- SEO and social metadata (Open Graph, Twitter cards).
+- Structured data (JSON-LD) for organization/business context.
+- Responsive and accessible form page in `application.html`.
+- Frontend validation logic in `validation.js`.
+
+### 2) TypeScript domain model and utilities completed
+
+Implemented under `src/`:
+
+- `src/types/models.ts`
+	- Strongly typed entities for HealthCore business domain (company, departments, patients, appointments, invoices, predictions, alerts, filters).
+
+- `src/utils/collections.ts`
+	- Filtering utilities:
+		- `findOneById`
+		- `filterByCategory`
+		- `filterByStatus`
+		- `filterByProbabilityRange`
+		- `filterCritical`
+	- Sorting utilities:
+		- `sortByField` (ascending/descending)
+		- `sortByMultipleFields` (multi-field sorting)
+
+- `src/utils/search.ts`
+	- Search utilities:
+		- `linearSearch`
+		- `linearSearchUnsorted`
+		- `linearSearchByField`
+		- `binarySearchByNumber`
+		- `binarySearchByField`
+
+- `src/utils/transformations.ts`
+	- Reporting and aggregation utilities:
+		- `calculateNoShowRate`
+		- `calculateInvoiceRejectionRate`
+		- `generateCriticalAlerts`
+		- `groupAlertsByStatus`
+		- `countByCategory`
+		- `calculateTotal`
+		- `calculateAverage`
+		- `calculateMax`
+		- `calculateMin`
+
+- `src/utils/validations.ts`
+	- Context-aware business validations aligned with HealthCore context (including 22% no-show and 14% invoice rejection baselines).
+	- Pre-processing validation orchestrator:
+		- `validateRecordBeforeProcessing(...)`
+
+### 3) Type validation command available
+
+The project includes a clear TypeScript validation command in `packages/shared/package.json`:
+
+```bash
+cd /workspaces/ocielgallardo-company-choice/packages/shared
+npm run test:types:models
+```
+
+This runs strict type checking against:
+
+- `src/types/models.ts`
+- `src/types/models.type-test.ts`
+
+### 4) Manual visual playground for utilities
+
+A temporary testing playground is available to manually validate utility outputs:
+
+- `test.html`
+- `test-playground.js`
+- `test-data.js`
+
+Run locally with:
+
+```bash
+npx http-server . -p 3000 -a 0.0.0.0
+```
+
+Then open:
+
+`http://localhost:3000/test.html`
+
+---
+
 ## Current status of the template
 
-The repository currently provides a **base folder structure and documentation skeleton**. It does not include runnable apps or global scripts yet.
+The repository provides the original folder structure plus active project implementation for HealthCore.
 
-- `CONTEXT.md` is a placeholder and must be replaced with your assigned company context.
+- `CONTEXT.md` has been replaced with HealthCore context and is actively used to drive implementation.
 - There is no root `AGENTS.md` yet.
-- Shared package metadata exists in `packages/shared/package.json` (`@repo/shared-types`), but no workspace runner is configured at root.
+- Shared package metadata exists in `packages/shared/package.json` (`@repo/shared-types`) with a working TypeScript type-test command.
 
 ---
 

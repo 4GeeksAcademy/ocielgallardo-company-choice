@@ -19,13 +19,103 @@ Este repositorio es la **plantilla de inicio** para los proyectos transversales.
 
 ---
 
+## Progreso actual de implementación (HealthCore)
+
+Este repositorio ya no es solo una estructura base. Ahora incluye entregables concretos para el escenario de HealthCore, cubriendo el Hito 1 (Web) y partes clave del Hito 2 (Programación).
+
+### 1) Entregables web completados
+
+- Landing page responsive completa en `index.html`.
+- Estructura semántica (`header`, `nav`, `main`, `section`, `article`, `footer`).
+- Metadatos SEO y sociales (Open Graph, Twitter cards).
+- Datos estructurados (JSON-LD) para contexto organizacional/negocio.
+- Página de formulario responsive y accesible en `application.html`.
+- Lógica de validación frontend en `validation.js`.
+
+### 2) Modelo de dominio y utilidades TypeScript completadas
+
+Implementado en `src/`:
+
+- `src/types/models.ts`
+	- Entidades tipadas para el dominio de HealthCore (empresa, departamentos, pacientes, citas, facturas, predicciones, alertas y filtros).
+
+- `src/utils/collections.ts`
+	- Utilidades de filtrado:
+		- `findOneById`
+		- `filterByCategory`
+		- `filterByStatus`
+		- `filterByProbabilityRange`
+		- `filterCritical`
+	- Utilidades de ordenamiento:
+		- `sortByField` (ascendente/descendente)
+		- `sortByMultipleFields` (ordenamiento multicampo)
+
+- `src/utils/search.ts`
+	- Utilidades de búsqueda:
+		- `linearSearch`
+		- `linearSearchUnsorted`
+		- `linearSearchByField`
+		- `binarySearchByNumber`
+		- `binarySearchByField`
+
+- `src/utils/transformations.ts`
+	- Utilidades de reportes y agregación:
+		- `calculateNoShowRate`
+		- `calculateInvoiceRejectionRate`
+		- `generateCriticalAlerts`
+		- `groupAlertsByStatus`
+		- `countByCategory`
+		- `calculateTotal`
+		- `calculateAverage`
+		- `calculateMax`
+		- `calculateMin`
+
+- `src/utils/validations.ts`
+	- Validaciones de negocio contextuales alineadas a HealthCore (incluyendo baseline de no-show del 22% y rechazo de facturación del 14%).
+	- Orquestador de validación previa al procesamiento:
+		- `validateRecordBeforeProcessing(...)`
+
+### 3) Comando de validación de tipos disponible
+
+El proyecto incluye un comando claro de validación TypeScript en `packages/shared/package.json`:
+
+```bash
+cd /workspaces/ocielgallardo-company-choice/packages/shared
+npm run test:types:models
+```
+
+Este comando ejecuta verificación estricta de tipos sobre:
+
+- `src/types/models.ts`
+- `src/types/models.type-test.ts`
+
+### 4) Playground visual temporal para utilidades
+
+Hay un entorno temporal para validar salidas de utilidades manualmente:
+
+- `test.html`
+- `test-playground.js`
+- `test-data.js`
+
+Ejecución local:
+
+```bash
+npx http-server . -p 3000 -a 0.0.0.0
+```
+
+Luego abrir:
+
+`http://localhost:3000/test.html`
+
+---
+
 ## Estado actual de la plantilla
 
-Actualmente el repositorio ofrece una **estructura base de carpetas y documentación**, pero todavía no incluye aplicaciones ejecutables ni scripts globales en la raíz.
+Actualmente el repositorio conserva la estructura base, pero además incluye implementación activa del proyecto HealthCore.
 
-- `CONTEXT.md` es un placeholder y debe sustituirse por el contexto de la empresa asignada.
+- `CONTEXT.md` fue sustituido por el contexto de HealthCore y se usa como base de implementación.
 - No existe todavía un `AGENTS.md` en la raíz.
-- Existe metadata del paquete compartido en `packages/shared/package.json` (`@repo/shared-types`), pero aún no hay runner de workspace en raíz.
+- Existe metadata del paquete compartido en `packages/shared/package.json` (`@repo/shared-types`) con comando funcional de pruebas de tipos TypeScript.
 
 ---
 
