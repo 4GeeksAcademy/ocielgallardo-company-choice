@@ -9,6 +9,15 @@ _Base template for transversal projects in the AI Engineering Career Program —
 
 ---
 
+## My Contributions
+
+- Frontend Development
+- Component Architecture
+- Responsive Design
+- API Integration
+
+---
+
 ## Purpose
 
 This repository is the **starter template** for transversal projects. You will work on real company scenarios (Brasaland, TrackFlow, Nexova, Healthcore), building deliverables that map to course milestones (Web, Programming, Backend, Telemetry, RAG, Agents, Workflows, Real-time).
