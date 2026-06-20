@@ -9,7 +9,7 @@ _Las instrucciones están [disponibles en inglés](./README.md)._
 
 ---
 
-##Mis Contribuciones
+## Mis Contribuciones
 
 - Desarrollo Frontend
 - Arquitectura de Componentes
