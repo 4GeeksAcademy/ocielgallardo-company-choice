@@ -9,6 +9,15 @@ _Las instrucciones están [disponibles en inglés](./README.md)._
 
 ---
 
+##Mis Contribuciones
+
+- Desarrollo Frontend
+- Arquitectura de Componentes
+- Diseño Responsivo
+- Integración de API
+
+---
+
 ## Propósito
 
 Este repositorio es la **plantilla de inicio** para los proyectos transversales. Trabajarás con escenarios de empresas reales (Brasaland, TrackFlow, Nexova) construyendo entregables que se corresponden con los hitos del curso (Web, Programación, Backend, Telemetría, RAG, Agentes, Workflows, Tiempo real).
