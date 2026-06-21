@@ -14,7 +14,7 @@ _Base template for transversal projects in the AI Engineering Career Program —
 - Frontend Development
 - Component Architecture
 - Responsive Design
-- API Integration
+- Form and validation development
 
 ---
 
