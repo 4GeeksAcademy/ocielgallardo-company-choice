@@ -14,7 +14,7 @@ _Las instrucciones están [disponibles en inglés](./README.md)._
 - Desarrollo Frontend
 - Arquitectura de Componentes
 - Diseño Responsivo
-- Integración de API
+- Desarrollo de formularios y validaciones
 
 ---
 
