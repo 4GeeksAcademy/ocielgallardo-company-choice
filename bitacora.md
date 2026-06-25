@@ -194,6 +194,109 @@ npx http-server . -p 3000 -a 0.0.0.0
 - Existe una mejora pendiente para robustez defensiva ante payloads nulos en runtime no tipados.
 
 
+## Actualizacion 2026-06-25 (Talent Pipeline Tracker — People & Talent)
+
+### Objetivo acordado
+Construir el frontend que el equipo de **People & Talent** de HealthCore empezará a usar para gestionar el pipeline de candidaturas. La API REST ya estaba expuesta por Tecnología; el entregable es la interfaz en `uis/talent-pipeline-tracker/`.
+
+### Contexto del brief
+El departamento recibió más de 100 candidaturas en menos de dos semanas y llevaba el seguimiento en hojas de cálculo, documentos sueltos y correos. La herramienta debía permitir:
+
+- Ver todas las candidaturas de un vistazo (nombre, puesto, estado, etapa).
+- Filtrar por estado y etapa, y buscar por nombre o email sin recargar la página.
+- Abrir el detalle sin perder el contexto del listado.
+- Cambiar estado o etapa desde el detalle con una sola interacción.
+- Añadir y eliminar notas internas.
+- Registrar candidaturas nuevas y editar datos existentes.
+
+### API utilizada
+**Talent Tracker API** del 4Geeks Playground:
+
+- Documentación: https://playground.4geeks.com/tracker/api/v1/docs
+- Base URL: `https://playground.4geeks.com/tracker/api/v1`
+- Recurso principal: `/records` (sin namespace; distinto al patrón inicial de `/applications/{namespace}` del plan)
+
+| Operación | Endpoint | Uso en UI |
+|-----------|----------|-----------|
+| Listar | `GET /records?limit=100` | Carga del listado |
+| Detalle | `GET /records/{id}` | Panel de candidato |
+| Crear | `POST /records` | Nueva candidatura |
+| Editar datos | `PUT /records/{id}` | Corrección de datos |
+| Cambiar pipeline | `PATCH /records/{id}` | Estado y etapa |
+| Notas | `GET/POST/DELETE /records/{id}/notes` | Notas internas |
+
+**Estados:** `received`, `in_progress`, `selected`, `discarded`  
+**Etapas:** `pending`, `review`, `personal_interview`, `technical_interview`, `offer_presented`
+
+### Alcance realizado
+
+#### 1) Fundamentos
+- Tipos en `lib/types/application.ts` y constantes en `lib/constants/pipeline.ts`.
+- Cliente API en `lib/api/client.ts`, `records.ts` y `notes.ts`.
+- Layout HealthCore con fuente Inter, metadata y redirect `/` → `/applications`.
+- `.env.local.example` con `NEXT_PUBLIC_TRACKER_API_URL`.
+
+#### 2) Listado y filtros
+- `ApplicationList`, `ApplicationListItem`, `StatusStageBadge`.
+- Filtros por estado y etapa + búsqueda por nombre/email con debounce (300 ms).
+- Filtrado en cliente sobre ~100 registros (`lib/utils/filterApplications.ts`).
+- Sincronización de filtros y selección con URL (`?status=&stage=&q=&selected=`).
+
+#### 3) Vista maestro-detalle
+- Desktop: listado (~40 %) + panel de detalle (~60 %).
+- Móvil: listado completo; al seleccionar, panel de detalle con botón «Volver al listado».
+- Componente orquestador: `components/ApplicationsWorkspace.tsx`.
+
+#### 4) Mutaciones de pipeline
+- `StatusStageControls` en el detalle con `PATCH` y actualización optimista + rollback en error.
+
+#### 5) Notas internas
+- `NotesSection` y `NoteForm`: listar, crear y eliminar con confirmación.
+
+#### 6) Formularios
+- `ApplicationForm` para crear y editar con validación accesible (`aria-live="polite"`).
+- Campos: nombre, email, teléfono, puesto, años de experiencia, LinkedIn opcional.
+
+#### 7) Pulido y documentación
+- Estados de carga (skeleton), error (banner con reintento) y vacío (CTA).
+- `uis/talent-pipeline-tracker/README.md` y actualización de `uis/README.es.md`.
+
+### Stack
+- Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4.
+
+### Criterios de aceptación
+- [x] Listado con nombre, puesto, estado y etapa.
+- [x] Filtros y búsqueda sin recargar la página.
+- [x] Detalle sin perder contexto del listado.
+- [x] Cambio de estado/etapa desde el detalle.
+- [x] Notas internas (crear y eliminar).
+- [x] Registrar y editar candidaturas.
+- [x] UI alineada con HealthCore Digital y responsive.
+
+### Verificación técnica
+- TypeScript (`tsc --noEmit`): OK.
+- ESLint: OK.
+- `npm run build`: en Windows puede fallar por longitud de ruta del proyecto (limitación del sistema de archivos), no por errores de código.
+
+### Cómo ejecutar
+```bash
+cd uis/talent-pipeline-tracker
+npm install
+npm run dev
+```
+Abrir http://localhost:3000 → `/applications`.
+
+### Fuera de alcance (MVP)
+- Autenticación de usuarios People.
+- Drag-and-drop entre etapas.
+- Exportar CSV, KPIs de contratación, integración con email.
+- Tests automatizados.
+
+### Pendientes opcionales
+- Paginación server-side si el volumen supera de forma estable las 100 candidaturas.
+- Resolver build en rutas Windows muy largas (mover repo a ruta más corta o habilitar rutas largas en SO).
+
+
 ## Texto fijo (NO BORRAR, MANTENER COMO FOOTER): comando de test para `models.ts`
 
 ### Objetivo

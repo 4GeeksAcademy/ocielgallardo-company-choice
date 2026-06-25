@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Registro de Paciente | HealthCore Digital</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-effect {
+            backdrop-filter: blur(8px);
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none !important;
+            border-color: transparent !important;
+            box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #2563eb !important;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "success": "#22c55e",
+                        "error-container": "#ffdad6",
+                        "text-primary": "#1e293b",
+                        "warning": "#f59e0b",
+                        "primary-fixed": "#dbe1ff",
+                        "primary-container": "#2563eb",
+                        "surface-container-high": "#dce9ff",
+                        "surface-container-highest": "#d5e3fc",
+                        "primary": "#004ac6",
+                        "secondary-fixed-dim": "#b6c4ff",
+                        "on-primary-container": "#eeefff",
+                        "tertiary-fixed": "#c9e6ff",
+                        "on-surface-variant": "#434655",
+                        "on-secondary": "#ffffff",
+                        "surface-variant": "#d5e3fc",
+                        "inverse-surface": "#233144",
+                        "surface-border": "#e2e8f0",
+                        "on-primary-fixed": "#00174b",
+                        "surface-dim": "#ccdbf3",
+                        "background": "#f8f9ff",
+                        "on-tertiary-fixed-variant": "#004c6e",
+                        "info": "#06b6d4",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-tertiary-container": "#e4f2ff",
+                        "on-secondary-container": "#1d3989",
+                        "on-tertiary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed": "#001e2f",
+                        "text-secondary": "#475569",
+                        "on-error": "#ffffff",
+                        "outline": "#737686",
+                        "danger": "#dc2626",
+                        "on-primary": "#ffffff",
+                        "surface-bg": "#f8fafc",
+                        "surface-bright": "#f8f9ff",
+                        "tertiary-container": "#0074a6",
+                        "outline-variant": "#c3c6d7",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "inverse-primary": "#b4c5ff",
+                        "high-contrast": "#020617",
+                        "surface-container": "#e6eeff",
+                        "on-background": "#0d1c2e",
+                        "surface": "#f8f9ff",
+                        "on-error-container": "#93000a",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface": "#0d1c2e",
+                        "secondary-container": "#8fa7fe",
+                        "on-secondary-fixed-variant": "#264191",
+                        "inverse-on-surface": "#eaf1ff",
+                        "secondary": "#4059aa",
+                        "on-secondary-fixed": "#00164e",
+                        "tertiary": "#005a82",
+                        "secondary-fixed": "#dce1ff",
+                        "surface-container-low": "#eff4ff",
+                        "surface-tint": "#0053db",
+                        "tertiary-fixed-dim": "#89ceff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "section-v": "56px",
+                        "margin-mobile": "16px",
+                        "form-max": "1024px",
+                        "container-max": "1280px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-display": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "headline-display": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "label-md": ["14px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-slate-50 text-text-primary font-body-md min-h-screen">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-surface-border shadow-sm">
+<div class="flex justify-between items-center px-4 md:px-gutter h-16 w-full">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="clinical_notes">clinical_notes</span>
+<h1 class="font-headline-sm text-headline-sm md:font-headline-md md:text-headline-md font-bold text-primary tracking-tight">HealthCore Digital</h1>
+</div>
+<div class="hidden md:flex items-center gap-6">
+<nav class="flex gap-4">
+<a class="text-primary font-semibold font-label-md text-label-md" href="#">Registro</a>
+<a class="text-text-secondary hover:bg-surface-container transition-colors px-3 py-1 rounded-lg font-label-md text-label-md" href="#">Ayuda</a>
+</nav>
+<button class="material-symbols-outlined text-text-secondary p-2 hover:bg-surface-container rounded-full transition-colors" data-icon="menu">menu</button>
+</div>
+<div class="md:hidden">
+<span class="material-symbols-outlined text-text-secondary" data-icon="menu">menu</span>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-4 md:px-gutter max-w-form-max mx-auto">
+<!-- Welcome Section -->
+<section class="mb-10 text-center md:text-left">
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-text-primary mb-2">Registro de Nuevo Paciente</h2>
+<p class="text-text-secondary font-body-lg text-body-lg max-w-2xl">Complete la información requerida con precisión clínica para asegurar una atención personalizada y eficiente.</p>
+</section>
+<!-- Form with Stepper Visual (Atmospheric) -->
+<form class="space-y-8" id="registrationForm" onsubmit="return false;">
+<!-- Section 1: Personal Info -->
+<fieldset class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-100 transition-all hover:shadow-md">
+<legend class="flex items-center gap-3 mb-6">
+<span class="w-10 h-10 rounded-full bg-primary-container/10 text-primary flex items-center justify-center font-bold">1</span>
+<span class="font-headline-sm text-headline-sm text-text-primary">Información Personal</span>
+</legend>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-text-secondary" for="nombre">Nombre(s)</label>
+<input class="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50/30 text-text-primary focus:ring-2 focus:ring-primary transition-all" id="nombre" name="nombre" placeholder="Ej. Juan Carlos" required="" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-text-secondary" for="apellidos">Apellidos</label>
+<input class="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50/30 text-text-primary focus:ring-2 focus:ring-primary transition-all" id="apellidos" name="apellidos" placeholder="Ej. Pérez Rodríguez" required="" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-text-secondary" for="fecha_nacimiento">Fecha de Nacimiento</label>
+<input class="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50/30 text-text-primary focus:ring-2 focus:ring-primary transition-all" id="fecha_nacimiento" name="fecha_nacimiento" required="" type="date"/>
+</div>
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-text-secondary" for="genero">Género</label>
+<select class="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50/30 text-text-primary focus:ring-2 focus:ring-primary transition-all" id="genero" name="genero">
+<option value="">Seleccione...</option>
+<option value="masculino">Masculino</option>
+<option value="femenino">Femenino</option>
+<option value="otro">Otro / No binario</option>
+<option value="prefiero_no_decir">Prefiero no decir</option>
+</select>
+</div>
+</div>
+</fieldset>
+<!-- Section 2: Clinic Location -->
+<fieldset class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-100 transition-all hover:shadow-md">
+<legend class="flex items-center gap-3 mb-6">
+<span class="w-10 h-10 rounded-full bg-primary-container/10 text-primary flex items-center justify-center font-bold">2</span>
+<span class="font-headline-sm text-headline-sm text-text-primary">Ubicación y Clínica</span>
+</legend>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-text-secondary" for="clinica">Clínica de Preferencia</label>
+<div class="relative">
+<select class="w-full pl-4 pr-10 py-3 rounded-lg border border-slate-200 bg-slate-50/30 text-text-primary focus:ring-2 focus:ring-primary transition-all appearance-none" id="clinica" name="clinica" required="">
+<option value="">Seleccione una clínica...</option>
+<option value="central">HealthCore Central (Madrid)</option>
+<option value="norte">HealthCore Norte (Bilbao)</option>
+<option value="sur">HealthCore Sur (Sevilla)</option>
+<option value="levante">HealthCore Levante (Valencia)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 text-slate-400 pointer-events-none" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-text-secondary" for="codigo_postal">Código Postal</label>
+<input class="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50/30 text-text-primary focus:ring-2 focus:ring-primary transition-all" id="codigo_postal" name="codigo_postal" placeholder="28001" type="text"/>
+</div>
+<div class="col-span-1 md:col-span-2 space-y-2">
+<label class="block font-label-md text-label-md text-text-secondary mb-3">Ubicación sugerida</label>
+<div class="h-48 w-full rounded-xl overflow-hidden border border-slate-200 relative">
+<div class="w-full h-full bg-cover bg-center" data-alt="A clean, minimalist high-resolution digital map rendering focused on a European city landscape. The map uses a soft slate and light blue color palette to maintain the HealthCore brand aesthetic. Street lines are subtle and elegant, with a central marker indicating a clinic location in a professional medical style." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC_v4IeDdoFrSnJ-33zt-FyYjKSssYM006CzuFcYvxXFE077qnPo347ZOmIVUz4iCzxKnpiKHfvhjgT8XShBc2rXldH9VH6JS_UISvFxoZ3ZmUgWrjjuvaSeVlUtjrKI_2nd4WF62tWVh7lRHXq5mfNZ_hQVshD--eZeInCvBEmHiiG0rSFVunO6798nCNYIVMFkZK1EEvBAjvt-75xP0wguXNfOv_KvwQm7fRyzh8wLW2z1moaVKCMuu-xG-MGOga0wRV3UFS9k7A')"></div>
+<div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-sm border border-slate-100 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="location_on">location_on</span>
+<span class="text-xs font-semibold text-text-primary">Calle de la Salud 124, Madrid</span>
+</div>
+</div>
+</div>
+</div>
+</fieldset>
+<!-- Section 3: Reason for visit -->
+<fieldset class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-100 transition-all hover:shadow-md">
+<legend class="flex items-center gap-3 mb-6">
+<span class="w-10 h-10 rounded-full bg-primary-container/10 text-primary flex items-center justify-center font-bold">3</span>
+<span class="font-headline-sm text-headline-sm text-text-primary">Motivo de la Visita</span>
+</legend>
+<div class="space-y-6">
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-text-secondary" for="especialidad">Especialidad Requerida</label>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+<label class="relative flex items-center justify-center p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/5 has-[:checked]:text-primary">
+<input class="sr-only" name="especialidad" type="radio" value="general"/>
+<span class="text-sm font-medium">Medicina General</span>
+</label>
+<label class="relative flex items-center justify-center p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/5 has-[:checked]:text-primary">
+<input class="sr-only" name="especialidad" type="radio" value="pediatria"/>
+<span class="text-sm font-medium">Pediatría</span>
+</label>
+<label class="relative flex items-center justify-center p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/5 has-[:checked]:text-primary">
+<input class="sr-only" name="especialidad" type="radio" value="cardiologia"/>
+<span class="text-sm font-medium">Cardiología</span>
+</label>
+<label class="relative flex items-center justify-center p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/5 has-[:checked]:text-primary">
+<input class="sr-only" name="especialidad" type="radio" value="otros"/>
+<span class="text-sm font-medium">Otros</span>
+</label>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-text-secondary" for="sintomas">Breve descripción de síntomas o motivo</label>
+<textarea class="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50/30 text-text-primary focus:ring-2 focus:ring-primary transition-all resize-none" id="sintomas" name="sintomas" placeholder="Describa brevemente su malestar..." rows="4"></textarea>
+</div>
+<div class="flex items-start gap-3 p-4 bg-amber-50 rounded-lg border border-amber-100">
+<span class="material-symbols-outlined text-amber-600" data-icon="warning">warning</span>
+<div class="text-sm text-amber-800">
+<p class="font-bold">Aviso importante</p>
+<p>Si está experimentando una emergencia que pone en peligro su vida, llame inmediatamente al 112 o acuda al hospital más cercano.</p>
+</div>
+</div>
+</div>
+</fieldset>
+<!-- Section 4: Consent -->
+<fieldset class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-100 transition-all hover:shadow-md">
+<legend class="flex items-center gap-3 mb-6">
+<span class="w-10 h-10 rounded-full bg-primary-container/10 text-primary flex items-center justify-center font-bold">4</span>
+<span class="font-headline-sm text-headline-sm text-text-primary">Consiento y Privacidad</span>
+</legend>
+<div class="space-y-4">
+<div class="flex items-start gap-3">
+<input class="mt-1 w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary" id="hipaa" name="consent" required="" type="checkbox"/>
+<label class="text-sm text-text-secondary leading-relaxed" for="hipaa">
+                            Confirmo que he leído y acepto la <a class="text-primary hover:underline" href="#">Política de Privacidad y Consentimiento HIPAA/GDPR</a>. Entiendo que mis datos serán procesados con la máxima confidencialidad para fines clínicos.
+                        </label>
+</div>
+<div class="flex items-start gap-3">
+<input class="mt-1 w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary" id="marketing" name="marketing" type="checkbox"/>
+<label class="text-sm text-text-secondary leading-relaxed" for="marketing">
+                            Deseo recibir actualizaciones sobre mis citas y consejos de salud preventiva vía correo electrónico o SMS. (Opcional)
+                        </label>
+</div>
+</div>
+</fieldset>
+<!-- Action Buttons -->
+<div class="flex flex-col md:flex-row gap-4 pt-4">
+<button class="flex-1 bg-primary text-white font-semibold py-4 rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-2" type="submit">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+                    Confirmar Registro
+                </button>
+<button class="px-8 py-4 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-all active:scale-95" type="reset">
+                    Borrar Formulario
+                </button>
+</div>
+</form>
+</main>
+<!-- Footer -->
+<footer class="bg-inverse-surface text-slate-400 py-12 px-gutter mt-auto">
+<div class="max-w-container-max mx-auto">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-8">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-white mb-2 font-bold tracking-tight">HealthCore Digital</h3>
+<p class="text-label-md">Precisión Clínica. Empatía Humana.</p>
+</div>
+<div class="flex flex-wrap gap-4 md:gap-8">
+<a class="hover:text-primary-fixed transition-colors font-label-sm text-label-sm" href="#">Cumplimiento HIPAA</a>
+<a class="hover:text-primary-fixed transition-colors font-label-sm text-label-sm" href="#">Privacidad GDPR</a>
+<a class="hover:text-primary-fixed transition-colors font-label-sm text-label-sm" href="#">Términos de Servicio</a>
+<a class="hover:text-primary-fixed transition-colors font-label-sm text-label-sm" href="#">Seguridad</a>
+</div>
+</div>
+<div class="pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between gap-4 items-center">
+<p class="text-label-sm">© 2024 HealthCore Digital. Todos los derechos reservados.</p>
+<div class="flex gap-4">
+<button class="w-8 h-8 rounded-full border border-slate-800 flex items-center justify-center hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="language">language</span>
+</button>
+<button class="w-8 h-8 rounded-full border border-slate-800 flex items-center justify-center hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="help">help</span>
+</button>
+</div>
+</div>
+</div>
+</footer>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 bg-white/90 backdrop-blur-md border-t border-surface-border rounded-t-xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex justify-around items-center h-16 px-2">
+<div class="flex flex-col items-center justify-center text-primary bg-surface-container/50 rounded-xl px-3 py-1">
+<span class="material-symbols-outlined" data-icon="medical_services" style="font-variation-settings: 'FILL' 1;">medical_services</span>
+<span class="font-label-sm text-label-sm">Registro</span>
+</div>
+<div class="flex flex-col items-center justify-center text-text-secondary">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+<span class="font-label-sm text-label-sm">Analíticas</span>
+</div>
+<div class="flex flex-col items-center justify-center text-text-secondary">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-label-sm text-label-sm">Facturas</span>
+</div>
+<div class="flex flex-col items-center justify-center text-text-secondary">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+<span class="font-label-sm text-label-sm">Perfil</span>
+</div>
+</nav>
+<script>
+        // Form Interaction Logic
+        document.getElementById('registrationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalContent = btn.innerHTML;
+            
+            // Visual feedback for submission
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin" data-icon="progress_activity">progress_activity</span> Procesando...';
+            btn.classList.add('opacity-80');
+
+            setTimeout(() => {
+                alert('Registro completado exitosamente. Se ha enviado un correo de confirmación.');
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+                btn.classList.remove('opacity-80');
+                this.reset();
+            }, 1500);
+        });
+
+        // Field highlight on focus
+        const inputs = document.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.closest('fieldset').classList.add('border-primary/30', 'bg-slate-50/50');
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.closest('fieldset').classList.remove('border-primary/30', 'bg-slate-50/50');
+            });
+        });
+    </script>
+</body></html>

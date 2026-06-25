@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HealthCore Digital | Precisión Clínica</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "success": "#22c55e",
+                    "error-container": "#ffdad6",
+                    "text-primary": "#1e293b",
+                    "warning": "#f59e0b",
+                    "primary-fixed": "#dbe1ff",
+                    "primary-container": "#2563eb",
+                    "surface-container-high": "#dce9ff",
+                    "surface-container-highest": "#d5e3fc",
+                    "primary": "#004ac6",
+                    "secondary-fixed-dim": "#b6c4ff",
+                    "on-primary-container": "#eeefff",
+                    "tertiary-fixed": "#c9e6ff",
+                    "on-surface-variant": "#434655",
+                    "on-secondary": "#ffffff",
+                    "surface-variant": "#d5e3fc",
+                    "inverse-surface": "#233144",
+                    "surface-border": "#e2e8f0",
+                    "on-primary-fixed": "#00174b",
+                    "surface-dim": "#ccdbf3",
+                    "background": "#f8f9ff",
+                    "on-tertiary-fixed-variant": "#004c6e",
+                    "info": "#06b6d4",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "on-tertiary-container": "#e4f2ff",
+                    "on-secondary-container": "#1d3989",
+                    "on-tertiary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed": "#001e2f",
+                    "text-secondary": "#475569",
+                    "on-error": "#ffffff",
+                    "outline": "#737686",
+                    "danger": "#dc2626",
+                    "on-primary": "#ffffff",
+                    "surface-bg": "#f8fafc",
+                    "surface-bright": "#f8f9ff",
+                    "tertiary-container": "#0074a6",
+                    "outline-variant": "#c3c6d7",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "inverse-primary": "#b4c5ff",
+                    "high-contrast": "#020617",
+                    "surface-container": "#e6eeff",
+                    "on-background": "#0d1c2e",
+                    "surface": "#f8f9ff",
+                    "on-error-container": "#93000a",
+                    "surface-container-lowest": "#ffffff",
+                    "on-surface": "#0d1c2e",
+                    "secondary-container": "#8fa7fe",
+                    "on-secondary-fixed-variant": "#264191",
+                    "inverse-on-surface": "#eaf1ff",
+                    "secondary": "#4059aa",
+                    "on-secondary-fixed": "#00164e",
+                    "tertiary": "#005a82",
+                    "secondary-fixed": "#dce1ff",
+                    "surface-container-low": "#eff4ff",
+                    "surface-tint": "#0053db",
+                    "tertiary-fixed-dim": "#89ceff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "section-v": "56px",
+                    "margin-mobile": "16px",
+                    "form-max": "1024px",
+                    "container-max": "1280px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-display": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "headline-display": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "label-md": ["14px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                    "headline-sm": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .hero-gradient {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-surface-border shadow-sm flex justify-between items-center px-4 md:px-gutter h-16">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary font-headline-md" style="font-variation-settings: 'FILL' 1;">clinical_notes</span>
+<span class="font-headline-md text-headline-md font-bold text-primary tracking-tight">HealthCore Digital</span>
+</div>
+<nav class="hidden md:flex gap-8">
+<a class="text-primary font-semibold font-label-md text-label-md transition-colors" href="#">Inicio</a>
+<a class="text-text-secondary hover:bg-surface-container transition-colors px-2 py-1 rounded-lg" href="#servicios">Servicios</a>
+<a class="text-text-secondary hover:bg-surface-container transition-colors px-2 py-1 rounded-lg" href="#stats">Impacto</a>
+<a class="text-text-secondary hover:bg-surface-container transition-colors px-2 py-1 rounded-lg" href="#">Contacto</a>
+</nav>
+<button class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-md text-label-md font-semibold hover:opacity-90 active:scale-95 transition-all">
+            Portal Clinico
+        </button>
+</header>
+<main class="pt-16">
+<!-- Hero Section -->
+<section class="relative min-h-[751px] flex items-center justify-center overflow-hidden hero-gradient">
+<div class="absolute inset-0 z-0">
+
+</div>
+<div class="container-max mx-auto px-4 relative z-10 grid md:grid-cols-2 gap-12 items-center">
+<div class="text-white space-y-6">
+<div class="inline-flex items-center px-3 py-1 rounded-full bg-white/10 border border-white/20 text-label-sm font-label-sm">
+<span class="material-symbols-outlined text-[16px] mr-2">verified</span>
+                        Cuidado Clínico de Próxima Generación
+                    </div>
+<h1 class="font-headline-display text-headline-display leading-tight">
+                        La Excelencia Médica se Une a la <span class="text-primary-fixed">Innovación Digital</span>
+</h1>
+<p class="font-body-lg text-body-lg text-slate-200 max-w-xl">
+                        Proporcionamos soluciones de salud integrales impulsadas por analítica predictiva y un equipo humano dedicado a su bienestar a largo plazo.
+                    </p>
+<div class="flex flex-col sm:flex-row gap-4 pt-4">
+<button class="bg-white text-primary px-8 py-4 rounded-xl font-headline-sm text-headline-sm flex items-center justify-center gap-2 shadow-xl hover:-translate-y-1 transition-all">
+                            Agendar Cita
+                            <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+<button class="bg-white/10 backdrop-blur-md text-white border border-white/30 px-8 py-4 rounded-xl font-headline-sm text-headline-sm flex items-center justify-center gap-2 hover:bg-white/20 transition-all">
+                            Ver Programas
+                        </button>
+</div>
+</div>
+<div class="hidden md:block relative animate-float">
+<div class="glass-card p-8 rounded-3xl shadow-2xl space-y-6">
+<div class="flex items-center gap-4 border-b border-slate-200 pb-4">
+<div class="w-16 h-16 rounded-full overflow-hidden border-2 border-primary">
+<img class="w-full h-full object-cover" data-alt="A professional portrait of a female doctor in her 40s, wearing a white clinical coat and a stethoscope, smiling confidently. The background is a softly blurred modern medical office with cool blue and white tones. The lighting is bright and professional, conveying trust and clinical expertise in a corporate modern style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAO3Gggc54KKbMgAnhbVtrShq3dbii_ZLIrnmCgdsICwI7vkIPCqT1FoQa4HJBIpdOW_ejB5nF3ztJ9H32pmvfCSWKIJKxxPpilk5vINxHvrkXJv7SL3jOKvGjwq-tpquzkH_Tvy1ezSCVx1Zpm1MyeuFurU0cJqjZZGUoxjv75LrtH7jt-_DV1-V__3oU5qWVfDYS8rurYW-0BgkxeEnpdSLXZSLfwUgamtR18fDzxfeP-UyZPTuftqpQIylPz6pOagg1Y73Z-Lqo"/>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-primary">Dra. Elena Ramírez</h3>
+<p class="font-label-md text-label-md text-text-secondary">Directora Médica</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container p-4 rounded-xl">
+<span class="material-symbols-outlined text-primary">monitoring</span>
+<p class="text-label-sm font-label-sm text-text-secondary mt-1">Ritmo Cardíaco</p>
+<p class="text-headline-sm font-headline-sm text-primary">72 BPM</p>
+</div>
+<div class="bg-surface-container p-4 rounded-xl">
+<span class="material-symbols-outlined text-success">check_circle</span>
+<p class="text-label-sm font-label-sm text-text-secondary mt-1">Estado</p>
+<p class="text-headline-sm font-headline-sm text-primary">Optimizado</p>
+</div>
+</div>
+<div class="pt-2">
+<div class="flex justify-between text-label-sm font-label-sm mb-1">
+<span class="text-text-secondary">Riesgo Salud Preventiva</span>
+<span class="text-primary font-bold">Bajo (12%)</span>
+</div>
+<div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[12%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Stats Section -->
+<section class="py-section-v bg-white border-y border-surface-border" id="stats">
+<div class="container-max mx-auto px-4">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+<div class="space-y-2 group cursor-default">
+<h2 class="font-headline-display text-headline-display text-primary transition-transform group-hover:scale-110 duration-300">12</h2>
+<p class="font-label-md text-label-md text-text-secondary uppercase tracking-widest">Clínicas en el País</p>
+</div>
+<div class="space-y-2 group cursor-default">
+<h2 class="font-headline-display text-headline-display text-primary transition-transform group-hover:scale-110 duration-300">200+</h2>
+<p class="font-label-md text-label-md text-text-secondary uppercase tracking-widest">Profesionales</p>
+</div>
+<div class="space-y-2 group cursor-default">
+<h2 class="font-headline-display text-headline-display text-primary transition-transform group-hover:scale-110 duration-300">50k+</h2>
+<p class="font-label-md text-label-md text-text-secondary uppercase tracking-widest">Pacientes Atendidos</p>
+</div>
+<div class="space-y-2 group cursor-default">
+<h2 class="font-headline-display text-headline-display text-primary transition-transform group-hover:scale-110 duration-300">98%</h2>
+<p class="font-label-md text-label-md text-text-secondary uppercase tracking-widest">Satisfacción</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Services Section -->
+<section class="py-section-v bg-background" id="servicios">
+<div class="container-max mx-auto px-4">
+<div class="text-center max-w-2xl mx-auto mb-16 space-y-4">
+<h2 class="font-headline-lg text-headline-lg text-text-primary">Servicios de Salud Especializados</h2>
+<p class="font-body-md text-body-md text-text-secondary">Ecosistema clínico diseñado para cubrir cada etapa de su jornada médica con precisión y empatía.</p>
+</div>
+<div class="grid md:grid-cols-3 gap-8">
+<!-- Service 1 -->
+<div class="bg-white p-8 rounded-2xl shadow-sm border border-surface-border hover:shadow-md hover:-translate-y-2 transition-all group">
+<div class="w-14 h-14 bg-primary-fixed rounded-xl flex items-center justify-center mb-6 group-hover:bg-primary transition-colors">
+<span class="material-symbols-outlined text-primary group-hover:text-white text-3xl">medical_services</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-text-primary mb-3">Atención Primaria</h3>
+<p class="font-body-md text-body-md text-text-secondary mb-6">Prevención, chequeos regulares y diagnóstico temprano para mantener su salud en equilibrio óptimo.</p>
+<a class="inline-flex items-center text-primary font-bold hover:underline gap-2" href="#">
+                            Saber más
+                            <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</a>
+</div>
+<!-- Service 2 -->
+<div class="bg-white p-8 rounded-2xl shadow-sm border border-surface-border hover:shadow-md hover:-translate-y-2 transition-all group">
+<div class="w-14 h-14 bg-tertiary-fixed rounded-xl flex items-center justify-center mb-6 group-hover:bg-tertiary transition-colors">
+<span class="material-symbols-outlined text-tertiary group-hover:text-white text-3xl">stethoscope</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-text-primary mb-3">Especialistas</h3>
+<p class="font-body-md text-body-md text-text-secondary mb-6">Acceso directo a una red de expertos en cardiología, neurología, pediatría y más especialidades críticas.</p>
+<a class="inline-flex items-center text-primary font-bold hover:underline gap-2" href="#">
+                            Ver especialidades
+                            <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</a>
+</div>
+<!-- Service 3 -->
+<div class="bg-white p-8 rounded-2xl shadow-sm border border-surface-border hover:shadow-md hover:-translate-y-2 transition-all group">
+<div class="w-14 h-14 bg-surface-container-high rounded-xl flex items-center justify-center mb-6 group-hover:bg-secondary transition-colors">
+<span class="material-symbols-outlined text-secondary group-hover:text-white text-3xl">patient_list</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-text-primary mb-3">Enfermedades Crónicas</h3>
+<p class="font-body-md text-body-md text-text-secondary mb-6">Gestión personalizada y seguimiento continuo para pacientes con diabetes, hipertensión o asma.</p>
+<a class="inline-flex items-center text-primary font-bold hover:underline gap-2" href="#">
+                            Planes de cuidado
+                            <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</a>
+</div>
+</div>
+</div>
+</section>
+<!-- Bento Grid Feature Highlight -->
+<section class="py-section-v">
+<div class="container-max mx-auto px-4">
+<div class="grid grid-cols-1 md:grid-cols-4 grid-rows-2 gap-4 h-auto md:h-[600px]">
+<div class="md:col-span-2 md:row-span-2 rounded-3xl overflow-hidden relative group">
+<div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent z-10"></div>
+<div class="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-700" data-alt="A wide-angle cinematic shot of a futuristic hospital corridor. The walls are smooth and white with integrated LED lighting strips in a soft blue hue. In the center, a group of diverse doctors in blue scrubs are having a collaborative discussion. The image has a clean, clinical aesthetic with high-end glassmorphic reflections and a sense of calm efficiency." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAjOuDJsFT0GQC7c10Ur_1LkxZunSJwDsnKGV7xQIfGm_XXkp0VTx6BDB-OZTFslN2Fgs9gEvHHvR7nKvWOlrzDqTjb2TURImkJm_poZ039qpTw31uQDNu3DxiWaVT_eUU7hC5tTnlzKlG523CbY6jpIiFuQqnKxY1qeGIlzVsnb4EhCjSf2TgzdLWkshhEfi5TN1-_bGEudYDkxKdYhOqhB_4eL7alYg_kX-_GMwH00Y1YOJjyK8mqZi2JOrFvChQcS_KzlaGmpT8')"></div>
+<div class="absolute bottom-0 left-0 p-8 z-20">
+<span class="bg-primary text-white px-3 py-1 rounded-full text-label-sm font-label-sm mb-4 inline-block">Nuestras Instalaciones</span>
+<h3 class="font-headline-lg text-white mb-2">Hospital de Vanguardia</h3>
+<p class="text-slate-200 font-body-md max-w-sm">Tecnología de punta y espacios diseñados para la recuperación rápida y el confort del paciente.</p>
+</div>
+</div>
+<div class="md:col-span-2 bg-primary-container p-8 rounded-3xl flex flex-col justify-between text-white relative overflow-hidden">
+<div class="z-10">
+<h3 class="font-headline-md text-headline-md mb-2">Analítica Predictiva</h3>
+<p class="opacity-90 font-body-md">Usamos IA para anticipar riesgos de salud antes de que se conviertan en emergencias.</p>
+</div>
+<div class="flex items-center justify-between z-10">
+<span class="material-symbols-outlined text-5xl opacity-40">query_stats</span>
+<button class="bg-white text-primary px-4 py-2 rounded-lg font-bold text-label-md">Ver Reportes</button>
+</div>
+<!-- Abstract pattern -->
+<div class="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
+</div>
+<div class="md:col-span-1 bg-white p-6 rounded-3xl border border-surface-border shadow-sm flex flex-col items-center justify-center text-center">
+<div class="w-12 h-12 bg-success/10 text-success rounded-full flex items-center justify-center mb-3">
+<span class="material-symbols-outlined">verified_user</span>
+</div>
+<p class="font-headline-sm text-headline-sm text-text-primary">HIPAA</p>
+<p class="text-label-sm text-text-secondary">Seguridad Certificada</p>
+</div>
+<div class="md:col-span-1 bg-inverse-surface p-6 rounded-3xl text-white flex flex-col justify-center">
+<p class="text-label-sm text-slate-400 mb-2">TELEMEDICINA</p>
+<h4 class="font-headline-sm text-headline-sm">24/7 Soporte</h4>
+<p class="text-slate-400 text-label-sm mt-2">Atención inmediata desde su móvil.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- CTA Section -->
+<section class="py-section-v bg-primary text-on-primary">
+<div class="container-max mx-auto px-4 text-center space-y-8">
+<h2 class="font-headline-display text-headline-display max-w-4xl mx-auto">¿Listo para tomar el control de su salud hoy mismo?</h2>
+<p class="font-body-lg text-body-lg opacity-80 max-w-2xl mx-auto">Únase a los miles de pacientes que ya confían en HealthCore Digital para su cuidado médico integral.</p>
+<div class="flex flex-col sm:flex-row justify-center gap-4">
+<button class="bg-white text-primary px-10 py-4 rounded-xl font-bold hover:scale-105 transition-transform">Registrarse como Paciente</button>
+<button class="border-2 border-white/30 text-white px-10 py-4 rounded-xl font-bold hover:bg-white/10 transition-colors">Hablar con un Asesor</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-inverse-surface text-slate-400 py-12">
+<div class="container-max mx-auto px-4">
+<div class="flex flex-col md:flex-row justify-between items-start mb-12 gap-8">
+<div class="space-y-4 max-w-xs">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">clinical_notes</span>
+<span class="font-headline-sm text-headline-sm font-bold text-white tracking-tight">HealthCore Digital</span>
+</div>
+<p class="text-label-md">Innovación clínica y cuidado humano para un futuro más saludable. Basado en datos, centrado en personas.</p>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-8">
+<div class="space-y-4">
+<h4 class="text-white font-bold">Servicios</h4>
+<ul class="space-y-2 text-label-md">
+<li><a class="hover:text-primary-fixed transition-colors" href="#">Medicina General</a></li>
+<li><a class="hover:text-primary-fixed transition-colors" href="#">Telemedicina</a></li>
+<li><a class="hover:text-primary-fixed transition-colors" href="#">Especialidades</a></li>
+</ul>
+</div>
+<div class="space-y-4">
+<h4 class="text-white font-bold">Compañía</h4>
+<ul class="space-y-2 text-label-md">
+<li><a class="hover:text-primary-fixed transition-colors" href="#">Nosotros</a></li>
+<li><a class="hover:text-primary-fixed transition-colors" href="#">Carreras</a></li>
+<li><a class="hover:text-primary-fixed transition-colors" href="#">Sedes</a></li>
+</ul>
+</div>
+<div class="space-y-4">
+<h4 class="text-white font-bold">Legal</h4>
+<ul class="space-y-2 text-label-md">
+<li><a class="hover:text-primary-fixed transition-colors" href="#">Privacidad</a></li>
+<li><a class="hover:text-primary-fixed transition-colors" href="#">Términos</a></li>
+<li><a class="hover:text-primary-fixed transition-colors" href="#">Seguridad</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-label-sm">
+<p>© 2024 HealthCore Digital. Precisión Clínica. Todos los derechos reservados.</p>
+<div class="flex gap-6">
+<a class="hover:text-white transition-colors" href="#">HIPAA Compliance</a>
+<a class="hover:text-white transition-colors" href="#">GDPR Privacy</a>
+</div>
+</div>
+</div>
+</footer>
+<!-- Bottom Navigation (Mobile Only) -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-surface-border shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:hidden flex justify-around items-center h-16 px-2">
+<button class="flex flex-col items-center justify-center text-primary bg-surface-container/50 rounded-xl px-3 py-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">medical_services</span>
+<span class="font-label-sm text-label-sm">Salud</span>
+</button>
+<button class="flex flex-col items-center justify-center text-text-secondary">
+<span class="material-symbols-outlined">trending_up</span>
+<span class="font-label-sm text-label-sm">Análisis</span>
+</button>
+<button class="flex flex-col items-center justify-center text-text-secondary">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-sm text-label-sm">Pagos</span>
+</button>
+<button class="flex flex-col items-center justify-center text-text-secondary">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="font-label-sm text-label-sm">Perfil</span>
+</button>
+</nav>
+<script>
+        // Micro-interaction: Header scroll effect
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 20) {
+                header.classList.add('shadow-md');
+                header.classList.remove('shadow-sm');
+            } else {
+                header.classList.add('shadow-sm');
+                header.classList.remove('shadow-md');
+            }
+        });
+    </script>
+</body></html>

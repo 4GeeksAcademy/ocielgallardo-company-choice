@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HealthCore Digital - Dashboard de Experiencia del Paciente</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "success": "#22c55e",
+                    "error-container": "#ffdad6",
+                    "text-primary": "#1e293b",
+                    "warning": "#f59e0b",
+                    "primary-fixed": "#dbe1ff",
+                    "primary-container": "#2563eb",
+                    "surface-container-high": "#dce9ff",
+                    "surface-container-highest": "#d5e3fc",
+                    "primary": "#004ac6",
+                    "secondary-fixed-dim": "#b6c4ff",
+                    "on-primary-container": "#eeefff",
+                    "tertiary-fixed": "#c9e6ff",
+                    "on-surface-variant": "#434655",
+                    "on-secondary": "#ffffff",
+                    "surface-variant": "#d5e3fc",
+                    "inverse-surface": "#233144",
+                    "surface-border": "#e2e8f0",
+                    "on-primary-fixed": "#00174b",
+                    "surface-dim": "#ccdbf3",
+                    "background": "#f8f9ff",
+                    "on-tertiary-fixed-variant": "#004c6e",
+                    "info": "#06b6d4",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "on-tertiary-container": "#e4f2ff",
+                    "on-secondary-container": "#1d3989",
+                    "on-tertiary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed": "#001e2f",
+                    "text-secondary": "#475569",
+                    "on-error": "#ffffff",
+                    "outline": "#737686",
+                    "danger": "#dc2626",
+                    "on-primary": "#ffffff",
+                    "surface-bg": "#f8fafc",
+                    "surface-bright": "#f8f9ff",
+                    "tertiary-container": "#0074a6",
+                    "outline-variant": "#c3c6d7",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "inverse-primary": "#b4c5ff",
+                    "high-contrast": "#020617",
+                    "surface-container": "#e6eeff",
+                    "on-background": "#0d1c2e",
+                    "surface": "#f8f9ff",
+                    "on-error-container": "#93000a",
+                    "surface-container-lowest": "#ffffff",
+                    "on-surface": "#0d1c2e",
+                    "secondary-container": "#8fa7fe",
+                    "on-secondary-fixed-variant": "#264191",
+                    "inverse-on-surface": "#eaf1ff",
+                    "secondary": "#4059aa",
+                    "on-secondary-fixed": "#00164e",
+                    "tertiary": "#005a82",
+                    "secondary-fixed": "#dce1ff",
+                    "surface-container-low": "#eff4ff",
+                    "surface-tint": "#0053db",
+                    "tertiary-fixed-dim": "#89ceff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "section-v": "56px",
+                    "margin-mobile": "16px",
+                    "form-max": "1024px",
+                    "container-max": "1280px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-display": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "headline-display": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "label-md": ["14px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                    "headline-sm": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-surface-border dark:border-outline-variant shadow-sm flex justify-between items-center px-4 md:px-gutter h-16 w-full">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed" style="font-size: 28px;">clinical_notes</span>
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed tracking-tight">HealthCore Digital</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex items-center gap-6">
+<nav class="flex gap-4">
+<a class="text-primary dark:text-primary-fixed font-semibold font-label-md text-label-md" href="#">Dashboard</a>
+<a class="text-text-secondary dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-high transition-colors px-3 py-1 rounded-lg font-label-md text-label-md" href="#">Pacientes</a>
+<a class="text-text-secondary dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-high transition-colors px-3 py-1 rounded-lg font-label-md text-label-md" href="#">Reportes</a>
+</nav>
+</div>
+<button class="p-2 rounded-full hover:bg-surface-container transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+</header>
+<div class="flex pt-16 h-[calc(100vh-64px)] overflow-hidden">
+<!-- NavigationDrawer (Desktop Only) -->
+<aside class="hidden md:flex flex-col h-full w-80 bg-surface dark:bg-inverse-surface border-r border-surface-border shadow-xl py-4 overflow-y-auto">
+<div class="px-6 mb-8 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-primary-container">
+<img class="w-full h-full object-cover" data-alt="Professional headshot of a female healthcare executive in a modern medical office. She has a confident, warm expression, wearing a tailored navy blazer and a subtle stethoscope-style necklace. The background is a soft-focus clinical environment with glass partitions and cool blue lighting, maintaining a clean and professional corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpEcHfDTBxBX906Hsbna5AhyEFGWCLt2EOEAZ1uQve15TUZLbSgUKa7j4rX7Gp2VzqT00S0yOtaa-M9nxCpW-ZQMQmdnAJrser4jo2SY0UWzaNnWCofyBIpXVpbLj3rC9Bv5jBBTJ7Si5Fo7XkLDctabUNYe3RHIwhzuLsnv-zgctNJu6u9u9Kd-qXdyX1LV3t6NXU5bQS-OOhXBO_3zLQqSQHyaW_c9YZlCMQR8tFq6CppnneFY8-5pvtAQclqy4C7YJ-T47E4p4"/>
+</div>
+<div>
+<h3 class="font-label-md text-label-md font-bold text-primary">Dr. Priya Nair</h3>
+<p class="text-xs text-text-secondary">Directora de Experiencia</p>
+<p class="text-[10px] text-outline">ID: #PX-5502</p>
+</div>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 py-3 px-6 bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary rounded-lg mx-2 transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard Clínico</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-6 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low mx-2 rounded-lg transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined">personal_injury</span>
+<span class="font-label-md text-label-md">Expedientes</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-6 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low mx-2 rounded-lg transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined">query_stats</span>
+<span class="font-label-md text-label-md">Analítica Predictiva</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-6 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low mx-2 rounded-lg transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Ciclo de Ingresos</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-6 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low mx-2 rounded-lg transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined">verified_user</span>
+<span class="font-label-md text-label-md">Cumplimiento</span>
+</a>
+</nav>
+<div class="mt-auto px-6 py-4">
+<div class="p-4 bg-surface-container rounded-xl">
+<p class="text-xs font-bold text-primary-container mb-2 uppercase">Estado del Sistema</p>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+<span class="text-xs font-medium text-text-primary">HIPAA Activo</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto bg-background p-4 md:p-gutter">
+<!-- Dashboard Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-text-primary">Gestión Operativa</h1>
+<p class="text-text-secondary font-body-md text-body-md">Bienvenida, Priya. Aquí están las prioridades de atención de hoy.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 py-2 bg-white border border-surface-border rounded-lg shadow-sm font-label-md text-label-md hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-sm">calendar_month</span>
+                        Hoy, 24 May
+                    </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-lg shadow-sm font-label-md text-label-md hover:bg-primary-container transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-sm">download</span>
+                        Exportar Datos
+                    </button>
+</div>
+</div>
+<!-- Bento Grid KPI Section -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+<!-- High Priority KPI: No-Show Rate -->
+<div class="md:col-span-2 glass-panel p-6 rounded-xl shadow-sm flex flex-col justify-between border-l-4 border-warning">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-text-secondary font-label-sm text-label-sm uppercase tracking-wider">Tasa de Ausentismo (No-Show)</p>
+<h2 class="font-headline-display text-headline-display text-text-primary mt-1">22%</h2>
+</div>
+<div class="p-2 bg-warning/10 rounded-lg">
+<span class="material-symbols-outlined text-warning" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+</div>
+<div class="mt-4">
+<div class="flex items-center justify-between mb-1">
+<span class="text-xs font-semibold text-warning">+4.2% vs. mes anterior</span>
+<span class="text-xs text-text-secondary">Umbral crítico: 15%</span>
+</div>
+<div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+<div class="bg-warning h-full rounded-full" style="width: 22%"></div>
+</div>
+</div>
+</div>
+<!-- Secondary KPI 1 -->
+<div class="glass-panel p-6 rounded-xl shadow-sm">
+<p class="text-text-secondary font-label-sm text-label-sm uppercase tracking-wider">Satisfacción (NPS)</p>
+<h2 class="font-headline-md text-headline-md text-text-primary mt-2">4.8/5.0</h2>
+<div class="flex items-center gap-1 mt-4 text-success font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>0.2 incremento</span>
+</div>
+</div>
+<!-- Secondary KPI 2 -->
+<div class="glass-panel p-6 rounded-xl shadow-sm">
+<p class="text-text-secondary font-label-sm text-label-sm uppercase tracking-wider">Citas Confirmadas</p>
+<h2 class="font-headline-md text-headline-md text-text-primary mt-2">142</h2>
+<div class="flex items-center gap-1 mt-4 text-primary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-sm">event_available</span>
+<span>82% del total diario</span>
+</div>
+</div>
+</div>
+<!-- Risk List Section -->
+<section class="mb-12">
+<div class="flex items-center justify-between mb-6">
+<h2 class="font-headline-sm text-headline-sm text-text-primary">Próximas Citas con Alto Riesgo de Inasistencia</h2>
+<button class="text-primary font-label-md text-label-md hover:underline">Ver todas</button>
+</div>
+<div class="grid grid-cols-1 gap-4">
+<!-- Risk Item 1 (Extreme Risk) -->
+<div class="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-surface-border flex flex-col md:flex-row md:items-center gap-6 hover:shadow-md transition-shadow">
+<div class="flex items-center gap-4 flex-1">
+<div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-text-secondary">person</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-text-primary">Juan Pérez Morales</h4>
+<p class="text-xs text-text-secondary">Cita: 14:30 - Cardiología (Dr. Ruiz)</p>
+</div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-center mb-1">
+<span class="text-xs font-bold text-error uppercase">Riesgo de Inasistencia: 82%</span>
+<span class="text-xs text-text-secondary italic">Basado en historial</span>
+</div>
+<!-- Probability Bar (Transition to red if > 70%) -->
+<div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+<div class="bg-error h-full rounded-full" style="width: 82%"></div>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="flex items-center gap-2 px-4 py-2 bg-success text-white rounded-lg font-label-md text-label-md hover:bg-green-600 transition-colors shadow-sm active:scale-95">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">chat</span>
+                                WhatsApp
+                            </button>
+<button class="p-2 border border-surface-border rounded-lg text-text-secondary hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">call</span>
+</button>
+</div>
+</div>
+<!-- Risk Item 2 (High Risk) -->
+<div class="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-surface-border flex flex-col md:flex-row md:items-center gap-6 hover:shadow-md transition-shadow">
+<div class="flex items-center gap-4 flex-1">
+<div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-text-secondary">person</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-text-primary">Elena Rodriguez V.</h4>
+<p class="text-xs text-text-secondary">Cita: 15:45 - Pediatría (Dra. Luna)</p>
+</div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-center mb-1">
+<span class="text-xs font-bold text-warning uppercase">Riesgo de Inasistencia: 68%</span>
+<span class="text-xs text-text-secondary italic">Transporte lejano</span>
+</div>
+<!-- Probability Bar (Amber for < 70%) -->
+<div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+<div class="bg-warning h-full rounded-full" style="width: 68%"></div>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="flex items-center gap-2 px-4 py-2 bg-success text-white rounded-lg font-label-md text-label-md hover:bg-green-600 transition-colors shadow-sm active:scale-95">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">chat</span>
+                                WhatsApp
+                            </button>
+<button class="p-2 border border-surface-border rounded-lg text-text-secondary hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">call</span>
+</button>
+</div>
+</div>
+<!-- Risk Item 3 (Moderate Risk) -->
+<div class="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-surface-border flex flex-col md:flex-row md:items-center gap-6 hover:shadow-md transition-shadow">
+<div class="flex items-center gap-4 flex-1">
+<div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-text-secondary">person</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-text-primary">Roberto Gómez</h4>
+<p class="text-xs text-text-secondary">Cita: 16:15 - General (Dr. Silva)</p>
+</div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-center mb-1">
+<span class="text-xs font-bold text-primary uppercase">Riesgo de Inasistencia: 45%</span>
+<span class="text-xs text-text-secondary italic">Primera cita</span>
+</div>
+<!-- Probability Bar (Primary for moderate/low) -->
+<div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 45%"></div>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="flex items-center gap-2 px-4 py-2 bg-success text-white rounded-lg font-label-md text-label-md hover:bg-green-600 transition-colors shadow-sm active:scale-95">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">chat</span>
+                                WhatsApp
+                            </button>
+<button class="p-2 border border-surface-border rounded-lg text-text-secondary hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">call</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Operational Context Area (Two Columns) -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-16">
+<!-- Insight Card -->
+<div class="lg:col-span-2 glass-panel p-6 rounded-2xl relative overflow-hidden h-64 flex flex-col justify-center">
+<div class="relative z-10">
+<h3 class="font-headline-md text-headline-md text-text-primary mb-2">Mapa de Calor Operativo</h3>
+<p class="text-text-secondary font-body-md text-body-md max-w-md">La mayor tasa de inasistencia se concentra en el turno vespertino entre las 15:00 y 17:00. Recomendamos habilitar recordatorios automáticos 2 horas antes.</p>
+</div>
+<!-- Background Decoration -->
+<div class="absolute right-0 top-0 h-full w-1/2 opacity-10 pointer-events-none">
+<span class="material-symbols-outlined text-[200px] text-primary">analytics</span>
+</div>
+</div>
+<!-- Quick Tips -->
+<div class="bg-primary-container text-on-primary-container p-6 rounded-2xl shadow-lg">
+<h4 class="font-headline-sm text-headline-sm mb-4">Acciones Sugeridas</h4>
+<ul class="space-y-4">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined mt-1">lightbulb</span>
+<p class="text-sm">Ofrecer telemedicina para pacientes con riesgo &gt; 70%.</p>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined mt-1">notification_important</span>
+<p class="text-sm">Contactar a la lista de espera para cubrir 3 espacios libres hoy.</p>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined mt-1">auto_awesome</span>
+<p class="text-sm">IA sugiere reprogramar cita de Roberto Gómez a la mañana.</p>
+</li>
+</ul>
+</div>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-surface-border dark:border-outline-variant shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex justify-around items-center h-16 px-2">
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed bg-surface-container dark:bg-primary-container/20 rounded-xl px-3 py-1 active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">medical_services</span>
+<span class="font-label-sm text-label-sm">Salud</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-secondary dark:text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">trending_up</span>
+<span class="font-label-sm text-label-sm">Analítica</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-secondary dark:text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-sm text-label-sm">Facturas</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-secondary dark:text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="font-label-sm text-label-sm">Perfil</span>
+</a>
+</nav>
+<!-- Footer -->
+<footer class="w-full bg-inverse-surface dark:bg-high-contrast flex flex-col md:flex-row justify-between items-center px-gutter py-8 space-y-4 md:space-y-0 mt-auto">
+<span class="font-headline-sm text-headline-sm text-on-primary">HealthCore Digital</span>
+<div class="flex flex-wrap justify-center gap-6">
+<a class="text-slate-400 hover:text-primary-fixed transition-colors font-label-sm text-label-sm" href="#">Cumplimiento HIPAA</a>
+<a class="text-slate-400 hover:text-primary-fixed transition-colors font-label-sm text-label-sm" href="#">Privacidad GDPR</a>
+<a class="text-slate-400 hover:text-primary-fixed transition-colors font-label-sm text-label-sm" href="#">Términos</a>
+<a class="text-slate-400 hover:text-primary-fixed transition-colors font-label-sm text-label-sm" href="#">Seguridad</a>
+</div>
+<p class="text-slate-400 font-label-sm text-label-sm">© 2024 HealthCore Digital. Precisión Clínica.</p>
+</footer>
+<!-- FAB for Quick Patient Entry -->
+<div class="fixed bottom-20 right-6 md:bottom-10 md:right-10 z-40">
+<button class="w-14 h-14 bg-primary-container text-on-primary-container rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group">
+<span class="material-symbols-outlined text-3xl">add</span>
+<span class="absolute right-full mr-4 bg-inverse-surface text-white px-3 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Nuevo Registro</span>
+</button>
+</div>
+</body></html>
