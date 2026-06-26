@@ -36,7 +36,7 @@ Variables de entorno:
 npm run dev
 ```
 
-Abrir [http://localhost:3000](http://localhost:3000) — redirige a `/applications`.
+Abrir [http://localhost:3000](http://localhost:3000) — redirige a `/applications`. El detalle de cada candidato está en `/candidates/[id]`.
 
 ## Producción
 
@@ -50,7 +50,7 @@ npm start
 | Método | Endpoint | Uso |
 |--------|----------|-----|
 | GET | `/records?limit=100` | Cargar candidaturas |
-| GET | `/records/{id}` | Detalle |
+| GET | `/records/{id}` | Detalle en `/candidates/[id]` |
 | POST | `/records` | Nueva candidatura |
 | PUT | `/records/{id}` | Editar datos |
 | PATCH | `/records/{id}` | Cambiar estado/etapa |

@@ -90,6 +90,15 @@ export function ApplicationDetailPanel({
             </div>
           </div>
           <div className="flex shrink-0 gap-2">
+            {application.cv_url && (
+              <Button
+                variant="primary"
+                type="button"
+                onClick={() => window.open(application.cv_url!, "_blank", "noopener,noreferrer")}
+              >
+                Ver CV
+              </Button>
+            )}
             <Button variant="secondary" onClick={onEdit}>
               Editar
             </Button>
@@ -139,6 +148,23 @@ export function ApplicationDetailPanel({
               </dd>
             </div>
           )}
+          <div className="sm:col-span-2">
+            <dt className="text-slate-500">CV</dt>
+            <dd>
+              {application.cv_url ? (
+                <a
+                  href={application.cv_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-blue-600 hover:underline"
+                >
+                  Descargar o ver currículum
+                </a>
+              ) : (
+                <span className="text-slate-500">No disponible</span>
+              )}
+            </dd>
+          </div>
         </dl>
 
         <div className="space-y-3">

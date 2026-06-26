@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Application } from "@/lib/types/application";
 import { StatusStageBadge } from "./StatusStageBadge";
 
@@ -13,10 +14,10 @@ export function ApplicationListItem({
   onSelect,
 }: ApplicationListItemProps) {
   return (
-    <button
-      type="button"
+    <Link
+      href={`/candidates/${application.id}`}
       onClick={() => onSelect(application.id)}
-      className={`w-full rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
+      className={`block w-full rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
         isSelected
           ? "border-blue-300 bg-blue-50/70 shadow-sm"
           : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
@@ -36,6 +37,6 @@ export function ApplicationListItem({
           <StatusStageBadge type="stage" value={application.stage} />
         </div>
       </div>
-    </button>
+    </Link>
   );
 }
