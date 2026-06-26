@@ -8,3 +8,22 @@ Each subfolder inside `uis/` must correspond to **one specific user interface** 
 - **Recommendation**: document in this file (or in sub-READMEs) the applications you add, their objective, the technology used, and how to run them.
 
 > _Spanish version: [README.es.md](./README.es.md)._
+
+
+## Interfaces
+
+### `talent-pipeline-tracker`
+
+Internal **People & Talent** tool for managing the HealthCore candidate pipeline.
+
+- **Technology**: Next.js 16, React 19, TypeScript, Tailwind CSS 4
+- **API**: [Talent Tracker API](https://playground.4geeks.com/tracker/api/v1/docs)
+- **Execution**:
+
+```bash
+cd uis/talent-pipeline-tracker
+npm install
+npm run dev
+```
+
+Detailed documentation in [`talent-pipeline-tracker/README.md`](./talent-pipeline-tracker/README.md).
