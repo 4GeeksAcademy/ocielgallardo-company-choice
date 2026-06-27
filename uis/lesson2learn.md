@@ -1,137 +1,137 @@
-# Lesson to learn — Talent Pipeline Tracker
+# Lecciones aprendidas — Talent Pipeline Tracker
 
-What you should study to build this app on your own, why each decision matters, and what we implemented in this session.
+Qué deberías estudiar para construir esta app por tu cuenta, por qué importa cada decisión y qué implementamos en esta sesión.
 
 ---
 
-## What you should learn
+## Qué deberías aprender
 
-### 1. React and Next.js (App Router)
+### 1. React y Next.js (App Router)
 
-- **Client components** (`"use client"`) for interactivity: forms, filters, API calls from the browser.
-- **File-based routing**: `app/applications/page.tsx`, `app/candidates/[id]/page.tsx`.
-- **`useSearchParams`** for filters in the URL (shareable links, back/forward friendly).
-- **`Suspense`** when using `useSearchParams` in client components.
+- **Componentes cliente** (`"use client"`) para interactividad: formularios, filtros y llamadas a la API desde el navegador.
+- **Enrutado basado en archivos**: `app/applications/page.tsx`, `app/candidates/[id]/page.tsx`.
+- **`useSearchParams`** para filtros en la URL (enlaces compartibles, compatible con atrás/adelante del navegador).
+- **`Suspense`** al usar `useSearchParams` en componentes cliente.
 
-### 2. TypeScript for API contracts
+### 2. TypeScript para contratos de API
 
-- Define types (`Application`, `Note`, `RecordCreateInput`) that mirror the API response.
-- Catch mismatches at compile time instead of debugging in production.
+- Definir tipos (`Application`, `Note`, `RecordCreateInput`) que reflejen la respuesta de la API.
+- Detectar inconsistencias en tiempo de compilación en lugar de depurar en producción.
 
-### 3. HTTP and REST semantics
+### 3. Semántica HTTP y REST
 
-| Method | When to use | Example in this app |
-|--------|-------------|---------------------|
-| GET | Read data | List records, fetch one record, list notes |
-| POST | Create a resource | New application, new note |
-| PUT | Replace full resource | Edit candidate profile fields |
-| PATCH | Partial update | Change only `status` or `stage` |
-| DELETE | Remove resource | Delete a note |
+| Método | Cuándo usarlo | Ejemplo en esta app |
+|--------|---------------|---------------------|
+| GET | Leer datos | Listar registros, obtener uno, listar notas |
+| POST | Crear un recurso | Nueva candidatura, nueva nota |
+| PUT | Reemplazar el recurso completo | Editar los datos del candidato |
+| PATCH | Actualización parcial | Cambiar solo `status` o `stage` |
+| DELETE | Eliminar un recurso | Borrar una nota |
 
-Understanding **PUT vs PATCH** is essential: editing a form sends all fields (PUT); changing a dropdown sends only what changed (PATCH).
+Entender **PUT vs PATCH** es esencial: editar un formulario envía todos los campos (PUT); cambiar un desplegable envía solo lo que cambió (PATCH).
 
-### 4. Fetch API and a thin client layer
+### 4. Fetch API y una capa cliente delgada
 
-- Centralize `fetch` in `lib/api/client.ts` (base URL, headers, error handling).
-- Split by domain: `records.ts`, `notes.ts`.
-- Throw typed errors (`ApiError`) so UI can show meaningful messages.
+- Centralizar `fetch` en `lib/api/client.ts` (URL base, cabeceras, manejo de errores).
+- Separar por dominio: `records.ts`, `notes.ts`.
+- Lanzar errores tipados (`ApiError`) para que la UI muestre mensajes útiles.
 
-### 5. Form validation and UX feedback
+### 5. Validación de formularios y feedback de UX
 
-- Validate **before** calling the API (required fields, email format, numeric experience).
-- Show field-level errors (`aria-invalid`, `role="alert"`).
-- Show success/error after submit (`aria-live="polite"`).
-- When navigation happens on success (create → detail page), pass feedback via query param (`?created=1`) instead of losing the message.
+- Validar **antes** de llamar a la API (campos obligatorios, formato de email, experiencia numérica).
+- Mostrar errores por campo (`aria-invalid`, `role="alert"`).
+- Mostrar éxito o error tras el envío (`aria-live="polite"`).
+- Cuando hay navegación tras el éxito (crear → página de detalle), pasar el feedback con un query param (`?created=1`) en lugar de perder el mensaje.
 
-### 6. State management patterns
+### 6. Patrones de gestión de estado
 
-- **Optimistic updates** for status/stage: update UI immediately, rollback on failure.
-- **Local state** for lists after mutations (prepend new note, filter after delete).
-- **Loading / error / empty** states for every async view.
+- **Actualizaciones optimistas** para estado/etapa: actualizar la UI al instante y revertir si falla.
+- **Estado local** en listas tras mutaciones (añadir nota al inicio, filtrar tras eliminar).
+- Estados de **carga / error / vacío** en cada vista asíncrona.
 
 ### 7. Tailwind CSS
 
-- Utility classes for layout, spacing, and accessible color contrast.
-- Responsive grids (`sm:grid-cols-2`) for forms and detail panels.
+- Clases utilitarias para layout, espaciado y contraste de color accesible.
+- Grids responsivos (`sm:grid-cols-2`) para formularios y paneles de detalle.
 
-### 8. Accessibility basics
+### 8. Fundamentos de accesibilidad
 
-- Labels linked to inputs (`htmlFor` / `id`).
-- Live regions for dynamic feedback.
-- Semantic HTML (`article`, `section`, `role="alert"`).
-
----
-
-## Why build it this way
-
-### Separate API layer (`lib/api/`)
-
-**Why:** One place to change the base URL, auth headers, or error parsing. Components stay focused on UI.
-
-### Dedicated detail route (`/candidates/[id]`)
-
-**Why:** Deep links (share a candidate URL), clear separation between list workspace and detail workspace, and a natural place to load `GET /records/:id` plus notes in parallel.
-
-### Client-side filtering
-
-**Why:** The API returns up to 100 records; filtering by status, stage, and search in the browser avoids extra round-trips and keeps the UI instant. For larger datasets you would move filters to query params on the API.
-
-### PATCH for pipeline fields, PUT for profile edit
-
-**Why:** Matches REST intent and reduces risk of overwriting unrelated fields when only status or stage changes.
-
-### Validation in the form component
-
-**Why:** Immediate feedback without a network call. Server-side validation still applies on the API; the client layer improves UX and reduces bad requests.
-
-### Re-throw errors from parent handlers
-
-**Why:** `ApplicationForm` and `NoteForm` catch errors to show inline messages. If the parent swallows the error, the form never knows the request failed.
-
-### Flash message after create redirect
-
-**Why:** On successful `POST /records`, we navigate to the detail page. Showing success there (`?created=1` → banner) is more reliable than a message on a page that unmounts.
+- Etiquetas vinculadas a inputs (`htmlFor` / `id`).
+- Regiones en vivo para feedback dinámico.
+- HTML semántico (`article`, `section`, `role="alert"`).
 
 ---
 
-## What we did in this session
+## Por qué construirlo así
 
-### Verification
+### Capa API separada (`lib/api/`)
 
-Confirmed the app already covered the full checklist:
+**Por qué:** Un solo lugar para cambiar la URL base, cabeceras de autenticación o el parseo de errores. Los componentes se centran en la UI.
 
-- Status and stage controls → `PATCH /records/:id`
-- Notes list, create, delete → `GET`, `POST`, `DELETE` on `/records/:id/notes`
-- Create form → `POST /records` on `/applications`
-- Edit form → `PUT /records/:id` on `/candidates/[id]`
-- Required-field validation in `ApplicationForm`
+### Ruta de detalle dedicada (`/candidates/[id]`)
 
-### Improvements added
+**Por qué:** Enlaces profundos (compartir la URL de un candidato), separación clara entre el espacio de listado y el de detalle, y un lugar natural para cargar `GET /records/:id` y las notas en paralelo.
 
-1. **Create success feedback** — redirect to `/candidates/:id?created=1` and show a success banner on the detail page.
-2. **Edit error/success feedback** — banner on detail page; errors re-thrown so the form can also show a message while still open.
-3. **Note delete errors** — `NotesSection` shows an alert if `DELETE` fails.
-4. **Error propagation** — `handleCreate`, `handleAddNote`, and `handleDeleteNote` re-throw so child forms handle failures correctly.
-5. **Documentation** — updated `uis/README.md`, `uis/README.es.md`, and this file.
+### Filtrado en el cliente
 
-### Key files
+**Por qué:** La API devuelve hasta 100 registros; filtrar por estado, etapa y búsqueda en el navegador evita viajes extra al servidor y mantiene la UI instantánea. Con más datos, moverías los filtros a query params en la API.
 
-| File | Role |
-|------|------|
-| `components/ApplicationsWorkspace.tsx` | List, filters, create form |
-| `components/candidates/CandidateDetailWorkspace.tsx` | Detail page orchestration |
-| `components/detail/ApplicationDetailPanel.tsx` | Status/stage, notes, CV link |
-| `components/forms/ApplicationForm.tsx` | Create/edit with validation |
-| `components/forms/NoteForm.tsx` | Add note with validation |
-| `lib/api/records.ts` | CRUD + PATCH for records |
-| `lib/api/notes.ts` | Notes CRUD |
+### PATCH para el pipeline, PUT para editar el perfil
+
+**Por qué:** Respeta la intención REST y reduce el riesgo de sobrescribir campos no relacionados cuando solo cambia el estado o la etapa.
+
+### Validación en el componente del formulario
+
+**Por qué:** Feedback inmediato sin llamada de red. La API sigue validando en servidor; la capa cliente mejora la UX y reduce peticiones incorrectas.
+
+### Re-lanzar errores desde los handlers padre
+
+**Por qué:** `ApplicationForm` y `NoteForm` capturan errores para mostrar mensajes inline. Si el padre los traga, el formulario nunca sabe que la petición falló.
+
+### Mensaje flash tras redirigir al crear
+
+**Por qué:** Tras un `POST /records` exitoso navegamos al detalle. Mostrar el éxito ahí (`?created=1` → banner) es más fiable que un mensaje en una página que se desmonta.
 
 ---
 
-## Suggested practice path
+## Lo que hicimos en esta sesión
 
-1. Read the [Talent Tracker API docs](https://playground.4geeks.com/tracker/api/v1/docs) and call endpoints with `curl` or Postman.
-2. Build a minimal page that only lists records (`GET /records`).
-3. Add one mutation at a time (create → patch status → notes).
-4. Add validation and loading states last — they are easier once the happy path works.
-5. Compare your approach with this codebase and note what you would simplify or extend (pagination, auth, tests).
+### Verificación
+
+Confirmamos que la app ya cubría el checklist completo:
+
+- Controles de estado y etapa → `PATCH /records/:id`
+- Listar, crear y eliminar notas → `GET`, `POST`, `DELETE` en `/records/:id/notes`
+- Formulario de alta → `POST /records` en `/applications`
+- Formulario de edición → `PUT /records/:id` en `/candidates/[id]`
+- Validación de campos obligatorios en `ApplicationForm`
+
+### Mejoras añadidas
+
+1. **Feedback de éxito al crear** — redirección a `/candidates/:id?created=1` y banner de éxito en la página de detalle.
+2. **Feedback de error/éxito al editar** — banner en el detalle; errores re-lanzados para que el formulario también muestre mensaje mientras sigue abierto.
+3. **Errores al borrar notas** — `NotesSection` muestra una alerta si falla el `DELETE`.
+4. **Propagación de errores** — `handleCreate`, `handleAddNote` y `handleDeleteNote` re-lanzan para que los formularios hijos gestionen los fallos correctamente.
+5. **Documentación** — actualización de `uis/README.md`, `uis/README.es.md` y este archivo.
+
+### Archivos clave
+
+| Archivo | Rol |
+|---------|-----|
+| `components/ApplicationsWorkspace.tsx` | Listado, filtros, formulario de alta |
+| `components/candidates/CandidateDetailWorkspace.tsx` | Orquestación de la página de detalle |
+| `components/detail/ApplicationDetailPanel.tsx` | Estado/etapa, notas, enlace al CV |
+| `components/forms/ApplicationForm.tsx` | Alta/edición con validación |
+| `components/forms/NoteForm.tsx` | Añadir nota con validación |
+| `lib/api/records.ts` | CRUD + PATCH de registros |
+| `lib/api/notes.ts` | CRUD de notas |
+
+---
+
+## Ruta de práctica sugerida
+
+1. Lee la [documentación de la Talent Tracker API](https://playground.4geeks.com/tracker/api/v1/docs) y prueba los endpoints con `curl` o Postman.
+2. Construye una página mínima que solo liste registros (`GET /records`).
+3. Añade una mutación cada vez (crear → cambiar estado con patch → notas).
+4. Añade validación y estados de carga al final — son más fáciles cuando el flujo feliz ya funciona.
+5. Compara tu enfoque con este código y anota qué simplificarías o ampliarías (paginación, autenticación, tests).

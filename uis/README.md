@@ -44,4 +44,4 @@ npm run dev
 | **Forms** | Success/error feedback after submit | Inline messages + flash banner on detail page |
 
 Detailed documentation in [`talent-pipeline-tracker/README.md`](./talent-pipeline-tracker/README.md).  
-Learning notes in [`talent-pipeline-tracker/lesson2learn.md`](./talent-pipeline-tracker/lesson2learn.md).
+Learning notes in [`lesson2learn.md`](./lesson2learn.md) (Spanish).

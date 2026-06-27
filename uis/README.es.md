@@ -44,4 +44,4 @@ npm run dev
 | **Formularios** | Feedback de éxito o error tras cada envío | Mensajes inline + banner en página de detalle |
 
 Documentación detallada en [`talent-pipeline-tracker/README.md`](./talent-pipeline-tracker/README.md).  
-Notas de aprendizaje en [`talent-pipeline-tracker/lesson2learn.md`](./talent-pipeline-tracker/lesson2learn.md).
+Notas de aprendizaje en [`lesson2learn.md`](./lesson2learn.md).
