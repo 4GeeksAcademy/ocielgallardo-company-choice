@@ -1,4 +1,5 @@
 # Design System: HealthCore Digital
+
 **Proyecto:** Unidad interna de transformación digital - 4Geeks Academy
 **Versión:** 1.0 (Basado en Milestone 1 & 2)
 **Estado:** Documentación Maestra
@@ -19,6 +20,7 @@ HealthCore Digital no es solo un software; es el puente entre la eficiencia oper
 El sistema utiliza una base de azules clínicos profesionales extendida con colores semánticos para el análisis de riesgo predictivo.
 
 ### Colores Principales
+
 | Token | HEX | Uso Principal |
 | :--- | :--- | :--- |
 | `primary-600` | `#2563eb` | Botones primarios, iconos activos, branding. |
@@ -26,6 +28,7 @@ El sistema utiliza una base de azules clínicos profesionales extendida con colo
 | `primary-900` | `#1e3a8a` | Headers, texto hero, fondos oscuros de marca. |
 
 ### Colores Neutrales (Escala Slate)
+
 | Token | HEX | Uso Principal |
 | :--- | :--- | :--- |
 | `slate-50` | `#f8fafc` | Fondos de página, áreas de trabajo limpias. |
@@ -35,6 +38,7 @@ El sistema utiliza una base de azules clínicos profesionales extendida con colo
 | `slate-950` | `#020617` | Headings de alto contraste, modo oscuro. |
 
 ### Colores Semánticos y Niveles de Riesgo
+
 | Estado / Riesgo | HEX / Tailwind | Uso |
 | :--- | :--- | :--- |
 | `Success` | `green-500` | Confirmaciones, citas asistidas, facturas pagadas. |

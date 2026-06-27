@@ -121,7 +121,9 @@ export function ApplicationsWorkspace() {
     try {
       const created = await createRecord(data);
       setFormMode(null);
-      router.push(`/candidates/${created.id}`);
+      router.push(`/candidates/${created.id}?created=1`);
+    } catch (error) {
+      throw error;
     } finally {
       setIsSubmittingForm(false);
     }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import type { Application, Note, RecordCreateInput } from "@/lib/types/application";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -15,8 +15,12 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { ApplicationDetailPanel } from "@/components/detail/ApplicationDetailPanel";
 import { ApplicationForm } from "@/components/forms/ApplicationForm";
 
+type ActionFeedback = { type: "success" | "error"; message: string };
+
 export function CandidateDetailWorkspace() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const candidateId = params.id;
 
   const [application, setApplication] = useState<Application | null>(null);
@@ -27,6 +31,7 @@ export function CandidateDetailWorkspace() {
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
@@ -73,6 +78,16 @@ export function CandidateDetailWorkspace() {
     };
   }, [candidateId]);
 
+  useEffect(() => {
+    if (searchParams.get("created") === "1") {
+      setActionFeedback({
+        type: "success",
+        message: "Candidatura registrada correctamente.",
+      });
+      router.replace(`/candidates/${candidateId}`, { scroll: false });
+    }
+  }, [searchParams, candidateId, router]);
+
   const handleStatusChange = async (status: Application["status"]) => {
     if (!application) return;
     const previous = application;
@@ -115,6 +130,8 @@ export function CandidateDetailWorkspace() {
         ...application,
         notes_count: application.notes_count + 1,
       });
+    } catch (error) {
+      throw error;
     } finally {
       setIsSubmittingNote(false);
     }
@@ -122,22 +139,37 @@ export function CandidateDetailWorkspace() {
 
   const handleDeleteNote = async (noteId: string) => {
     if (!application) return;
-    await deleteNote(application.id, noteId);
-    setNotes((current) => current.filter((note) => note.id !== noteId));
-    setApplication({
-      ...application,
-      notes_count: Math.max(0, application.notes_count - 1),
-    });
+    try {
+      await deleteNote(application.id, noteId);
+      setNotes((current) => current.filter((note) => note.id !== noteId));
+      setApplication({
+        ...application,
+        notes_count: Math.max(0, application.notes_count - 1),
+      });
+    } catch (error) {
+      throw error;
+    }
   };
 
   const handleEdit = async (data: RecordCreateInput) => {
     if (!application) return;
     setIsSubmittingForm(true);
+    setActionFeedback(null);
     try {
       await updateRecord(application.id, data);
       const refreshed = await fetchRecordById(application.id);
       setApplication(refreshed);
       setIsEditing(false);
+      setActionFeedback({
+        type: "success",
+        message: "Candidatura actualizada correctamente.",
+      });
+    } catch (error) {
+      setActionFeedback({
+        type: "error",
+        message: "No se pudieron guardar los cambios. Inténtalo de nuevo.",
+      });
+      throw error;
     } finally {
       setIsSubmittingForm(false);
     }
@@ -163,6 +195,20 @@ export function CandidateDetailWorkspace() {
             role="alert"
           >
             {error}
+          </div>
+        )}
+
+        {actionFeedback && (
+          <div
+            role={actionFeedback.type === "error" ? "alert" : "status"}
+            aria-live="polite"
+            className={`rounded-lg border px-4 py-3 text-sm ${
+              actionFeedback.type === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-red-200 bg-red-50 text-red-800"
+            }`}
+          >
+            {actionFeedback.message}
           </div>
         )}
 

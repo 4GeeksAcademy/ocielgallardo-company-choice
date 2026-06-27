@@ -4,12 +4,19 @@ Herramienta interna de **People & Talent** para HealthCore Digital. Permite al e
 
 ## Funcionalidades
 
-- Listado de candidaturas con nombre, puesto, estado y etapa
+### Gestión de candidaturas (`/applications`)
+
+- Listado con nombre, puesto, estado y etapa
 - Filtros por estado y etapa, y búsqueda por nombre o email (sin recargar la página)
-- Vista maestro-detalle: listado + panel de detalle
-- Cambio de estado y etapa desde el detalle
-- Notas internas (crear y eliminar)
-- Registro y edición de candidaturas con validación
+- Formulario de alta (`POST /records`) con validación de campos requeridos y feedback de éxito/error
+
+### Detalle de candidatura (`/candidates/[id]`)
+
+- Carga con `GET /records/:id` y notas con `GET /records/:id/notes`
+- Controles de estado y etapa (`PATCH /records/:id`) con actualización optimista
+- Notas internas: listar, crear (`POST`) y eliminar (`DELETE`)
+- Formulario de edición (`PUT /records/:id`) con validación y feedback
+- Enlace al CV cuando `cv_url` está disponible
 
 ## Requisitos
 

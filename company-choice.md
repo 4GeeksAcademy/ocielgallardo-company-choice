@@ -8,7 +8,7 @@
 
 ---
 
-## Departamentos de mi interés 
+## Departamentos de mi interés
 
 -Experiencias del paciente y Acceso: Problemas de no-show de un 22%.
 -Ciclo de Ingresos y Facturación: proceso complejo de reclamaciones y reembolsos donde una tasa de rechazo del 14% (más del doble de la media del sector)
@@ -19,7 +19,8 @@ Reto:
 ---
 
 ## Mi idea de agente IA
-Propuesta de soluciones:
--Antes de la cita, el agente podría predecir las probabilidades del no-show del paciente. Necesitaría datos personales y el historial médico. Produciría una alerta de probabilidad de que el paciente no asista a la consulta. Actúa (recordatorio, confirmación, etc.)
--Antes de facturar, predice si la factura será rechazada. Necesitaría los datos de facturación para calcular datos incompletos,
- códigos incorrectos e incoherencias. Actúa validando y corrigiendo antes de enviarla.
+
+### Propuesta de soluciones
+
+- Antes de la cita, el agente podría predecir las probabilidades del no-show del paciente. Necesitaría datos personales y el historial médico. Produciría una alerta de probabilidad de que el paciente no asista a la consulta.  --- - Actúa (recordatorio, confirmación, etc.)
+- Antes de facturar, predice si la factura será rechazada. - - Necesitaría los datos de facturación para calcular datos incompletos, códigos incorrectos e incoherencias. Actúa validando y corrigiendo antes de enviarla.

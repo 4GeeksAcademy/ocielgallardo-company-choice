@@ -16,8 +16,12 @@ Cada subcarpeta dentro de `uis/` debe corresponder a **una interfaz de usuario c
 Herramienta interna de **People & Talent** para gestionar el pipeline de candidaturas de HealthCore.
 
 - **Tecnología**: Next.js 16, React 19, TypeScript, Tailwind CSS 4
-- **API**: [Talent Tracker API](https://playground.4geeks.com/tracker/api/v1/docs)
-- **Ejecución**:
+- **API**: [Talent Tracker API](https://playground.4geeks.com/tracker/api/v1/docs) (`/records`, no `/applications`)
+- **Rutas**:
+  - `/applications` — listado, filtros y formulario de alta
+  - `/candidates/[id]` — detalle, edición, estado/etapa y notas
+
+**Ejecución:**
 
 ```bash
 cd uis/talent-pipeline-tracker
@@ -25,4 +29,19 @@ npm install
 npm run dev
 ```
 
-Documentación detallada en [`talent-pipeline-tracker/README.md`](./talent-pipeline-tracker/README.md).
+#### Checklist de funcionalidades (integración API)
+
+| Área | Requisito | Implementación |
+|------|-----------|----------------|
+| **Detalle** | Actualizar estado con `PATCH /records/:id` | `StatusStageControls` → `patchRecord()` |
+| **Detalle** | Actualizar etapa con `PATCH /records/:id` | `StatusStageControls` → `patchRecord()` |
+| **Detalle** | Listar notas con `GET /records/:id/notes` | `fetchNotes()` al cargar el candidato |
+| **Detalle** | Añadir nota con `POST /records/:id/notes` | `NoteForm` → `createNote()` |
+| **Detalle** | Eliminar nota con `DELETE /records/:id/notes/:note_id` | `NotesSection` → `deleteNote()` |
+| **Candidaturas** | Alta con `POST /records` | `ApplicationForm` (create) en `/applications` |
+| **Candidaturas** | Edición con `PUT /records/:id` | `ApplicationForm` (edit) en `/candidates/[id]` |
+| **Formularios** | Validación de campos requeridos antes de enviar | `ApplicationForm.validateForm()` |
+| **Formularios** | Feedback de éxito o error tras cada envío | Mensajes inline + banner en página de detalle |
+
+Documentación detallada en [`talent-pipeline-tracker/README.md`](./talent-pipeline-tracker/README.md).  
+Notas de aprendizaje en [`talent-pipeline-tracker/lesson2learn.md`](./talent-pipeline-tracker/lesson2learn.md).

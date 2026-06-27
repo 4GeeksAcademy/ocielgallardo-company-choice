@@ -28,12 +28,16 @@ export function NotesSection({
   onDeleteNote,
 }: NotesSectionProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleDelete = async (noteId: string) => {
     if (!window.confirm("¿Eliminar esta nota interna?")) return;
     setDeletingId(noteId);
+    setDeleteError(null);
     try {
       await onDeleteNote(noteId);
+    } catch {
+      setDeleteError("No se pudo eliminar la nota. Inténtalo de nuevo.");
     } finally {
       setDeletingId(null);
     }
@@ -49,6 +53,12 @@ export function NotesSection({
       </div>
 
       <NoteForm onSubmit={onAddNote} isSubmitting={isSubmitting} />
+
+      {deleteError && (
+        <p className="text-sm text-red-600" role="alert">
+          {deleteError}
+        </p>
+      )}
 
       {isLoading ? (
         <div className="space-y-2">
