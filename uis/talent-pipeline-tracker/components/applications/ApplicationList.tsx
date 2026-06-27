@@ -1,5 +1,6 @@
-import type { Application } from "@/lib/types/application";
+import type { Application } from "@/types/application";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
 import { ApplicationListItem } from "./ApplicationListItem";
 
 interface ApplicationListProps {
@@ -9,6 +10,8 @@ interface ApplicationListProps {
   onSelect: (id: string) => void;
   onCreate: () => void;
   isLoading: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 function ListSkeleton() {
@@ -31,9 +34,11 @@ export function ApplicationList({
   onSelect,
   onCreate,
   isLoading,
+  error,
+  onRetry,
 }: ApplicationListProps) {
   return (
-    <section className="flex min-h-0 flex-col gap-3">
+    <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-slate-600">
           <span className="font-semibold text-slate-900">
@@ -45,6 +50,22 @@ export function ApplicationList({
 
       {isLoading ? (
         <ListSkeleton />
+      ) : error ? (
+        <div
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-6 text-center"
+          role="alert"
+        >
+          <p className="text-sm text-red-700">{error}</p>
+          {onRetry && (
+            <Button
+              variant="ghost"
+              className="mt-3 text-red-700"
+              onClick={onRetry}
+            >
+              Reintentar
+            </Button>
+          )}
+        </div>
       ) : applications.length === 0 ? (
         <EmptyState
           title="Sin resultados"

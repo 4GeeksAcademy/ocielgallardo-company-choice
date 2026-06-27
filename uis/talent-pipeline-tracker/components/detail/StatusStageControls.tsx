@@ -1,6 +1,6 @@
 "use client";
 
-import type { ApplicationStage, ApplicationStatus } from "@/lib/types/application";
+import type { ApplicationStage, ApplicationStatus } from "@/types/application";
 import {
   APPLICATION_STAGES,
   APPLICATION_STATUSES,

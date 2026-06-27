@@ -4,7 +4,7 @@ import type {
   RecordCreateInput,
   RecordPatchInput,
   RecordsListResponse,
-} from "../types/application";
+} from "@/types/application";
 
 export async function fetchRecords(limit = 100): Promise<Application[]> {
   const response = await apiRequest<RecordsListResponse>(

@@ -1,5 +1,5 @@
 import { apiRequest } from "./client";
-import type { Note, NotesListResponse } from "../types/application";
+import type { Note, NotesListResponse } from "@/types/application";
 
 export async function fetchNotes(recordId: string): Promise<Note[]> {
   const response = await apiRequest<NotesListResponse>(

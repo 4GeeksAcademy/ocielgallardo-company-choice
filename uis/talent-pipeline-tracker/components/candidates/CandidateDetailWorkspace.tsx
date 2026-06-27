@@ -2,90 +2,62 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import type { Application, Note, RecordCreateInput } from "@/lib/types/application";
-import { ApiError } from "@/lib/api/client";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { Application, RecordCreateInput } from "@/types/application";
 import {
   fetchRecordById,
   patchRecord,
   updateRecord,
-} from "@/lib/api/records";
-import { createNote, deleteNote, fetchNotes } from "@/lib/api/notes";
+} from "@/lib/services/records";
+import { createNote, deleteNote } from "@/lib/services/notes";
+import { useCandidateDetail } from "@/hooks/useCandidateDetail";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { ApplicationDetailPanel } from "@/components/detail/ApplicationDetailPanel";
 import { ApplicationForm } from "@/components/forms/ApplicationForm";
 
+interface CandidateDetailWorkspaceProps {
+  candidateId: string;
+}
+
 type ActionFeedback = { type: "success" | "error"; message: string };
 
-export function CandidateDetailWorkspace() {
-  const params = useParams<{ id: string }>();
+export function CandidateDetailWorkspace({
+  candidateId,
+}: CandidateDetailWorkspaceProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const candidateId = params.id;
 
-  const [application, setApplication] = useState<Application | null>(null);
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [notesLoading, setNotesLoading] = useState(true);
+  const {
+    application,
+    setApplication,
+    notes,
+    setNotes,
+    isLoading,
+    isRecordError,
+    recordError,
+    isNotesLoading,
+    isNotesError,
+    notesError,
+    reloadNotes,
+  } = useCandidateDetail(candidateId);
+
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(
+    () =>
+      searchParams.get("created") === "1"
+        ? {
+            type: "success",
+            message: "Candidatura registrada correctamente.",
+          }
+        : null
+  );
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    let isActive = true;
-
-    async function loadCandidate() {
-      setIsLoading(true);
-      setNotesLoading(true);
-      setError(null);
-      setIsEditing(false);
-
-      try {
-        const [record, recordNotes] = await Promise.all([
-          fetchRecordById(candidateId),
-          fetchNotes(candidateId),
-        ]);
-
-        if (!isActive) return;
-
-        setApplication(record);
-        setNotes(
-          recordNotes.sort((a, b) => b.created_at.localeCompare(a.created_at))
-        );
-      } catch (err) {
-        if (!isActive) return;
-        const message =
-          err instanceof ApiError
-            ? err.message
-            : "No se pudo cargar la candidatura.";
-        setError(message);
-        setApplication(null);
-        setNotes([]);
-      } finally {
-        if (isActive) {
-          setIsLoading(false);
-          setNotesLoading(false);
-        }
-      }
-    }
-
-    void loadCandidate();
-    return () => {
-      isActive = false;
-    };
-  }, [candidateId]);
-
-  useEffect(() => {
-    if (searchParams.get("created") === "1") {
-      setActionFeedback({
-        type: "success",
-        message: "Candidatura registrada correctamente.",
-      });
-      router.replace(`/candidates/${candidateId}`, { scroll: false });
-    }
+    if (searchParams.get("created") !== "1") return;
+    router.replace(`/candidates/${candidateId}`, { scroll: false });
   }, [searchParams, candidateId, router]);
 
   const handleStatusChange = async (status: Application["status"]) => {
@@ -189,12 +161,12 @@ export function CandidateDetailWorkspace() {
           </Link>
         </div>
 
-        {error && (
+        {isRecordError && recordError && (
           <div
             className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
             role="alert"
           >
-            {error}
+            {recordError}
           </div>
         )}
 
@@ -225,7 +197,7 @@ export function CandidateDetailWorkspace() {
               ))}
             </div>
           </div>
-        ) : (
+        ) : !isRecordError ? (
           <>
             {isEditing && application && (
               <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
@@ -246,7 +218,9 @@ export function CandidateDetailWorkspace() {
             <ApplicationDetailPanel
               application={application}
               notes={notes}
-              notesLoading={notesLoading}
+              notesLoading={isNotesLoading}
+              notesError={isNotesError ? notesError : null}
+              onRetryNotes={() => void reloadNotes()}
               isUpdating={isUpdating}
               isSubmittingNote={isSubmittingNote}
               onEdit={() => setIsEditing(true)}
@@ -256,7 +230,7 @@ export function CandidateDetailWorkspace() {
               onDeleteNote={handleDeleteNote}
             />
           </>
-        )}
+        ) : null}
       </main>
     </div>
   );

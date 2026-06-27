@@ -1,4 +1,4 @@
-import type { Application } from "../types/application";
+import type { Application } from "@/types/application";
 
 export interface ApplicationFilters {
   status: string;

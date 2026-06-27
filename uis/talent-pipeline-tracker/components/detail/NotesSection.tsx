@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import type { Note } from "@/lib/types/application";
+import type { Note } from "@/types/application";
 import { Button } from "@/components/ui/Button";
 import { NoteForm } from "@/components/forms/NoteForm";
 
 interface NotesSectionProps {
   notes: Note[];
   isLoading: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   isSubmitting: boolean;
   onAddNote: (content: string) => Promise<void>;
   onDeleteNote: (noteId: string) => Promise<void>;
@@ -23,6 +25,8 @@ function formatDate(value: string) {
 export function NotesSection({
   notes,
   isLoading,
+  error,
+  onRetry,
   isSubmitting,
   onAddNote,
   onDeleteNote,
@@ -48,7 +52,8 @@ export function NotesSection({
       <div>
         <h3 className="text-sm font-semibold text-slate-900">Notas internas</h3>
         <p className="text-sm text-slate-600">
-          Observaciones del equipo de People sobre esta candidatura.
+          Observaciones del equipo de People &amp; Talent de HealthCore sobre esta
+          candidatura.
         </p>
       </div>
 
@@ -68,6 +73,22 @@ export function NotesSection({
               className="h-20 animate-pulse rounded-lg bg-slate-100"
             />
           ))}
+        </div>
+      ) : error ? (
+        <div
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-6 text-center"
+          role="alert"
+        >
+          <p className="text-sm text-red-700">{error}</p>
+          {onRetry && (
+            <Button
+              variant="ghost"
+              className="mt-3 text-red-700"
+              onClick={onRetry}
+            >
+              Reintentar
+            </Button>
+          )}
         </div>
       ) : notes.length === 0 ? (
         <p className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">

@@ -9,10 +9,16 @@ function LoadingFallback() {
   );
 }
 
-export default function CandidatePage() {
+interface CandidatePageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function CandidatePage({ params }: CandidatePageProps) {
+  const { id } = await params;
+
   return (
     <Suspense fallback={<LoadingFallback />}>
-      <CandidateDetailWorkspace />
+      <CandidateDetailWorkspace key={id} candidateId={id} />
     </Suspense>
   );
 }

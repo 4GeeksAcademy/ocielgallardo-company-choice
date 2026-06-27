@@ -1,4 +1,4 @@
-import type { ApplicationStage, ApplicationStatus } from "../types/application";
+import type { ApplicationStage, ApplicationStatus } from "@/types/application";
 
 export const APPLICATION_STATUSES: ApplicationStatus[] = [
   "received",

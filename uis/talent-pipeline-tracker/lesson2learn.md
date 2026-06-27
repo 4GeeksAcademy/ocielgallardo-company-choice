@@ -1,6 +1,6 @@
 # Lecciones aprendidas — Talent Pipeline Tracker
 
-Qué deberías estudiar para construir esta app por tu cuenta, por qué importa cada decisión y qué implementamos en esta sesión.
+Qué deberías estudiar para construir esta app por tu cuenta, por qué importa cada decisión y qué implementamos en este proyecto.
 
 ---
 
@@ -12,10 +12,11 @@ Qué deberías estudiar para construir esta app por tu cuenta, por qué importa 
 - **Enrutado basado en archivos**: `app/applications/page.tsx`, `app/candidates/[id]/page.tsx`.
 - **`useSearchParams`** para filtros en la URL (enlaces compartibles, compatible con atrás/adelante del navegador).
 - **`Suspense`** al usar `useSearchParams` en componentes cliente.
+- **Sin librerías de estado global** (Redux, Zustand, Jotai): `useState`, `useEffect` y `useCallback` en componentes y hooks personalizados son suficientes para este hito.
 
 ### 2. TypeScript para contratos de API
 
-- Definir tipos (`Application`, `Note`, `RecordCreateInput`) que reflejen la respuesta de la API.
+- Definir tipos en `/types` (`Application`, `Note`, `RecordCreateInput`, `AsyncState`) que reflejen la respuesta de la API.
 - Detectar inconsistencias en tiempo de compilación en lugar de depurar en producción.
 
 ### 3. Semántica HTTP y REST
@@ -30,108 +31,140 @@ Qué deberías estudiar para construir esta app por tu cuenta, por qué importa 
 
 Entender **PUT vs PATCH** es esencial: editar un formulario envía todos los campos (PUT); cambiar un desplegable envía solo lo que cambió (PATCH).
 
-### 4. Fetch API y una capa cliente delgada
+Todas las llamadas usan **`async/await`** dentro de servicios (`lib/services/`) y hooks (`hooks/`).
 
-- Centralizar `fetch` en `lib/api/client.ts` (URL base, cabeceras, manejo de errores).
-- Separar por dominio: `records.ts`, `notes.ts`.
-- Lanzar errores tipados (`ApiError`) para que la UI muestre mensajes útiles.
+### 4. Estado asíncrono en la UI (cargando · éxito · error)
 
-### 5. Validación de formularios y feedback de UX
+Cada operación de **lectura** debe exponer tres estados en la interfaz:
+
+| Estado | Qué muestra la UI |
+|--------|-------------------|
+| **Cargando** | Skeletons o indicador de carga |
+| **Éxito** | Datos renderizados (o estado vacío si no hay resultados) |
+| **Error** | Mensaje claro + botón de reintentar cuando aplique |
+
+Implementación:
+
+- `hooks/useRecords.ts` — listado en `/applications`
+- `hooks/useCandidateDetail.ts` — candidato y notas con estados **independientes**
+- `types/async.ts` — tipo `AsyncStatus` (`loading` | `success` | `error`)
+
+Tras **PATCH, PUT o POST**, la UI se actualiza **sin recargar la página**:
+
+- Estado/etapa: actualización optimista + respuesta del servidor
+- Edición: `setApplication(refreshed)` tras `PUT`
+- Notas: prepend en lista local tras `POST`; filtro tras `DELETE`
+- Alta: navegación cliente a `/candidates/:id?created=1`
+
+### 5. Estructura de carpetas
+
+```
+talent-pipeline-tracker/
+├── app/                    # Rutas Next.js (App Router)
+├── components/             # UI por dominio (applications, detail, forms, layout, ui)
+├── hooks/                  # Lógica reutilizable (useRecords, useCandidateDetail, useDebouncedValue)
+├── types/                  # Tipos TypeScript (application, async)
+└── lib/
+    ├── services/           # Capa API (client, records, notes) — async/await + fetch
+    ├── constants/          # Etiquetas de dominio (estados, etapas)
+    └── utils/              # Helpers puros (filtros)
+```
+
+**Por qué así:** separa presentación, estado, tipos y acceso a datos. Los componentes no llaman a `fetch` directamente.
+
+### 6. Contexto de empresa (HealthCore Digital)
+
+La interfaz debe sentirse como herramienta interna del equipo de **People & Talent** de **HealthCore Digital**, no como una app genérica:
+
+- Marca: **HealthCore Digital** en cabecera
+- Área: **Personas y Fuerza Laboral** — responsable **Diane Foster** (`CONTEXT.md`)
+- Copy orientado a contratación clínica en **12 sedes** (EE.UU. y Reino Unido)
+- Los **nombres de campos de la API** (`full_name`, `status`, `stage`, etc.) se mantienen tal como define el backend del tracker
+- Las **etiquetas visibles** están en español y alineadas con el pipeline de RR.HH. (`Recibida`, `Entrevista técnica`, etc.)
+
+### 7. Validación de formularios y feedback de UX
 
 - Validar **antes** de llamar a la API (campos obligatorios, formato de email, experiencia numérica).
 - Mostrar errores por campo (`aria-invalid`, `role="alert"`).
 - Mostrar éxito o error tras el envío (`aria-live="polite"`).
-- Cuando hay navegación tras el éxito (crear → página de detalle), pasar el feedback con un query param (`?created=1`) en lugar de perder el mensaje.
+- Cuando hay navegación tras el éxito (crear → detalle), pasar el feedback con `?created=1`.
 
-### 6. Patrones de gestión de estado
+### 8. Tailwind CSS y accesibilidad
 
-- **Actualizaciones optimistas** para estado/etapa: actualizar la UI al instante y revertir si falla.
-- **Estado local** en listas tras mutaciones (añadir nota al inicio, filtrar tras eliminar).
-- Estados de **carga / error / vacío** en cada vista asíncrona.
-
-### 7. Tailwind CSS
-
-- Clases utilitarias para layout, espaciado y contraste de color accesible.
-- Grids responsivos (`sm:grid-cols-2`) para formularios y paneles de detalle.
-
-### 8. Fundamentos de accesibilidad
-
-- Etiquetas vinculadas a inputs (`htmlFor` / `id`).
-- Regiones en vivo para feedback dinámico.
-- HTML semántico (`article`, `section`, `role="alert"`).
+- Clases utilitarias para layout, espaciado y contraste accesible (design system HealthCore Digital).
+- Etiquetas vinculadas a inputs, regiones en vivo y HTML semántico.
 
 ---
 
 ## Por qué construirlo así
 
-### Capa API separada (`lib/api/`)
+### Capa de servicios (`lib/services/`)
 
-**Por qué:** Un solo lugar para cambiar la URL base, cabeceras de autenticación o el parseo de errores. Los componentes se centran en la UI.
+**Por qué:** Un solo lugar para `async/await`, URL base, cabeceras y errores tipados (`ApiError`). Los componentes y hooks solo orquestan.
 
-### Ruta de detalle dedicada (`/candidates/[id]`)
+### Hooks personalizados en lugar de Redux
 
-**Por qué:** Enlaces profundos (compartir la URL de un candidato), separación clara entre el espacio de listado y el de detalle, y un lugar natural para cargar `GET /records/:id` y las notas en paralelo.
+**Por qué:** El alcance del hito es acotado (listado + detalle + formularios). Extraer `useRecords` y `useCandidateDetail` mantiene los tres estados async visibles y testeables sin añadir dependencias.
 
-### Filtrado en el cliente
+### Estados async separados para candidato y notas
 
-**Por qué:** La API devuelve hasta 100 registros; filtrar por estado, etapa y búsqueda en el navegador evita viajes extra al servidor y mantiene la UI instantánea. Con más datos, moverías los filtros a query params en la API.
+**Por qué:** Si falla `GET /notes` pero el candidato cargó bien, el detalle sigue visible y solo la sección de notas muestra error + reintentar.
 
 ### PATCH para el pipeline, PUT para editar el perfil
 
-**Por qué:** Respeta la intención REST y reduce el riesgo de sobrescribir campos no relacionados cuando solo cambia el estado o la etapa.
+**Por qué:** Respeta REST y evita sobrescribir campos no relacionados.
 
-### Validación en el componente del formulario
+### Re-lanzar errores desde handlers padre
 
-**Por qué:** Feedback inmediato sin llamada de red. La API sigue validando en servidor; la capa cliente mejora la UX y reduce peticiones incorrectas.
+**Por qué:** `ApplicationForm` y `NoteForm` capturan errores para mensajes inline. Si el padre los traga, el formulario no sabe que falló.
 
-### Re-lanzar errores desde los handlers padre
+### Sin recarga de página tras mutaciones
 
-**Por qué:** `ApplicationForm` y `NoteForm` capturan errores para mostrar mensajes inline. Si el padre los traga, el formulario nunca sabe que la petición falló.
-
-### Mensaje flash tras redirigir al crear
-
-**Por qué:** Tras un `POST /records` exitoso navegamos al detalle. Mostrar el éxito ahí (`?created=1` → banner) es más fiable que un mensaje en una página que se desmonta.
+**Por qué:** Mejor UX, menos ancho de banda y coherencia con una SPA moderna. Next.js navega entre rutas en cliente; el estado local refleja los cambios al instante.
 
 ---
 
 ## Lo que hicimos en esta sesión
 
-### Verificación
+### Verificación del hito
 
-Confirmamos que la app ya cubría el checklist completo:
+| Requisito | Estado |
+|-----------|--------|
+| Todas las llamadas API con `async/await` | ✅ `lib/services/` |
+| Tres estados UI en cada GET (cargando, éxito, error) | ✅ Listado + detalle + notas |
+| UI actualizada tras PATCH/PUT/POST sin reload | ✅ Estado local + navegación cliente |
+| Estructura `/components`, `/hooks`, `/types`, `/lib/services` | ✅ Reorganizado |
+| Tipos TS para todas las estructuras de la API | ✅ `types/application.ts` |
+| Contexto HealthCore / Diane Foster / People & Talent | ✅ Cabecera y copy |
+| Solo Next.js + React + TS, sin Redux/Zustand | ✅ `package.json` |
 
-- Controles de estado y etapa → `PATCH /records/:id`
-- Listar, crear y eliminar notas → `GET`, `POST`, `DELETE` en `/records/:id/notes`
-- Formulario de alta → `POST /records` en `/applications`
-- Formulario de edición → `PUT /records/:id` en `/candidates/[id]`
-- Validación de campos obligatorios en `ApplicationForm`
+### Cambios implementados
 
-### Mejoras añadidas
-
-1. **Feedback de éxito al crear** — redirección a `/candidates/:id?created=1` y banner de éxito en la página de detalle.
-2. **Feedback de error/éxito al editar** — banner en el detalle; errores re-lanzados para que el formulario también muestre mensaje mientras sigue abierto.
-3. **Errores al borrar notas** — `NotesSection` muestra una alerta si falla el `DELETE`.
-4. **Propagación de errores** — `handleCreate`, `handleAddNote` y `handleDeleteNote` re-lanzan para que los formularios hijos gestionen los fallos correctamente.
-5. **Documentación** — actualización de `uis/README.md`, `uis/README.es.md` y este archivo.
+1. **Reorganización** — `lib/api` → `lib/services`; `lib/types` → `types/`.
+2. **Hooks** — `useRecords`, `useCandidateDetail`, `useDebouncedValue`.
+3. **Estados async** — `ApplicationList` muestra error con reintentar (antes confundía error con “sin resultados”). `NotesSection` con error independiente.
+4. **Branding** — Diane Foster en cabecera; copy de contratación clínica en `/applications`.
+5. **Documentación** — este archivo actualizado.
 
 ### Archivos clave
 
 | Archivo | Rol |
 |---------|-----|
-| `components/ApplicationsWorkspace.tsx` | Listado, filtros, formulario de alta |
-| `components/candidates/CandidateDetailWorkspace.tsx` | Orquestación de la página de detalle |
-| `components/detail/ApplicationDetailPanel.tsx` | Estado/etapa, notas, enlace al CV |
-| `components/forms/ApplicationForm.tsx` | Alta/edición con validación |
-| `components/forms/NoteForm.tsx` | Añadir nota con validación |
-| `lib/api/records.ts` | CRUD + PATCH de registros |
-| `lib/api/notes.ts` | CRUD de notas |
+| `hooks/useRecords.ts` | GET listado con estados async |
+| `hooks/useCandidateDetail.ts` | GET candidato + notas con estados independientes |
+| `lib/services/records.ts` | CRUD + PATCH (async/await) |
+| `lib/services/notes.ts` | CRUD de notas (async/await) |
+| `types/application.ts` | Tipos de la API |
+| `types/async.ts` | `AsyncStatus` reutilizable |
+| `components/ApplicationsWorkspace.tsx` | Pipeline + alta |
+| `components/candidates/CandidateDetailWorkspace.tsx` | Detalle + mutaciones |
 
 ---
 
 ## Ruta de práctica sugerida
 
-1. Lee la [documentación de la Talent Tracker API](https://playground.4geeks.com/tracker/api/v1/docs) y prueba los endpoints con `curl` o Postman.
-2. Construye una página mínima que solo liste registros (`GET /records`).
-3. Añade una mutación cada vez (crear → cambiar estado con patch → notas).
-4. Añade validación y estados de carga al final — son más fáciles cuando el flujo feliz ya funciona.
-5. Compara tu enfoque con este código y anota qué simplificarías o ampliarías (paginación, autenticación, tests).
+1. Lee la [documentación de la Talent Tracker API](https://playground.4geeks.com/tracker/api/v1/docs) y prueba endpoints con `curl` o Postman.
+2. Crea `types/` y `lib/services/client.ts` antes de cualquier componente.
+3. Implementa un hook con los tres estados async para el listado.
+4. Añade mutaciones una a una; verifica que la UI se actualiza sin `location.reload()`.
+5. Revisa `CONTEXT.md` y adapta textos de la UI a tu empresa antes de pulir estilos.

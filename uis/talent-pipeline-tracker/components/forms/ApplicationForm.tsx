@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Application, RecordCreateInput } from "@/lib/types/application";
+import type { Application, RecordCreateInput } from "@/types/application";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 

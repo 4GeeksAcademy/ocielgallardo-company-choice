@@ -19,7 +19,7 @@ export function AppHeader() {
           </div>
         </div>
         <p className="hidden text-xs text-slate-500 sm:block">
-          Personas y Fuerza Laboral
+          Diane Foster · Personas y Fuerza Laboral
         </p>
       </div>
     </header>

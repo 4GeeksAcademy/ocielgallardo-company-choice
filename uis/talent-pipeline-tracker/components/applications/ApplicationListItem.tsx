@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Application } from "@/lib/types/application";
+import type { Application } from "@/types/application";
 import { StatusStageBadge } from "./StatusStageBadge";
 
 interface ApplicationListItemProps {

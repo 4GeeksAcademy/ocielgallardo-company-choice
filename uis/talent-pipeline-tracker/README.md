@@ -71,3 +71,17 @@ npm start
 - React 19
 - TypeScript
 - Tailwind CSS 4
+- Estado con hooks de React (sin Redux ni librerías externas de estado)
+
+## Estructura del proyecto
+
+```
+components/   # UI (applications, detail, forms, layout, ui)
+hooks/        # useRecords, useCandidateDetail, useDebouncedValue
+types/        # Tipos de la API y estados async
+lib/services/ # Capa API (async/await)
+lib/constants/# Etiquetas de pipeline
+lib/utils/    # Filtros en cliente
+```
+
+Notas de aprendizaje en [`lesson2learn.md`](./lesson2learn.md).

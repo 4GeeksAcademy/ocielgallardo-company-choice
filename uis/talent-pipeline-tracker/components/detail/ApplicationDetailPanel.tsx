@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Application, Note } from "@/lib/types/application";
+import type { Application, Note } from "@/types/application";
 import { Button } from "@/components/ui/Button";
 import { StatusStageBadge } from "@/components/applications/StatusStageBadge";
 import { StatusStageControls } from "./StatusStageControls";
@@ -11,6 +11,8 @@ interface ApplicationDetailPanelProps {
   application: Application | null;
   notes: Note[];
   notesLoading: boolean;
+  notesError?: string | null;
+  onRetryNotes?: () => void;
   isUpdating: boolean;
   isSubmittingNote: boolean;
   onClose?: () => void;
@@ -31,6 +33,8 @@ export function ApplicationDetailPanel({
   application,
   notes,
   notesLoading,
+  notesError,
+  onRetryNotes,
   isUpdating,
   isSubmittingNote,
   onClose,
@@ -188,6 +192,8 @@ export function ApplicationDetailPanel({
         <NotesSection
           notes={notes}
           isLoading={notesLoading}
+          error={notesError}
+          onRetry={onRetryNotes}
           isSubmitting={isSubmittingNote}
           onAddNote={onAddNote}
           onDeleteNote={onDeleteNote}

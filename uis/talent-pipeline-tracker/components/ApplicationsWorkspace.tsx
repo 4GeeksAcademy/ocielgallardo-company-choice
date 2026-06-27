@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { RecordCreateInput } from "@/lib/types/application";
-import { ApiError } from "@/lib/api/client";
-import { createRecord, fetchRecords } from "@/lib/api/records";
+import type { RecordCreateInput } from "@/types/application";
+import { createRecord } from "@/lib/services/records";
 import { filterApplications } from "@/lib/utils/filterApplications";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useRecords } from "@/hooks/useRecords";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { ApplicationFilters } from "@/components/applications/ApplicationFilters";
 import { ApplicationList } from "@/components/applications/ApplicationList";
@@ -14,26 +15,13 @@ import { Button } from "@/components/ui/Button";
 
 type FormMode = "create" | null;
 
-function useDebouncedValue<T>(value: T, delay = 300): T {
-  const [debounced, setDebounced] = useState(value);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebounced(value), delay);
-    return () => window.clearTimeout(timer);
-  }, [value, delay]);
-
-  return debounced;
-}
-
 export function ApplicationsWorkspace() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [records, setRecords] = useState<Awaited<ReturnType<typeof fetchRecords>>>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { records, isLoading, isError, error, reload } = useRecords();
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [formMode, setFormMode] = useState<FormMode>(null);
   const [queryInput, setQueryInput] = useState(searchParams.get("q") ?? "");
 
@@ -56,50 +44,6 @@ export function ApplicationsWorkspace() {
   useEffect(() => {
     updateSearchParams({ q: debouncedQuery || null });
   }, [debouncedQuery, updateSearchParams]);
-
-  const loadRecords = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await fetchRecords(100);
-      setRecords(data);
-    } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? err.message
-          : "No se pudieron cargar las candidaturas.";
-      setError(message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    let isActive = true;
-
-    async function bootstrap() {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const data = await fetchRecords(100);
-        if (isActive) setRecords(data);
-      } catch (err) {
-        if (!isActive) return;
-        const message =
-          err instanceof ApiError
-            ? err.message
-            : "No se pudieron cargar las candidaturas.";
-        setError(message);
-      } finally {
-        if (isActive) setIsLoading(false);
-      }
-    }
-
-    void bootstrap();
-    return () => {
-      isActive = false;
-    };
-  }, []);
 
   const filteredRecords = useMemo(
     () =>
@@ -140,29 +84,14 @@ export function ApplicationsWorkspace() {
               Pipeline de candidaturas
             </h2>
             <p className="text-sm text-slate-600">
-              Gestión centralizada para el equipo de People &amp; Talent de HealthCore.
+              Herramienta interna de Personas y Fuerza Laboral (Diane Foster) para
+              cubrir perfiles clínicos en las 12 sedes de HealthCore.
             </p>
           </div>
           <Button onClick={() => setFormMode("create")}>
             Nueva candidatura
           </Button>
         </div>
-
-        {error && (
-          <div
-            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-            role="alert"
-          >
-            {error}
-            <Button
-              variant="ghost"
-              className="ml-3 px-2 py-1 text-red-700"
-              onClick={() => void loadRecords()}
-            >
-              Reintentar
-            </Button>
-          </div>
-        )}
 
         {formMode === "create" && (
           <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
@@ -198,6 +127,8 @@ export function ApplicationsWorkspace() {
           onSelect={handleSelect}
           onCreate={() => setFormMode("create")}
           isLoading={isLoading}
+          error={isError ? error : null}
+          onRetry={() => void reload()}
         />
       </main>
     </div>

@@ -1,4 +1,4 @@
-import type { ApplicationStage, ApplicationStatus } from "@/lib/types/application";
+import type { ApplicationStage, ApplicationStatus } from "@/types/application";
 import {
   STAGE_BADGE_CLASSES,
   STAGE_LABELS,
