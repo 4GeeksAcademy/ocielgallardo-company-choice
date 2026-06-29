@@ -45,3 +45,53 @@ npm run dev
 
 Documentación detallada en [`talent-pipeline-tracker/README.md`](./talent-pipeline-tracker/README.md).  
 Notas de aprendizaje en [`lesson2learn.md`](./lesson2learn.md).
+
+
+## Actualización — junio 2026
+
+### Resumen
+
+Implementación completa del **Talent Pipeline Tracker** para **HealthCore Digital** (área **Personas y Fuerza Laboral**, Diane Foster). La app consume la [Talent Tracker API](https://playground.4geeks.com/tracker/api/v1/docs) y permite gestionar el pipeline de candidaturas clínicas en las 12 sedes de HealthCore.
+
+### Rutas
+
+| Ruta | Descripción |
+|------|-------------|
+| `/applications` | Listado, filtros, búsqueda y alta de candidaturas |
+| `/candidates/[id]` | Detalle, edición, estado/etapa, notas y enlace al CV |
+
+### Integración con la API
+
+| Operación | Endpoint | Dónde |
+|-----------|----------|-------|
+| Listar candidaturas | `GET /records` | `/applications` |
+| Ver detalle | `GET /records/:id` | `/candidates/[id]` |
+| Registrar candidatura | `POST /records` | Formulario en `/applications` |
+| Editar datos | `PUT /records/:id` | Formulario en `/candidates/[id]` |
+| Cambiar estado o etapa | `PATCH /records/:id` | Controles en el detalle |
+| Listar notas | `GET /records/:id/notes` | Sección de notas |
+| Añadir nota | `POST /records/:id/notes` | Formulario de notas |
+| Eliminar nota | `DELETE /records/:id/notes/:note_id` | Botón en cada nota |
+
+### Funcionalidades implementadas
+
+- Listado con badges de estado y etapa, filtros por URL y búsqueda por nombre/email en cliente.
+- Formularios de alta y edición con validación de campos requeridos y feedback de éxito/error.
+- Controles de pipeline con actualización optimista (sin recargar la página).
+- CRUD de notas internas con validación y manejo de errores al crear o eliminar.
+- Enlace al CV cuando `cv_url` está disponible.
+- Estados async en la UI: **cargando**, **éxito** y **error** (con reintentar) en listado, detalle y notas.
+- Tras `POST`, `PUT` y `PATCH`, la interfaz se actualiza en cliente sin `location.reload()`.
+
+### Arquitectura
+
+- **Stack:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4.
+- **Estado:** hooks de React (`useState`, `useEffect`, `useCallback`) — sin Redux, Zustand ni Jotai.
+- **Estructura:** `components/`, `hooks/`, `types/`, `lib/services/`, `lib/constants/`, `lib/utils/`.
+- **Servicios:** capa `lib/services/` con `async/await` centralizado (`client`, `records`, `notes`).
+- **Hooks:** `useRecords`, `useCandidateDetail`, `useDebouncedValue`.
+- **Tipos:** `types/application.ts` (API) y `types/async.ts` (estados de carga).
+
+### Contexto de empresa
+
+La interfaz está adaptada a **HealthCore Digital** y al equipo de **People & Talent** (Diane Foster). Los campos de la API siguen los nombres del backend (`full_name`, `status`, `stage`, etc.); las etiquetas visibles están en español y alineadas con el pipeline de RR.HH.

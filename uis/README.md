@@ -45,3 +45,52 @@ npm run dev
 
 Detailed documentation in [`talent-pipeline-tracker/README.md`](./talent-pipeline-tracker/README.md).  
 Learning notes in [`lesson2learn.md`](./lesson2learn.md) (Spanish).
+
+## Update — June 2026
+
+### Summary
+
+Full implementation of the **Talent Pipeline Tracker** for **HealthCore Digital** (**People & Workforce** area, Diane Foster). The app consumes the [Talent Tracker API](https://playground.4geeks.com/tracker/api/v1/docs) and supports clinical hiring pipeline management across HealthCore’s 12 clinics.
+
+### Routes
+
+| Route | Description |
+|-------|-------------|
+| `/applications` | List, filters, search, and new application form |
+| `/candidates/[id]` | Detail, edit, status/stage, notes, and CV link |
+
+### API integration
+
+| Operation | Endpoint | Where |
+|-----------|----------|-------|
+| List applications | `GET /records` | `/applications` |
+| View detail | `GET /records/:id` | `/candidates/[id]` |
+| Create application | `POST /records` | Form on `/applications` |
+| Edit profile data | `PUT /records/:id` | Form on `/candidates/[id]` |
+| Update status or stage | `PATCH /records/:id` | Controls on detail view |
+| List notes | `GET /records/:id/notes` | Notes section |
+| Add note | `POST /records/:id/notes` | Note form |
+| Delete note | `DELETE /records/:id/notes/:note_id` | Button on each note |
+
+### Features delivered
+
+- List with status/stage badges, URL-based filters, and client-side name/email search.
+- Create and edit forms with required-field validation and success/error feedback.
+- Pipeline controls with optimistic updates (no full page reload).
+- Internal notes CRUD with validation and error handling on create/delete.
+- CV link when `cv_url` is available.
+- Async UI states: **loading**, **success**, and **error** (with retry) for list, detail, and notes.
+- After `POST`, `PUT`, and `PATCH`, the UI updates on the client without `location.reload()`.
+
+### Architecture
+
+- **Stack:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4.
+- **State:** React hooks (`useState`, `useEffect`, `useCallback`) — no Redux, Zustand, or Jotai.
+- **Structure:** `components/`, `hooks/`, `types/`, `lib/services/`, `lib/constants/`, `lib/utils/`.
+- **Services:** `lib/services/` layer with centralized `async/await` (`client`, `records`, `notes`).
+- **Hooks:** `useRecords`, `useCandidateDetail`, `useDebouncedValue`.
+- **Types:** `types/application.ts` (API) and `types/async.ts` (loading states).
+
+### Company context
+
+The UI is tailored to **HealthCore Digital** and the **People & Talent** team (Diane Foster). API field names follow the tracker backend (`full_name`, `status`, `stage`, etc.); visible labels are in Spanish and aligned with the HR pipeline.
