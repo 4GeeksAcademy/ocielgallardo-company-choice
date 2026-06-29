@@ -1,6 +1,6 @@
 # Talent Pipeline Tracker
 
-Herramienta interna de **People & Talent** para HealthCore Digital. Permite al equipo gestionar el pipeline de candidaturas consumiendo la [Talent Tracker API](https://playground.4geeks.com/tracker/api/v1/docs) del 4Geeks Playground.
+Herramienta interna de **People & Talent** para HealthCore. Permite al equipo gestionar el pipeline de candidaturas consumiendo la [Talent Tracker API](https://playground.4geeks.com/tracker/api/v1/docs) del 4Geeks Playground.
 
 ## Funcionalidades
 

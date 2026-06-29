@@ -51,7 +51,7 @@ Notas de aprendizaje en [`lesson2learn.md`](./lesson2learn.md).
 
 ### Resumen
 
-Implementación completa del **Talent Pipeline Tracker** para **HealthCore Digital** (área **Personas y Fuerza Laboral**, Diane Foster). La app consume la [Talent Tracker API](https://playground.4geeks.com/tracker/api/v1/docs) y permite gestionar el pipeline de candidaturas clínicas en las 12 sedes de HealthCore.
+Implementación completa del **Talent Pipeline Tracker** para **HealthCore** (área **Personas y Fuerza Laboral**, Diane Foster). La app consume la [Talent Tracker API](https://playground.4geeks.com/tracker/api/v1/docs) y permite gestionar el pipeline de candidaturas clínicas en las 12 sedes de HealthCore.
 
 ### Rutas
 
@@ -94,4 +94,4 @@ Implementación completa del **Talent Pipeline Tracker** para **HealthCore Digit
 
 ### Contexto de empresa
 
-La interfaz está adaptada a **HealthCore Digital** y al equipo de **People & Talent** (Diane Foster). Los campos de la API siguen los nombres del backend (`full_name`, `status`, `stage`, etc.); las etiquetas visibles están en español y alineadas con el pipeline de RR.HH.
+La interfaz está adaptada a **HealthCore** y al equipo de **People & Talent** (Diane Foster). Los campos de la API siguen los nombres del backend (`full_name`, `status`, `stage`, etc.); las etiquetas visibles están en español y alineadas con el pipeline de RR.HH.

@@ -11,7 +11,7 @@ export function AppHeader() {
           </div>
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-blue-600">
-              HealthCore Digital
+              HealthCore
             </p>
             <h1 className="text-sm font-semibold text-slate-900 sm:text-base">
               People &amp; Talent · Pipeline de candidaturas

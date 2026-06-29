@@ -72,11 +72,11 @@ talent-pipeline-tracker/
 
 **Por qué así:** separa presentación, estado, tipos y acceso a datos. Los componentes no llaman a `fetch` directamente.
 
-### 6. Contexto de empresa (HealthCore Digital)
+### 6. Contexto de empresa (HealthCore)
 
-La interfaz debe sentirse como herramienta interna del equipo de **People & Talent** de **HealthCore Digital**, no como una app genérica:
+La interfaz debe sentirse como herramienta interna del equipo de **People & Talent** de **HealthCore**, no como una app genérica:
 
-- Marca: **HealthCore Digital** en cabecera
+- Marca: **HealthCore** en cabecera
 - Área: **Personas y Fuerza Laboral** — responsable **Diane Foster** (`CONTEXT.md`)
 - Copy orientado a contratación clínica en **12 sedes** (EE.UU. y Reino Unido)
 - Los **nombres de campos de la API** (`full_name`, `status`, `stage`, etc.) se mantienen tal como define el backend del tracker
@@ -91,7 +91,7 @@ La interfaz debe sentirse como herramienta interna del equipo de **People & Tale
 
 ### 8. Tailwind CSS y accesibilidad
 
-- Clases utilitarias para layout, espaciado y contraste accesible (design system HealthCore Digital).
+- Clases utilitarias para layout, espaciado y contraste accesible (design system HealthCore).
 - Etiquetas vinculadas a inputs, regiones en vivo y HTML semántico.
 
 ---

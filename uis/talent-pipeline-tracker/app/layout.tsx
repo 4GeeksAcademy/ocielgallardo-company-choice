@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "HealthCore Digital · Pipeline de Talento",
+  title: "HealthCore · Pipeline de Talento",
   description:
     "Herramienta interna de People & Talent para gestionar candidaturas en HealthCore.",
 };
