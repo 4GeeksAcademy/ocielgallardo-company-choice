@@ -47,9 +47,11 @@ async function loadTypeScriptCompiler() {
   });
 }
 
-// Elimina imports de tipos que no existen en runtime para ejecutar utilidades puras.
+// Elimina imports del archivo de tipos para evitar resoluciones ESM en runtime del navegador.
 function stripTypeOnlyImports(tsSource) {
-  return tsSource.replace(/import\s*{[^}]*}\s*from\s*["']\.\.\/types\/models["'];?\s*/gm, "");
+  return tsSource
+    .replace(/import\s+type\s*{[\s\S]*?}\s*from\s*["']\.\.\/types\/models["'];?\s*/gm, "")
+    .replace(/import\s*{[\s\S]*?}\s*from\s*["']\.\.\/types\/models["'];?\s*/gm, "");
 }
 
 // Transpila un archivo .ts del proyecto y lo carga como modulo ESM en el browser.

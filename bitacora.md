@@ -1,9 +1,11 @@
-# Prompt
+# Bitacora del estudiante
+
+## Hito 1
 
 ## Sesion 2026-05-22
 
 ### Objetivo acordado
-Crear una landing page para Healthcore en `index.html` con HTML semantico bien estructurado, enfoque SEO/GEO, usando estilos de Tailwind. En esta etapa no se desarrolla el formulario, solo la landing.
+Crear una landing page para HealthCore en `index.html` con HTML semantico bien estructurado, enfoque SEO/GEO, usando estilos de Tailwind. En esta etapa no se desarrolla el formulario, solo la landing.
 
 ### Alcance realizado
 - Se implemento una landing completa en `index.html`.
@@ -68,6 +70,8 @@ Crear sitio web profesional, responsive y accesible para HealthCore con stack HT
 
 ### Resultado
 Sitio funcional listo para ejecutar localmente, con experiencia responsive en movil/tablet/desktop y base solida de accesibilidad, SEO y validacion de formulario.
+
+## Hito 2
 
 ## Actualizacion 2026-06-12 (TypeScript: modelos y filtros iniciales)
 
@@ -193,6 +197,7 @@ npx http-server . -p 3000 -a 0.0.0.0
 - La base cumple bien para desarrollo tipado en TypeScript y escenarios esperados.
 - Existe una mejora pendiente para robustez defensiva ante payloads nulos en runtime no tipados.
 
+## Hito 3
 
 ## Actualizacion 2026-06-25 (Talent Pipeline Tracker — People & Talent)
 
@@ -271,7 +276,7 @@ El departamento recibió más de 100 candidaturas en menos de dos semanas y llev
 - [x] Cambio de estado/etapa desde el detalle.
 - [x] Notas internas (crear y eliminar).
 - [x] Registrar y editar candidaturas.
-- [x] UI alineada con HealthCore Digital y responsive.
+- [x] UI alineada con HealthCore y responsive.
 
 ### Verificación técnica
 - TypeScript (`tsc --noEmit`): OK.

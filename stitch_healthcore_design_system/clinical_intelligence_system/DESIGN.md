@@ -122,7 +122,7 @@ spacing:
 
 ## Brand & Style
 
-The design system is engineered for **HealthCore Digital**, prioritizing clinical precision, human empathy, and high-density data utility. The target audience includes clinicians, healthcare administrators, and patients who require immediate clarity without the "clinical anxiety" typically associated with medical software.
+The design system is engineered for **HealthCore**, prioritizing clinical precision, human empathy, and high-density data utility. The target audience includes clinicians, healthcare administrators, and patients who require immediate clarity without the "clinical anxiety" typically associated with medical software.
 
 The visual style is **Corporate Modern with Glassmorphic accents**. It utilizes a systematic approach to density, ensuring that predictive healthcare data is readable and actionable. The interface feels "airy" through the use of generous whitespace and blurred background layers, but remains grounded by a structured slate-based neutral palette. This balance ensures the product feels like a reliable medical tool while maintaining a contemporary, approachable user experience.
 

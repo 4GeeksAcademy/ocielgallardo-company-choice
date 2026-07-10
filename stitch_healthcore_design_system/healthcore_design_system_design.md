@@ -1,11 +1,11 @@
-# Design System: HealthCore Digital
+# Design System: HealthCore
 **Proyecto:** Unidad interna de transformación digital - 4Geeks Academy
 **Versión:** 1.0 (Basado en Milestone 1 & 2)
 **Estado:** Documentación Maestra
 
 ## 1. Identidad de Marca (Brand Identity)
 
-HealthCore Digital no es solo un software; es el puente entre la eficiencia operativa y el cuidado humano.
+HealthCore no es solo un software; es el puente entre la eficiencia operativa y el cuidado humano.
 
 - **Personalidad:** Confiable, clínica, humana, moderna y segura.
 - **Tono de Voz:** Claro, empático y profesional. Evitamos la jerga médica excesiva para priorizar la comprensión del paciente y la agilidad del staff.
@@ -155,5 +155,5 @@ Priorizamos la legibilidad en contextos de alta densidad de datos (Dashboards).
 | `CriticalAlert` | Banner superior o card con borde `red-600`. |
 
 ---
-**Generado por Stitch para el equipo de HealthCore Digital.**
+**Generado por Stitch para el equipo de HealthCore.**
 "Atención médica inteligente, segura y humana."

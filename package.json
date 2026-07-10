@@ -1,0 +1,7 @@
+{
+  "name": "ocielgallardo-company-choice",
+  "private": true,
+  "scripts": {
+    "start:playground": "npx --yes http-server . -p 3000 -a 0.0.0.0"
+  }
+}

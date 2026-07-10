@@ -38,7 +38,7 @@ Los pacientes en EE.UU. reservan por teléfono mientras los del Reino Unido llam
 
 Operar en el sector sanitario añade una capa de responsabilidad que no existe en otras industrias. Los datos de los pacientes están protegidos por ley — HIPAA en EE.UU., UK GDPR en el Reino Unido. Cada sistema que gestione esos datos debe cumplir estándares legales específicos. Los errores no son solo ineficiencias; en el ámbito sanitario, pueden tener consecuencias para pacientes reales.
 
-La Dra. Okonkwo ha creado una unidad interna llamada **HealthCore Digital** para construir los sistemas, flujos de trabajo y herramientas inteligentes que permitan a la empresa operar como un proveedor sanitario moderno — seguro, eficiente y genuinamente centrado en el paciente.
+La Dra. Okonkwo ha creado una unidad interna llamada **HealthCore** para construir los sistemas, flujos de trabajo y herramientas inteligentes que permitan a la empresa operar como un proveedor sanitario moderno — seguro, eficiente y genuinamente centrado en el paciente.
 
 **Tú eres parte de esa unidad.**
 
