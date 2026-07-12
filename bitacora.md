@@ -302,6 +302,50 @@ Abrir http://localhost:3000 → `/applications`.
 - Resolver build en rutas Windows muy largas (mover repo a ruta más corta o habilitar rutas largas en SO).
 
 
+## Hito 4
+
+## Actualizacion 2026-07-12 (contexto de agentes IA y gobierno documental)
+
+### Solicitud del cliente
+Crear el contexto de trabajo para agentes IA del repositorio con alcance **solo documentacion**, sin cambios de logica de negocio, sin refactors y sin modificar configuracion del proyecto.
+
+### Restricciones aplicadas
+- No se modifico codigo fuente de `src/`, `uis/`, `services/` ni otros modulos de implementacion.
+- No se instalaron dependencias.
+- No se realizaron cambios de arquitectura tecnica de la aplicacion.
+- Se uso `CONTEXT.md` como fuente de verdad del dominio.
+- Se definio como restriccion explicita ignorar `company-choise.md` hasta autorizacion del developer.
+
+### Cambios aplicados
+- Se creo/actualizo el Memory Bank para onboarding de agentes:
+	- `memory-bank/projectbrief.md`
+	- `memory-bank/techContext.md`
+	- `memory-bank/progress.md`
+- Se creo `AGENTS.md` en la raiz con politicas de comportamiento para agentes:
+	- mision del proyecto
+	- orden obligatorio de lectura
+	- workflow previo a codificar
+	- reglas de modificacion de archivos
+	- validaciones minimas
+	- expectativas de commit y pull request
+	- reglas de seguridad y criterios para pedir aclaracion
+- Se poblo `.agents/rules/` con reglas enfocadas (una responsabilidad por archivo):
+	- `repository-structure.md`
+	- `coding-standards.md`
+	- `documentation.md`
+	- `git-workflow.md`
+	- `file-modification-policy.md`
+	- `naming-conventions.md`
+	- `typescript-guidelines.md`
+
+### Incidencia y resolucion
+- Existia una carpeta vacia llamada `AGENTS.md` en la raiz, lo que bloqueaba la creacion del archivo `AGENTS.md`.
+- Con confirmacion explicita del usuario, se elimino la carpeta vacia y se creo correctamente el archivo requerido.
+
+### Resultado
+El repositorio queda preparado con contexto persistente para nuevos agentes IA, politicas de contribucion claras y reglas operativas en formato markdown, manteniendo intacta la implementacion funcional existente.
+
+
 ## Texto fijo (NO BORRAR, MANTENER COMO FOOTER): comando de test para `models.ts`
 
 ### Objetivo
