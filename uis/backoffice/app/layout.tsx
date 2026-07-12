@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { BackofficeShell } from "@/components/layout/BackofficeShell";
 import "./globals.css";
 
 const inter = Inter({
@@ -8,9 +9,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "HealthCore · Pipeline de Talento",
+  title: "HealthCore Backoffice",
   description:
-    "Herramienta interna de People & Talent para gestionar candidaturas en HealthCore.",
+    "Internal workspace for HealthCore operations, pipeline management, and analytics demos.",
 };
 
 export default function RootLayout({
@@ -21,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${inter.variable} h-full`}>
       <body className="min-h-full bg-slate-50 font-sans text-slate-900 antialiased">
-        {children}
+        <BackofficeShell>{children}</BackofficeShell>
       </body>
     </html>
   );

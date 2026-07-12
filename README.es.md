@@ -123,7 +123,9 @@ Luego abrir:
 Actualmente el repositorio conserva la estructura base, pero además incluye implementación activa del proyecto HealthCore.
 
 - `CONTEXT.md` fue sustituido por el contexto de HealthCore y se usa como base de implementación.
-- No existe todavía un `AGENTS.md` en la raíz.
+- `AGENTS.md` en raíz ya define comportamiento requerido para agentes IA y reglas de contribución.
+- La capa UI quedó separada en dos apps independientes: `uis/website` (pública) y `uis/backoffice` (interna).
+- `services/` ahora incluye límites escalables (placeholders) para APIs futuras.
 - Existe metadata del paquete compartido en `packages/shared/package.json` (`@repo/shared-types`) con comando funcional de pruebas de tipos TypeScript.
 
 ---

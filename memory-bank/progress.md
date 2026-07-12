@@ -16,6 +16,15 @@
   - Root `AGENTS.md` policy file.
   - Focused rule files in `.agents/rules/`.
 
+## Recently Completed (Architecture Migration)
+- Migrated internal UI app path from `uis/talent-pipeline-tracker` to `uis/backoffice`.
+- Added a new public Next.js app at `uis/website` (App Router, componentized sections, and intake form route).
+- Added backoffice dashboard landing and module navigation:
+  - Dashboard, Patients, Appointments, Billing, Claims, Reports.
+- Integrated Hito 2 utilities in backoffice dashboard via direct imports from root `src/` (no business logic duplication).
+- Prepared scalable backend service placeholders under `services/`.
+- Updated repository documentation for new UI/service boundaries.
+
 ## In-Scope Baselines from Context
 - 12 clinics across US/UK.
 - ~200 employees.

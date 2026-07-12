@@ -346,6 +346,50 @@ Crear el contexto de trabajo para agentes IA del repositorio con alcance **solo 
 El repositorio queda preparado con contexto persistente para nuevos agentes IA, politicas de contribucion claras y reglas operativas en formato markdown, manteniendo intacta la implementacion funcional existente.
 
 
+## Actualizacion 2026-07-12 (migracion arquitectonica a monorepo escalable)
+
+### Solicitud del cliente
+Reestructurar el proyecto a una arquitectura monorepo escalable, separando sitio publico, backoffice interno y base de servicios futuros, preservando funcionalidad existente y reutilizando logica de negocio de Hito 2 sin duplicacion.
+
+### Cambios aplicados
+- Se migro la aplicacion interna existente desde `uis/talent-pipeline-tracker/` hacia `uis/backoffice/` para mantener continuidad funcional.
+- Se creo una segunda app independiente en `uis/website/` con Next.js App Router y componentes reutilizables para la landing publica y formulario en `/application`.
+- Se implemento layout interno propio para backoffice con navegacion base y secciones iniciales:
+	- Dashboard
+	- Patients
+	- Appointments
+	- Billing
+	- Claims
+	- Reports
+- Se integro Hito 2 en backoffice mediante imports directos a utilidades de `src/`:
+	- `collections.ts`
+	- `search.ts`
+	- `transformations.ts`
+	- `validations.ts`
+	- `models.ts`
+- Se creo estructura escalable en `services/` sin implementar APIs:
+	- `_template-service/`
+	- `gateway/`
+	- `clinical-operations/`
+	- `revenue-cycle/`
+	- `compliance/`
+- Se actualizaron documentos afectados (`README.md`, `README.es.md`, `uis/README.*`, `services/README.*`, `memory-bank/*`).
+
+### Validacion ejecutada
+- `uis/website`:
+	- `npm run build` OK
+	- `npm run dev -- --port 3100` OK
+- `uis/backoffice`:
+	- `npm run build` OK
+	- `npm run dev -- --port 3101` OK
+- Verificacion adicional:
+	- imports externos a utilidades de Hito 2 funcionando en dashboard de backoffice
+	- sin errores de TypeScript/diagnosticos en apps migradas
+
+### Resultado
+La arquitectura queda segmentada por responsabilidad (`website` publico, `backoffice` interno, `services` para APIs futuras), manteniendo la funcionalidad previa y dejando puntos de extension claros para los siguientes hitos.
+
+
 ## Texto fijo (NO BORRAR, MANTENER COMO FOOTER): comando de test para `models.ts`
 
 ### Objetivo

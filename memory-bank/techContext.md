@@ -16,6 +16,14 @@
   - `utils/transformations.ts`
   - `utils/validations.ts`
 - Type test file: `src/types/models.type-test.ts`.
+- UI applications:
+  - `uis/website` (public Next.js website)
+  - `uis/backoffice` (internal Next.js workspace)
+- Service architecture placeholders:
+  - `services/gateway`
+  - `services/clinical-operations`
+  - `services/revenue-cycle`
+  - `services/compliance`
 
 ## Validation and Local Checks
 - Type validation command (documented):
@@ -34,7 +42,8 @@
 
 ## Folder Structure (High-Level)
 - Monorepo-like educational structure with top-level domains for UI, services, workflows, data, and shared resources.
-- Current implemented business logic is concentrated in root `src/` and root web artifacts.
+- Current implemented business logic remains concentrated in root `src/`.
+- Public and internal UIs are now separated into independent apps under `uis/website` and `uis/backoffice`.
 
 ## Coding Conventions (Observed + Enforced Direction)
 - Keep business logic aligned to `CONTEXT.md` definitions.
@@ -54,3 +63,4 @@
 - TODO: Formalize branching strategy and release policy if this evolves beyond milestone delivery.
 - TODO: Document canonical lint/test commands across all subprojects if/when standardized.
 - TODO: Document data classification levels for PHI/PII handling in implementation docs.
+- TODO: Define shared package strategy for cross-UI components if duplication appears.

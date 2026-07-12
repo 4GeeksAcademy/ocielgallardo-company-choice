@@ -7,7 +7,6 @@ import { createRecord } from "@/lib/services/records";
 import { filterApplications } from "@/lib/utils/filterApplications";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useRecords } from "@/hooks/useRecords";
-import { AppHeader } from "@/components/layout/AppHeader";
 import { ApplicationFilters } from "@/components/applications/ApplicationFilters";
 import { ApplicationList } from "@/components/applications/ApplicationList";
 import { ApplicationForm } from "@/components/forms/ApplicationForm";
@@ -74,10 +73,8 @@ export function ApplicationsWorkspace() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
-      <AppHeader />
-
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+    <div className="space-y-4">
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">

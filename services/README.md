@@ -1,10 +1,23 @@
-# `services` folder
+# services
 
-This folder contains **all the backend services** (APIs and background workers) related to the company for the cross-functional AI Engineering project.
+This folder contains backend service boundaries for the monorepo architecture.
 
-Each subfolder inside `services/` must correspond to **one specific service** (for example: `admin-api`, `data-processor-worker`) and include its own technical and functional documentation.
+## Purpose
 
-- **Main purpose**: to centralize all the backend logic, APIs, and queue consumers that support the company's use cases.
-- **Recommendation**: document in this file (or in sub-READMEs) the services you add, their objective, the technology used, and how to run them.
+- Keep backend concerns independent from UI applications.
+- Enable future APIs to evolve as separate deployable units.
+- Make domain ownership explicit by service area.
 
-> _Spanish version: [README.es.md](./README.es.md)._
+## Current architecture placeholders
+
+- `_template-service/` blueprint for creating a new service.
+- `gateway/` edge and cross-cutting backend concerns.
+- `clinical-operations/` appointments and clinical workflow services.
+- `revenue-cycle/` billing and claims services.
+- `compliance/` governance and audit services.
+
+## Status
+
+No APIs are implemented yet. This folder currently defines scalable structure only.
+
+> Spanish version: [README.es.md](./README.es.md).

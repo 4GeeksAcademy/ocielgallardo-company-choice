@@ -11,7 +11,6 @@ import {
 } from "@/lib/services/records";
 import { createNote, deleteNote } from "@/lib/services/notes";
 import { useCandidateDetail } from "@/hooks/useCandidateDetail";
-import { AppHeader } from "@/components/layout/AppHeader";
 import { ApplicationDetailPanel } from "@/components/detail/ApplicationDetailPanel";
 import { ApplicationForm } from "@/components/forms/ApplicationForm";
 
@@ -148,10 +147,8 @@ export function CandidateDetailWorkspace({
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
-      <AppHeader />
-
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+    <div className="space-y-4">
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <Link
             href="/applications"

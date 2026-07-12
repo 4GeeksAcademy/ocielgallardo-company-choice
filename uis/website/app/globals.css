@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f4f7fb;
+  --ink: #0b1b2b;
+  --panel: #ffffff;
+  --brand-600: #035a87;
+  --brand-700: #02496d;
+  --accent-500: #0a9396;
+}
+
+@theme inline {
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-merriweather), ui-serif, Georgia, serif;
+}
+
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 8% 10%, rgba(10, 147, 150, 0.22), transparent 34%),
+    radial-gradient(circle at 92% 0%, rgba(3, 90, 135, 0.25), transparent 38%),
+    linear-gradient(180deg, #eef4fa 0%, var(--bg) 100%);
+  font-family: var(--font-sans);
+}
+
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(11, 27, 43, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 27, 43, 0.1) 1px, transparent 1px);
+  background-size: 24px 24px;
+}

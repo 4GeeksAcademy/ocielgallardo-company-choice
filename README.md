@@ -123,7 +123,9 @@ Then open:
 The repository provides the original folder structure plus active project implementation for HealthCore.
 
 - `CONTEXT.md` has been replaced with HealthCore context and is actively used to drive implementation.
-- There is no root `AGENTS.md` yet.
+- Root `AGENTS.md` now defines required AI-agent behavior and repository governance.
+- UI layer is split into two independent apps: `uis/website` (public) and `uis/backoffice` (internal).
+- `services/` now includes scalable placeholder boundaries for future APIs.
 - Shared package metadata exists in `packages/shared/package.json` (`@repo/shared-types`) with a working TypeScript type-test command.
 
 ---
