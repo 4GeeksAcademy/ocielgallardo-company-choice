@@ -34,12 +34,11 @@ Este repositorio ya no es solo una estructura base. Ahora incluye entregables co
 
 ### 1) Entregables web completados
 
-- Landing page responsive completa en `index.html`.
-- Estructura semántica (`header`, `nav`, `main`, `section`, `article`, `footer`).
-- Metadatos SEO y sociales (Open Graph, Twitter cards).
-- Datos estructurados (JSON-LD) para contexto organizacional/negocio.
-- Página de formulario responsive y accesible en `application.html`.
-- Lógica de validación frontend en `validation.js`.
+- Sitio público en Next.js implementado en `uis/website`.
+- Estructura App Router con secciones reutilizables y layout dedicado.
+- Landing pública en `/`.
+- Página pública de aplicación/registro en `/application` con validación en cliente.
+- Separación clara entre experiencia pública y backoffice interno.
 
 ### 2) Modelo de dominio y utilidades TypeScript completadas
 
@@ -98,23 +97,13 @@ Este comando ejecuta verificación estricta de tipos sobre:
 - `src/types/models.ts`
 - `src/types/models.type-test.ts`
 
-### 4) Playground visual temporal para utilidades
+### 4) Superficie interna de demo para Hito 2
 
-Hay un entorno temporal para validar salidas de utilidades manualmente:
+La capa de utilidades TypeScript ahora se expone dentro del backoffice interno:
 
-- `test.html`
-- `test-playground.js`
-- `test-data.js`
+- `uis/backoffice/components/dashboard/Hito2Playground.tsx`
 
-Ejecución local:
-
-```bash
-npx http-server . -p 3000 -a 0.0.0.0
-```
-
-Luego abrir:
-
-`http://localhost:3000/test.html`
+Esto mantiene la demostración de lógica de negocio dentro de la arquitectura actual del monorepo, sin depender de playgrounds legacy en la raíz.
 
 ---
 

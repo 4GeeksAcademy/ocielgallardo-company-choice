@@ -34,12 +34,11 @@ This repository is no longer only a skeleton. It now includes concrete deliverab
 
 ### 1) Web deliverables completed
 
-- Full responsive landing page in `index.html`.
-- Semantic structure (`header`, `nav`, `main`, `section`, `article`, `footer`).
-- SEO and social metadata (Open Graph, Twitter cards).
-- Structured data (JSON-LD) for organization/business context.
-- Responsive and accessible form page in `application.html`.
-- Frontend validation logic in `validation.js`.
+- Public Next.js website implemented in `uis/website`.
+- App Router structure with reusable sections and dedicated layout/components.
+- Public landing page at `/`.
+- Public intake/application page at `/application` with client-side validation.
+- Public UI separated from internal backoffice concerns.
 
 ### 2) TypeScript domain model and utilities completed
 
@@ -98,23 +97,13 @@ This runs strict type checking against:
 - `src/types/models.ts`
 - `src/types/models.type-test.ts`
 
-### 4) Manual visual playground for utilities
+### 4) Internal Hito 2 demo surface available
 
-A temporary testing playground is available to manually validate utility outputs:
+The existing TypeScript utility layer is now exposed inside the internal backoffice:
 
-- `test.html`
-- `test-playground.js`
-- `test-data.js`
+- `uis/backoffice/components/dashboard/Hito2Playground.tsx`
 
-Run locally with:
-
-```bash
-npx http-server . -p 3000 -a 0.0.0.0
-```
-
-Then open:
-
-`http://localhost:3000/test.html`
+This keeps the business-logic demonstration inside the monorepo UI architecture without relying on legacy root playground files.
 
 ---
 

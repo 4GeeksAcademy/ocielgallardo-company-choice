@@ -1,14 +1,11 @@
 # Technical Context
 
 ## Stack Summary
-- Markup/UI: HTML (including responsive pages and semantic sections).
-- Frontend logic: JavaScript for form validation and manual playground scripts.
+- Frontend apps: Next.js + React for public and internal UIs.
 - Domain and utilities: TypeScript (typed models and utility modules).
 - Package tooling: npm scripts via `packages/shared/package.json`.
 
 ## Verified Technical Areas
-- Root web pages: `index.html`, `application.html`, `test.html`.
-- Frontend scripts: `validation.js`, `test-playground.js`, `test-data.js`.
 - TypeScript domain package in `src/`:
   - `types/models.ts`
   - `utils/collections.ts`
@@ -19,6 +16,8 @@
 - UI applications:
   - `uis/website` (public Next.js website)
   - `uis/backoffice` (internal Next.js workspace)
+- Internal Hito 2 demo surface:
+  - `uis/backoffice/components/dashboard/Hito2Playground.tsx`
 - Service architecture placeholders:
   - `services/gateway`
   - `services/clinical-operations`
@@ -44,6 +43,7 @@
 - Monorepo-like educational structure with top-level domains for UI, services, workflows, data, and shared resources.
 - Current implemented business logic remains concentrated in root `src/`.
 - Public and internal UIs are now separated into independent apps under `uis/website` and `uis/backoffice`.
+- Legacy root HTML/JS surfaces were retired after the monorepo migration.
 
 ## Coding Conventions (Observed + Enforced Direction)
 - Keep business logic aligned to `CONTEXT.md` definitions.

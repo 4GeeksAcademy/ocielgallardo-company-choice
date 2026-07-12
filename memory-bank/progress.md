@@ -24,6 +24,7 @@
 - Integrated Hito 2 utilities in backoffice dashboard via direct imports from root `src/` (no business logic duplication).
 - Prepared scalable backend service placeholders under `services/`.
 - Updated repository documentation for new UI/service boundaries.
+- Removed retired root static website/playground artifacts after the UI migration to `uis/website` and `uis/backoffice`.
 
 ## In-Scope Baselines from Context
 - 12 clinics across US/UK.
