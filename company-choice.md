@@ -22,5 +22,5 @@ Reto:
 
 ### Propuesta de soluciones
 
-- Antes de la cita, el agente podría predecir las probabilidades del no-show del paciente. Necesitaría datos personales y el historial médico. Produciría una alerta de probabilidad de que el paciente no asista a la consulta.  --- - Actúa (recordatorio, confirmación, etc.)
-- Antes de facturar, predice si la factura será rechazada. - - Necesitaría los datos de facturación para calcular datos incompletos, códigos incorrectos e incoherencias. Actúa validando y corrigiendo antes de enviarla.
+- (Antes de la cita, el agente podría predecir las probabilidades del no-show del paciente. Necesitaría datos personales y el historial médico. Produciría una alerta de probabilidad de que el paciente no asista a la consulta.  --- - Actúa (recordatorio, confirmación, etc.)
+- Antes de facturar, predice si la factura será rechazada. - - Necesitaría los datos de facturación para calcular datos incompletos, códigos incorrectos e incoherencias. Actúa validando y corrigiendo antes de enviarla.)
