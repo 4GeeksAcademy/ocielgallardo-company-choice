@@ -29,3 +29,42 @@ body {
     linear-gradient(90deg, rgba(11, 27, 43, 0.1) 1px, transparent 1px);
   background-size: 24px 24px;
 }
+
+.hero-carousel {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.hero-carousel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.hero-carousel-track {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  transition: transform 0.8s ease-in-out;
+}
+
+.hero-carousel-slide {
+  flex: 0 0 100%;
+  height: 100%;
+}
+
+.hero-carousel-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Solo hero-002: ancla el recorte arriba para no cortar caras en PC */
+.hero-carousel-image--top {
+  object-position: top;
+}

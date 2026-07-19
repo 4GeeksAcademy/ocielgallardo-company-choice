@@ -1,22 +1,18 @@
 import Link from "next/link";
-import { SITE_COPY } from "@/lib/content";
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-3">
-          <span
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--brand-600)] text-sm font-bold text-white"
-            aria-hidden="true"
-          >
-            HC
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-slate-900">{SITE_COPY.brand}</p>
-            <p className="text-xs text-slate-600">{SITE_COPY.tagline}</p>
-          </div>
-        </div>
+    <header className="sticky top-0 z-20 overflow-visible border-b border-slate-200/70 bg-white/90 backdrop-blur">
+      {/* Altura bloqueada: el logo crece sin empujar el navbar */}
+      <div className="mx-auto flex h-16 min-h-16 max-h-16 w-full max-w-6xl items-center justify-between overflow-visible px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="flex shrink-0 items-center overflow-visible">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icons/logo-02.png"
+            alt="HealthCore"
+            className="h-[3.375rem] w-auto sm:h-[3.75rem]"
+          />
+        </Link>
 
         <nav className="flex items-center gap-2 text-sm">
           <a href="#services" className="rounded-md px-3 py-2 font-medium text-slate-700 hover:bg-slate-100">
