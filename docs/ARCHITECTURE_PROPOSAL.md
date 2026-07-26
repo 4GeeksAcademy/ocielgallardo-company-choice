@@ -12,4 +12,6 @@ He considerado la **arquitectura hexagonal** por su capacidad para desacoplar la
 
 **Common** estaría destinada únicamente a componentes reutilizables por varios módulos del backend. Su contenido crecería únicamente cuando aparezcan necesidades compartidas entre dominios, evitando duplicar código.
 
-## organización de endpoints y ruters
+## Organización de endpoints y ruters
+
+Propongo que al igual que la API del Talent Pipeline Tracker organizaba sus recursos alrededor de un dominio (records), el backend de HealthCore organice sus endpoints alrededor de los dominios del negocio (patients, appointments, billing, claims, reports). Esa decisión hace que la API sea más consistente, fácil de navegar y más sencilla de mantener conforme crezca el proyecto.
