@@ -97,8 +97,9 @@ El archivo `incidents-healthcore.csv` se envió como adjunto (ver ficheros `inci
 **Total de filas:** 100
 
 **Registros válidos: 94**
+
 | Categoría | Cantidad |
-|---|---|
+| --- | --- |
 | `APPOINTMENT` | 30 |
 | `BILLING` | 20 |
 | `CLINICAL_CARE` | 14 |
@@ -119,8 +120,9 @@ El archivo `incidents-healthcore.csv` se envió como adjunto (ver ficheros `inci
 | `UK` | 33       |
 
 **Registros inválidos: 6**
+
 | Regla activada | Cantidad |
-|---|---|
+| --- | --- |
 | `clinic_id` faltante o inválido | 1 |
 | Incompatibilidad país/clínica | 1 |
 | `category` faltante o inválida | 1 |
@@ -129,8 +131,9 @@ El archivo `incidents-healthcore.csv` se envió como adjunto (ver ficheros `inci
 | `status = CLOSED` sin `satisfaction_score` | 1 |
 
 **Puntajes de satisfacción (52 registros cerrados)**
+
 | Puntaje | Cantidad |
-|---|---|
+| --- | --- |
 | 1 | 3 |
 | 2 | 5 |
 | 3 | 12 |
@@ -144,7 +147,7 @@ Promedio: **3.58**
 
 Cuando el estudiante ejecute `python analyze.py incidents-healthcore.csv` con el archivo provisto, la salida en consola debe mostrar los valores siguientes en todas las secciones **obligatorias** (totales, desglose de inválidos, categoría, estado y satisfacción). El bloque `BREAKDOWN BY COUNTRY` es **recomendado** para HealthCore — contexto útil para stakeholders, pero no obligatorio para aprobar.
 
-```
+```table
 ============================================================
   HEALTHCORE — PATIENT INCIDENT REPORT ANALYSIS
   Source file: incidents-healthcore.csv
