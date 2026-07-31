@@ -506,6 +506,56 @@ docs/data-contract/                       # CONTEXT + diseño funcional
 
 Queda definida la arquitectura minima del analizador de incidentes alineada al monorepo y al CONTEXT, con documentacion de flujo y de responsabilidades por archivo, lista para empezar la implementacion modulo a modulo.
 
+
+## Actualizacion 2026-07-31 (Paso 3 — inicio de implementacion: models + csv_reader)
+
+### Solicitud del cliente
+
+Empezar la programacion del analizador de incidentes en orden de dependencias (`models` → `csv_reader` → …), implementando el estudiante con guia, sin precipitar modelos de resumen hasta que hagan falta.
+
+### Orden de implementacion acordado
+
+1. `models.py`
+2. `csv_reader.py`
+3. `validator.py` (pendiente)
+4. `analyzer.py` (pendiente)
+5. `exporter.py` (pendiente)
+6. `scripts/analyze.py` (pendiente)
+
+### Cambios aplicados
+
+- Se renombro el paquete de `services/incidents-analysis/` a `services/incidents_analysis/` para que sea importable en Python (`from services.incidents_analysis...`).
+- Se implemento `models.py` con dataclass `Incident` (9 campos del CONTEXT; `satisfaction_score` como `int | None`; comentario PHI en `patient_id`).
+- Se implemento `csv_reader.py`:
+  - `read_incidents(path) -> list[Incident]`
+  - UTF-8 + `csv.DictReader`
+  - celda vacia de score → `None`
+  - sin reglas de negocio ni impresion de `patient_id`
+- Validacion local del lector: `len(read_incidents(...)) == 100` con el CSV oficial.
+- Se incorporo el dataset real `data/raw/incidents-healthcore.csv` desde el syllabus de 4Geeks:
+  - Origen: `https://github.com/4GeeksAcademy/ai-engineering-syllabus` → `content/contexts/incidents-file-analysis/incidents-healthcore.csv`
+  - Antes solo existia un placeholder vacio en el monorepo.
+- Se actualizo `.gitignore` para ignorar artefacto Python:
+  - `__pycache__/`
+  - `*.py[cod]`
+  - `*$py.class`
+- Nota operativa: si `__pycache__` ya estaba en staging, sacarlo con `git rm -r --cached` (no versionar bytecode).
+
+### Decisiones de diseño reforzadas
+
+- La proteccion de `patient_id` (no imprimir / log / exportar) **no** se implementa en `models.py`; se aplica en validator, consola y exporter.
+- `models.py` solo define la forma del registro; no valida ni lee archivos.
+
+### Estado
+
+- Completados: `models.py`, `csv_reader.py`, CSV de prueba, paquete importable.
+- Siguiente modulo: `validator.py` (7 reglas del CONTEXT + conteos por regla sin exponer PHI).
+
+### Resultado
+
+Queda operativa la base de datos tipada y la lectura del CSV oficial de HealthCore; el flujo de implementacion puede continuar con la capa de validacion.
+
+
 ## Texto fijo (NO BORRAR, MANTENER COMO FOOTER): comando de test para `models.ts`
 
 ### Objetivo
