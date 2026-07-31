@@ -1,6 +1,8 @@
-# 🧠 incidents-analysis
+# 🧠 incidents_analysis
 
 Reusable **patient incident report** analysis for HealthCore — the shared brain behind the CLI today and the API tomorrow.
+
+Package import path: `services.incidents_analysis` (underscore — required by Python).
 
 Priya Nair's team needs a trustworthy summary of clinic incident CSVs. This package owns that logic so `scripts/analyze.py` and a future `POST /api/incidents/analyze` can call the **same** modules.
 
@@ -21,7 +23,7 @@ No business rules in the script. No duplicated validators in the router. One pla
 
 | Module | Responsibility |
 | --- | --- |
-| `models.py` | Shared data shapes (`Incident`, analysis summary, etc.) — dataclasses first |
+| `models.py` | Shared data shapes (`Incident`) — dataclass |
 | `csv_reader.py` | Open and read the UTF-8 comma-separated CSV (header required) |
 | `validator.py` | Apply CONTEXT invalidity rules; count by rule; never expose `patient_id` |
 | `analyzer.py` | Aggregate metrics from **valid** records (and invalid breakdown from invalid ones) |
@@ -46,8 +48,20 @@ Business contract: `docs/data-contract/CONTEXT-HealthCore.md`
 - report only rule names and counts when identifiers are missing/invalid;
 - treat zero patient exposure as a hard requirement, not a preference.
 
+## How to run (CLI)
+
+From the repo root:
+
+```bash
+python scripts/analyze.py data/raw/incidents-healthcore.csv
+```
+
+Expected against the official sample: **100** rows, **94** valid, **6** invalid; satisfaction average **3.58**. Optional export writes `data/process/results.csv`.
+
 ## Status
 
-Structure decided (Paso 2). Modules are placeholders — implementation comes next, starting with `csv_reader.py`.
+**CLI pipeline implemented** (Paso 3 closed): `models` → `csv_reader` → `validator` → `analyzer` → `exporter`, orchestrated by `scripts/analyze.py`.
+
+Next project milestone: FastAPI (and UI) reusing these same modules — not started here.
 
 > Spanish twin of the contract: [CONTEXT-HealthCore.es.md](../../docs/data-contract/CONTEXT-HealthCore.es.md).

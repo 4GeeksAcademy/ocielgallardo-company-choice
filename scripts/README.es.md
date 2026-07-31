@@ -14,7 +14,7 @@ Regla práctica: los scripts **coordinan**; la lógica reutilizable vive en otro
 
 ### `analyze.py` — análisis de reportes de incidentes (CLI)
 
-Coordina el flujo completo del análisis CSV de incidentes de HealthCore. **No** contiene las reglas de negocio; delega en `services/incidents-analysis`.
+Coordina el flujo completo del análisis CSV de incidentes de HealthCore. **No** contiene las reglas de negocio; delega en `services/incidents_analysis`.
 
 ```text
 analyze.py
@@ -36,7 +36,8 @@ python scripts/analyze.py data/raw/incidents-healthcore.csv
 
 - Requisitos: `docs/data-contract/CONTEXT-HealthCore.es.md`
 - Flujo funcional: `docs/data-contract/functional-design-analyze.es.md`
-- Módulos reutilizables: `services/incidents-analysis/`
+- Módulos reutilizables: `services/incidents_analysis/`
+- Exportación (opcional): `data/process/results.csv`
 
 🛡 **Recordatorio de cumplimiento:** nunca imprimas ni exportes `patient_id`. Si el script muestra un identificador de paciente, la salida no es usable.
 

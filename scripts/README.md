@@ -14,7 +14,7 @@ Rule of thumb: scripts **orchestrate**; reusable logic lives elsewhere (for exam
 
 ### `analyze.py` — patient incident report analysis (CLI)
 
-Coordinates the end-to-end flow for HealthCore incident CSV analysis. It does **not** own business rules; it calls into `services/incidents-analysis`.
+Coordinates the end-to-end flow for HealthCore incident CSV analysis. It does **not** own business rules; it calls into `services/incidents_analysis`.
 
 ```text
 analyze.py
@@ -36,7 +36,8 @@ python scripts/analyze.py data/raw/incidents-healthcore.csv
 
 - Requirements: `docs/data-contract/CONTEXT-HealthCore.md`
 - Functional flow: `docs/data-contract/functional-design-analyze.md`
-- Reusable modules: `services/incidents-analysis/`
+- Reusable modules: `services/incidents_analysis/`
+- Export (optional): `data/process/results.csv`
 
 🛡 **Compliance reminder:** never print or export `patient_id`. If the script surfaces a patient identifier, the output is not usable.
 

@@ -16,6 +16,10 @@ Esta carpeta define los límites de servicios backend dentro de la arquitectura 
 - `revenue-cycle/` servicios de facturación y reclamos.
 - `compliance/` servicios de cumplimiento y auditoría.
 
+## Implementado (Python, reutilizable por CLI / futura API)
+
+- `incidents_analysis/` — análisis CSV de incidentes de pacientes HealthCore (`models`, `csv_reader`, `validator`, `analyzer`, `exporter`). Lo consume `scripts/analyze.py`.
+
 ## Estado
 
-No hay APIs implementadas todavía. Esta carpeta solo prepara la arquitectura.
+La lógica CLI de análisis de incidentes vive en `incidents_analysis/`. Las APIs HTTP de otros dominios siguen siendo placeholders.

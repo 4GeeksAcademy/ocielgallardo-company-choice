@@ -556,6 +556,51 @@ Empezar la programacion del analizador de incidentes en orden de dependencias (`
 Queda operativa la base de datos tipada y la lectura del CSV oficial de HealthCore; el flujo de implementacion puede continuar con la capa de validacion.
 
 
+## Actualizacion 2026-07-31 (Paso 3 — cierre del pipeline CLI)
+
+### Solicitud del cliente
+
+Completar la implementacion del analizador de incidentes (validator → analyzer → exporter → `analyze.py`), documentar carpetas afectadas y dejar el script listo frente al CONTEXT.
+
+### Modulos implementados y validados
+
+- `validator.py`: 7 reglas del CONTEXT; primera falla por registro; sin exponer `patient_id`.
+  - Prueba: `100` total → `94` validos → `6` invalidos (1 por regla principal del breakdown).
+- `analyzer.py`: totales, categoria, estado, pais (recomendado), satisfaccion (`average` 3.58, histograma 1–5).
+  - Usa `collections.Counter` (stdlib de Python).
+- `exporter.py`: CSV de metricas `metric` / `value` / `percentage` en modo `"w"` (resumen de una corrida, no append).
+  - Salida por defecto: `data/process/results.csv`.
+- `scripts/analyze.py`: orquesta reader → validator → analyzer → consola → prompt `Export results to CSV? [y / n]`.
+  - Anade la raiz del repo a `sys.path` para importar `services.incidents_analysis`.
+
+### Validacion ejecutada
+
+```bash
+python scripts/analyze.py data/raw/incidents-healthcore.csv
+```
+
+- Informe de consola alineado a numeros del CONTEXT (totales, invalidos, categorias, estados, satisfaccion; pais incluido).
+- Exportacion regenera `data/process/results.csv` al responder `y`.
+
+### Documentacion actualizada en este cierre
+
+- `bitacora.md` (esta entrada).
+- `data/process/README.md` + `README.es.md` — artefacto `results.csv`.
+- `services/incidents_analysis/README.md` — estado implementado (ya no placeholders).
+- `scripts/README.md` + `README.es.md` — ruta correcta `incidents_analysis`.
+- `services/README.md` + `README.es.md` — se lista el servicio de analisis de incidentes.
+- `.gitignore` — se ignora `data/process/results.csv` (salida regenerable).
+
+### Estado
+
+- **Cerrado:** pipeline CLI completo del CONTEXT (script + servicios reutilizables).
+- **Siguiente hito del proyecto (fuera de este cierre):** API FastAPI + UI que reutilice los mismos modulos (`POST /api/incidents/analyze` o equivalente).
+
+### Resultado
+
+El estudiante puede analizar el CSV oficial de HealthCore de extremo a extremo con logica separada del entrypoint, lista para reutilizar en una API futura.
+
+
 ## Texto fijo (NO BORRAR, MANTENER COMO FOOTER): comando de test para `models.ts`
 
 ### Objetivo
