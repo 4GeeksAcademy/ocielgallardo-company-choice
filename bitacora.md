@@ -121,6 +121,7 @@ Leer los archivos de contexto y comenzar implementacion en TypeScript basada en 
 
 Queda lista la base TypeScript de entidades y utilidades para continuar con siguientes iteraciones (datos de prueba, integracion UI/API, tests y reglas avanzadas).
 
+Queda lista la base TypeScript de entidades y utilidades para continuar con siguientes iteraciones (datos de prueba, integracion UI/API, tests y reglas avanzadas).
 
 ## Actualizacion 2026-06-13 (ordenamientos y busquedas)
 
@@ -167,7 +168,6 @@ Implementar validaciones de negocio antes de procesar datos, alineadas a `CONTEX
 ### Resultado
 
 La capa de validaciones ahora es contextual (no generica), tipada explicitamente y lista para usarse como puerta de control antes de procesar objetos del dominio.
-
 
 ## Actualizacion 2026-06-15 (playground visual temporal para pruebas TS)
 
@@ -333,7 +333,7 @@ El departamento recibió más de 100 candidaturas en menos de dos semanas y llev
 cd uis/talent-pipeline-tracker
 npm install
 npm run dev
-```link
+```termial
 Abrir <http://localhost:3000> → `/applications`.
 
 ### Fuera de alcance (MVP)
@@ -347,7 +347,6 @@ Abrir <http://localhost:3000> → `/applications`.
 
 - Paginación server-side si el volumen supera de forma estable las 100 candidaturas.
 - Resolver build en rutas Windows muy largas (mover repo a ruta más corta o habilitar rutas largas en SO).
-
 
 ## Hito 4
 
@@ -397,7 +396,6 @@ Crear el contexto de trabajo para agentes IA del repositorio con alcance **solo 
 
 El repositorio queda preparado con contexto persistente para nuevos agentes IA, politicas de contribucion claras y reglas operativas en formato markdown, manteniendo intacta la implementacion funcional existente.
 
-
 ## Actualizacion 2026-07-12 (migracion arquitectonica a monorepo escalable)
 
 ### Solicitud del cliente
@@ -445,34 +443,230 @@ Reestructurar el proyecto a una arquitectura monorepo escalable, separando sitio
 
 La arquitectura queda segmentada por responsabilidad (`website` publico, `backoffice` interno, `services` para APIs futuras), manteniendo la funcionalidad previa y dejando puntos de extension claros para los siguientes hitos.
 
+## Actualizacion 2026-07-31 (utilidad de analisis de incidentes — Pasos 1 y 2)
 
-## Texto fijo (NO BORRAR, MANTENER COMO FOOTER): comando de test para `models.ts`
+### Solicitud del cliente
 
-### Objetivo
+Avanzar el proyecto de analisis de reportes de incidentes de HealthCore (CONTEXT en `docs/data-contract/`) sin escribir logica de negocio todavia: primero diseño funcional del flujo de `analyze.py` (Paso 1), luego estructura de codigo reutilizable para CLI y futura API (Paso 2), y documentar los README de las carpetas tocadas.
 
-Validar rapidamente los tipos de `src/types/models.ts` y su archivo de pruebas de tipos.
+### Fuente de verdad usada
 
-### Comando fijo recomendado
+- `docs/data-contract/CONTEXT-HealthCore.md` / `CONTEXT-HealthCore.es.md`
+- Orden de lectura de `AGENTS.md` (`memory-bank/techContext.md`, `memory-bank/progress.md`, `CONTEXT.md`)
 
-Ejecutar desde `packages/shared`:
+### Paso 1 — Diseño funcional
 
-```bash
-npm run test:types:models
+- Se documento el flujo completo de ejecucion de `analyze.py` (lectura → validacion → metricas → consola → prompt de exportacion).
+- Entregables:
+  - `docs/data-contract/functional-design-analyze.md`
+  - `docs/data-contract/functional-design-analyze.es.md`
+- Se dejaron explicitas ambiguedades del CONTEXT (p. ej. 1000 vs 100 filas, reglas no listadas para `incident_id`/`date`, multi-regla por registro).
+- Sin codigo y sin estructura de carpetas en este paso.
+
+### Paso 2 — Estructura de codigo (sin implementacion)
+
+- Objetivo: separar orquestacion CLI de logica reutilizable para que la futura API reutilice los mismos modulos.
+- Estructura acordada tras revision contra README existentes del monorepo:
+
+```text
+scripts/
+  └── analyze.py                          # solo coordina el flujo
+services/
+  └── incidents-analysis/
+        ├── __init__.py
+        ├── models.py                     # dataclasses compartidos
+        ├── csv_reader.py
+        ├── validator.py
+        ├── analyzer.py
+        ├── exporter.py
+        └── README.md
+data/raw/
+  └── incidents-healthcore.csv            # dataset de prueba (PHI)
+docs/data-contract/                       # CONTEXT + diseño funcional
 ```
 
-### Paso a paso para principiantes
+- Decision de modelo: `dataclass` desde el inicio (preparacion hacia FastAPI/Pydantic).
+- Correcciones de ubicacion aplicadas:
+  - no dejar modulos `.py` sueltos en la raiz de `services/`
+  - un solo paquete de dominio: `services/incidents-analysis/` (fiel al path del CONTEXT)
+  - CSV en `data/raw/` (no en raiz de `data/` ni en `pipelines/`)
+  - nombre importable `csv_reader.py` (no `csv-reader.py`)
 
-1. Abrir terminal en la raiz del proyecto.
-2. Entrar a la carpeta del paquete:
- - `cd /workspaces/ocielgallardo-company-choice/packages/shared`
-3. Ejecutar el test:
- - `npm run test:types:models`
-4. Resultado esperado:
- - Si no aparece ningun error TypeScript, la validacion paso correctamente.
+### Documentacion de carpetas actualizada
 
-### Comando equivalente (referencia)
+- `data/raw/README.md` + `README.es.md` — dataset actual, privacidad HIPAA/UK GDPR
+- `scripts/README.md` + `README.es.md` — rol de `analyze.py` como entrypoint fino
+- `services/incidents-analysis/README.md` — mapa de modulos, reuso CLI/API, compliance, estado Paso 2
 
-```bash
-npx -y -p typescript tsc --noEmit ../../src/types/models.ts ../../src/types/models.type-test.ts --strict
+### Estado al cerrar Paso 2
+
+- Diseño funcional y estructura de carpetas listos.
+- Modulos del servicio son placeholders (sin logica implementada).
+- Siguiente paso previsto: implementar el primer modulo (`csv_reader.py`).
+
+```text
+Este paso se resolvio en el Paso 3
 ```
 
+### Resultado
+
+Queda definida la arquitectura minima del analizador de incidentes alineada al monorepo y al CONTEXT, con documentacion de flujo y de responsabilidades por archivo, lista para empezar la implementacion modulo a modulo.
+
+## Actualizacion 2026-07-31 (Paso 3 — inicio de implementacion: models + csv_reader)
+
+### Solicitud del cliente
+
+Empezar la programacion del analizador de incidentes en orden de dependencias (`models` → `csv_reader` → …), implementando el estudiante con guia, sin precipitar modelos de resumen hasta que hagan falta.
+
+### Orden de implementacion acordado
+
+1. `models.py`
+2. `csv_reader.py`
+3. `validator.py` (pendiente)
+4. `analyzer.py` (pendiente)
+5. `exporter.py` (pendiente)
+6. `scripts/analyze.py` (pendiente)
+
+### Cambios aplicados
+
+- Se renombro el paquete de `services/incidents-analysis/` a `services/incidents_analysis/` para que sea importable en Python (`from services.incidents_analysis...`).
+- Se implemento `models.py` con dataclass `Incident` (9 campos del CONTEXT; `satisfaction_score` como `int | None`; comentario PHI en `patient_id`).
+- Se implemento `csv_reader.py`:
+  - `read_incidents(path) -> list[Incident]`
+  - UTF-8 + `csv.DictReader`
+  - celda vacia de score → `None`
+  - sin reglas de negocio ni impresion de `patient_id`
+- Validacion local del lector: `len(read_incidents(...)) == 100` con el CSV oficial.
+- Se incorporo el dataset real `data/raw/incidents-healthcore.csv` desde el syllabus de 4Geeks:
+  - Origen: `https://github.com/4GeeksAcademy/ai-engineering-syllabus` → `content/contexts/incidents-file-analysis/incidents-healthcore.csv`
+  - Antes solo existia un placeholder vacio en el monorepo.
+- Se actualizo `.gitignore` para ignorar artefacto Python:
+  - `__pycache__/`
+  - `*.py[cod]`
+  - `*$py.class`
+- Nota operativa: si `__pycache__` ya estaba en staging, sacarlo con `git rm -r --cached` (no versionar bytecode).
+
+### Decisiones de diseño reforzadas
+
+- La proteccion de `patient_id` (no imprimir / log / exportar) **no** se implementa en `models.py`; se aplica en validator, consola y exporter.
+- `models.py` solo define la forma del registro; no valida ni lee archivos.
+
+### Estado
+
+- Completados: `models.py`, `csv_reader.py`, CSV de prueba, paquete importable.
+- Siguiente modulo: `validator.py` (7 reglas del CONTEXT + conteos por regla sin exponer PHI).
+
+### Resultado
+
+Queda operativa la base de datos tipada y la lectura del CSV oficial de HealthCore; el flujo de implementacion puede continuar con la capa de validacion.
+
+## Actualizacion 2026-07-31 (Paso 3 — cierre del pipeline CLI)
+
+### Solicitud del cliente
+
+Completar la implementacion del analizador de incidentes (validator → analyzer → exporter → `analyze.py`), documentar carpetas afectadas y dejar el script listo frente al CONTEXT.
+
+### Modulos implementados y validados
+
+- `validator.py`: 7 reglas del CONTEXT; primera falla por registro; sin exponer `patient_id`.
+  - Prueba: `100` total → `94` validos → `6` invalidos (1 por regla principal del breakdown).
+- `analyzer.py`: totales, categoria, estado, pais (recomendado), satisfaccion (`average` 3.58, histograma 1–5).
+  - Usa `collections.Counter` (stdlib de Python).
+- `exporter.py`: CSV de metricas `metric` / `value` / `percentage` en modo `"w"` (resumen de una corrida, no append).
+  - Salida por defecto: `data/process/results.csv`.
+- `scripts/analyze.py`: orquesta reader → validator → analyzer → consola → prompt `Export results to CSV? [y / n]`.
+  - Anade la raiz del repo a `sys.path` para importar `services.incidents_analysis`.
+
+### Validacion ejecutada
+
+```bash
+python scripts/analyze.py data/raw/incidents-healthcore.csv
+```
+
+- Informe de consola alineado a numeros del CONTEXT (totales, invalidos, categorias, estados, satisfaccion; pais incluido).
+- Exportacion regenera `data/process/results.csv` al responder `y`.
+
+### Documentacion actualizada en este cierre
+
+- `bitacora.md` (esta entrada).
+- `data/process/README.md` + `README.es.md` — artefacto `results.csv`.
+- `services/incidents_analysis/README.md` — estado implementado (ya no placeholders).
+- `scripts/README.md` + `README.es.md` — ruta correcta `incidents_analysis`.
+- `services/README.md` + `README.es.md` — se lista el servicio de analisis de incidentes.
+- `.gitignore` — se ignora `data/process/results.csv` (salida regenerable).
+
+### Estado
+
+- **Cerrado:** pipeline CLI completo del CONTEXT (script + servicios reutilizables).
+- **Siguiente hito del proyecto (fuera de este cierre):** API FastAPI + UI que reutilice los mismos modulos (`POST /api/incidents/analyze` o equivalente).
+
+### Resultado
+
+El estudiante puede analizar el CSV oficial de HealthCore de extremo a extremo con logica separada del entrypoint, lista para reutilizar en una API futura.
+
+## Actualizacion 2026-08-01 (Fase 2 — API FastAPI + UI backoffice)
+
+### Solicitud del cliente
+
+Integrar la logica reutilizable de `services/incidents_analysis/` en la plataforma:
+
+- Backend: `POST /api/incidents/analyze` (CSV multipart) y `GET /api/incidents/results/export` (CSV del ultimo analisis).
+- Frontend: pagina de analisis de incidencias en `uis/backoffice`, accesible desde el menu, con upload, resumen en pantalla y descarga CSV.
+- Nombres de categorias, estados y reglas invalidas alineados al CONTEXT HealthCore (sin exponer `patient_id`).
+
+### Backend implementado
+
+- `services/api/main.py` — app FastAPI, CORS para `localhost:3000` / `127.0.0.1:3000`, registro del router.
+- `services/api/routers/incidents.py` — endpoints HTTP; el router solo orquesta, la logica de negocio sigue en `incidents_analysis/`.
+  - `POST /api/incidents/analyze`: acepta `multipart/form-data` campo `file`; valida extension `.csv`; ejecuta `read_incidents` → `validate_incidents` → `analyze_incidents`; persiste ultimo resumen con `export_results` en `data/process/results.csv`; responde JSON.
+  - `GET /api/incidents/results/export`: sirve el ultimo CSV (`FileResponse`); `404` si no hay analisis previo.
+
+### Frontend implementado (`uis/backoffice`)
+
+- Menu: entrada **Incidents** → `/incidents` en `BackofficeShell.tsx`.
+- Pagina: `app/incidents/page.tsx` (upload → analizar → resumen → descargar).
+- Componentes:
+  - `IncidentCsvUpload.tsx` — selector + drag & drop (solo `.csv`).
+  - `IncidentAnalysisSummary.tsx` — totales, `invalid_breakdown` por regla CONTEXT, `by_category`, `by_status`, indice de satisfaccion.
+- Cliente: `lib/services/healthcoreApi.ts` → `NEXT_PUBLIC_HEALTHCORE_API_URL` (default `http://127.0.0.1:8000`). El cliente Tracker (`client.ts`) no se modifico.
+- Tipos: `types/incidents.ts` con claves CONTEXT (`APPOINTMENT`, `OPEN`/`CLOSED`/`DISCARDED`, reglas `invalid_*`, etc.).
+
+### Como arrancar (validacion local)
+
+```bash
+# API (raiz del repo)
+python -m uvicorn services.api.main:app --reload
+
+# UI
+cd uis/backoffice
+npm run dev
+```
+
+- Abrir `/incidents`, subir `data/raw/incidents-healthcore.csv`.
+- Esperado: ~100 total / 94 validos / 6 invalidos; desglose de invalidos por regla; descarga de `results.csv`.
+
+### Estado
+
+- **Cerrado:** Fase 2 integracion API + UI sobre la misma pipeline del CLI.
+- La logica de negocio permanece en un solo lugar: `services/incidents_analysis/`.
+
+### Resultado
+
+Priya Nair (Patient Access) puede analizar el CSV de incidentes desde el backoffice HealthCore y exportar metricas sin PHI, reutilizando exactamente el cerebro del script CLI.
+
+## Hitos alcanzados
+
+- ✅ Arquitectura del analizador definida.
+- ✅ Separación entre CLI y lógica de negocio.
+- ✅ Modelo `Incident` implementado mediante `dataclass`.
+- ✅ Lectura del CSV oficial de HealthCore.
+- ✅ Validación completa según el CONTEXT.
+- ✅ Cálculo de métricas y generación del resumen.
+- ✅ Exportación de resultados a CSV.
+- ✅ Pipeline CLI funcional y preparado para reutilizarse en FastAPI.
+- ✅ API FastAPI: `POST /api/incidents/analyze` + `GET /api/incidents/results/export`.
+- ✅ UI backoffice `/incidents` (upload, resumen CONTEXT, descarga CSV).
+
+## Próximo objetivo
+
+Endurecer validacion HTTP de errores de entrada (fichero vacio / CSV ilegible) si el evaluador lo exige de forma explicita; documentar dependencias Python (`fastapi`, `uvicorn`, `python-multipart`) en un `requirements` del servicio API si se estandariza el empaquetado.

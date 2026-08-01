@@ -1,6 +1,31 @@
-# Carpeta `data/raw`
+# 📦 `data/raw` — zona de aterrizaje de datos originales
 
-Esta carpeta está pensada para almacenar **datos en bruto** (raw) relacionados con la compañía: dumps, exports, archivos de ejemplo, muestras de eventos, o datasets sin transformar.
+Esta carpeta guarda datasets de la compañía **sin transformar**: dumps, exports y archivos de muestra que scripts o servicios consumen tal cual.
 
-- **Propósito principal**: servir como zona de aterrizaje o referencia de datos originales antes de ser procesados por pipelines.
-- **Recomendación**: documenta el origen de cada dataset, formato, tamaño esperado, consideraciones de privacidad/PII y cómo se versiona (idealmente evitando subir datos sensibles al repositorio).
+Piensa en ella como el muelle de carga: los datos llegan aquí antes de limpiarse, validarse o agregarse.
+
+## Propósito
+
+- Separar con claridad la entrada **raw** de las salidas procesadas (`data/process/`).
+- Dar a scripts y servicios un lugar estable para localizar archivos fuente / de prueba.
+- Documentar origen, formato y restricciones de privacidad de cada dataset.
+
+## 📂 Datasets actuales
+
+| Archivo | Qué es | Notas |
+| --- | --- | --- |
+| `incidents-healthcore.csv` | Muestra de reportes de incidentes de pacientes (HealthCore) | UTF-8, separador coma, fila de encabezado. Lo usa `scripts/analyze.py` a través de `services/incidents-analysis`. |
+
+### 🔒 Privacidad (no negociable)
+
+`incidents-healthcore.csv` incluye valores de `patient_id` protegidos por **HIPAA** (EE. UU.) y **UK GDPR** (Reino Unido).
+
+- **No** envíes este archivo a herramientas de IA externas.
+- El código aguas abajo no debe imprimir, registrar ni exportar valores de `patient_id`.
+- Reglas de negocio y métricas esperadas: `docs/data-contract/CONTEXT-HealthCore.es.md`.
+
+## 💡 Consejos
+
+- Prefiere muestras sintéticas o desidentificadas en git cuando sea posible.
+- Documenta cada archivo nuevo: origen, esquema, tamaño aproximado y riesgo PII/PHI.
+- No guardes aquí salidas de pipelines — eso va en `data/process/`.

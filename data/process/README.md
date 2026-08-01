@@ -1,8 +1,25 @@
-# `data/process` folder
+# `data/process` — processed / generated artifacts
 
-This folder contains **processed/intermediate data** and/or artifacts produced by pipelines (for example: clean datasets, features, aggregates, intermediate tables, or transformation outputs).
+This folder holds **outputs** derived from raw inputs or pipelines: aggregates, cleaned tables, and analysis exports.
 
-- **Main purpose**: clearly separate “raw” data from data ready for analysis, modeling, or app consumption.
-- **Recommendation**: document which pipeline produces each artifact, its schema, refresh cadence, and how quality is validated (checks, constraints, data tests).
+Keep a clear line: `data/raw/` = original inputs; `data/process/` = things we generate.
 
-> _Spanish version: [README.es.md](./README.es.md)._
+## Purpose
+
+- Separate source datasets from regenerated artifacts.
+- Give exporters and pipelines a stable place to write results.
+- Avoid committing noisy generated files when they can be reproduced locally.
+
+## Current artifacts
+
+| File | Produced by | What it is |
+| --- | --- | --- |
+| `results.csv` | `scripts/analyze.py` → `services.incidents_analysis.exporter` | Metric summary (`metric`, `value`, `percentage`). No `patient_id`. Regenerated when the user answers `y` to the export prompt. |
+
+## Tips
+
+- Prefer regenerating `results.csv` over hand-editing it.
+- Do not store PHI/PII exports here.
+- Generated CSVs like `results.csv` are listed in `.gitignore` when they are reproducible from `data/raw/`.
+
+> Spanish version: [README.es.md](./README.es.md).
