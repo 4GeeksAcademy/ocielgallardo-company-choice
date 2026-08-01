@@ -16,6 +16,19 @@
   - Root `AGENTS.md` policy file.
   - Focused rule files in `.agents/rules/`.
 
+## Recently Completed (API structure)
+- HealthCore FastAPI entrypoint at `services/api/main.py` (CORS for local backoffice origins).
+- Incidents HTTP routes in `services/api/routers/incidents.py`:
+  - `POST /api/incidents/analyze` — multipart CSV → JSON summary; persists last run via `export_results` to `data/process/results.csv`.
+  - `GET /api/incidents/results/export` — downloadable CSV of last analysis (`404` if none).
+- Business logic remains in `services/incidents_analysis/` (no duplication in the router).
+
+## Recently Completed (Incidents backoffice UI)
+- Nav entry `Incidents` → `/incidents` in `uis/backoffice/components/layout/BackofficeShell.tsx`.
+- Page `uis/backoffice/app/incidents/page.tsx` with CSV upload (drag/drop), analyze, summary panels, and CSV download.
+- Client `uis/backoffice/lib/services/healthcoreApi.ts` targets `NEXT_PUBLIC_HEALTHCORE_API_URL` (default `http://127.0.0.1:8000`); Tracker client unchanged.
+- Types in `uis/backoffice/types/incidents.ts` use CONTEXT category/status/invalid rule names.
+
 ## Recently Completed (Architecture Migration)
 - Migrated internal UI app path from `uis/talent-pipeline-tracker` to `uis/backoffice`.
 - Added a new public Next.js app at `uis/website` (App Router, componentized sections, and intake form route).

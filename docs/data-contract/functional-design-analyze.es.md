@@ -161,7 +161,7 @@ Secciones **obligatorias:**
 
 Sección **recomendada** (no obligatoria para aprobar):
 
-7. `BREAKDOWN BY COUNTRY`
+1.n `BREAKDOWN BY COUNTRY`
 
 Se aceptan diferencias menores de formato; los valores numéricos de las secciones obligatorias deben coincidir exactamente con el archivo de prueba.
 

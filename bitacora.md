@@ -20,7 +20,7 @@ Crear una landing page para HealthCore en `index.html` con HTML semantico bien e
 
 ### Fuente de contenido usada
 
-Se obtuvo contenido publico de referencia de https://www.health-core.org/ via lectura en texto para construir copy base (servicios, vision, mision, valores y enfoque regional).
+Se obtuvo contenido publico de referencia de <https://www.health-core.org/> via lectura en texto para construir copy base (servicios, vision, mision, valores y enfoque regional).
 
 ### Pendientes para siguiente actualizacion
 
@@ -249,12 +249,12 @@ El departamento recibió más de 100 candidaturas en menos de dos semanas y llev
 
 **Talent Tracker API** del 4Geeks Playground:
 
-- Documentación: https://playground.4geeks.com/tracker/api/v1/docs
+- Documentación: <https://playground.4geeks.com/tracker/api/v1/docs>
 - Base URL: `https://playground.4geeks.com/tracker/api/v1`
 - Recurso principal: `/records` (sin namespace; distinto al patrón inicial de `/applications/{namespace}` del plan)
 
 | Operación | Endpoint | Uso en UI |
-|-----------|----------|-----------|
+| ----------- | ---------- | ----------- |
 | Listar | `GET /records?limit=100` | Carga del listado |
 | Detalle | `GET /records/{id}` | Panel de candidato |
 | Crear | `POST /records` | Nueva candidatura |
@@ -331,8 +331,8 @@ El departamento recibió más de 100 candidaturas en menos de dos semanas y llev
 cd uis/talent-pipeline-tracker
 npm install
 npm run dev
-```
-Abrir http://localhost:3000 → `/applications`.
+```termial
+Abrir <http://localhost:3000> → `/applications`.
 
 ### Fuera de alcance (MVP)
 
@@ -502,10 +502,13 @@ docs/data-contract/                       # CONTEXT + diseño funcional
 - Modulos del servicio son placeholders (sin logica implementada).
 - Siguiente paso previsto: implementar el primer modulo (`csv_reader.py`).
 
+```text
+Este paso se resolvio en el Paso 3
+```
+
 ### Resultado
 
 Queda definida la arquitectura minima del analizador de incidentes alineada al monorepo y al CONTEXT, con documentacion de flujo y de responsabilidades por archivo, lista para empezar la implementacion modulo a modulo.
-
 
 ## Actualizacion 2026-07-31 (Paso 3 — inicio de implementacion: models + csv_reader)
 
@@ -555,7 +558,6 @@ Empezar la programacion del analizador de incidentes en orden de dependencias (`
 
 Queda operativa la base de datos tipada y la lectura del CSV oficial de HealthCore; el flujo de implementacion puede continuar con la capa de validacion.
 
-
 ## Actualizacion 2026-07-31 (Paso 3 — cierre del pipeline CLI)
 
 ### Solicitud del cliente
@@ -600,33 +602,69 @@ python scripts/analyze.py data/raw/incidents-healthcore.csv
 
 El estudiante puede analizar el CSV oficial de HealthCore de extremo a extremo con logica separada del entrypoint, lista para reutilizar en una API futura.
 
+## Actualizacion 2026-08-01 (Fase 2 — API FastAPI + UI backoffice)
 
-## Texto fijo (NO BORRAR, MANTENER COMO FOOTER): comando de test para `models.ts`
+### Solicitud del cliente
 
-### Objetivo
+Integrar la logica reutilizable de `services/incidents_analysis/` en la plataforma:
 
-Validar rapidamente los tipos de `src/types/models.ts` y su archivo de pruebas de tipos.
+- Backend: `POST /api/incidents/analyze` (CSV multipart) y `GET /api/incidents/results/export` (CSV del ultimo analisis).
+- Frontend: pagina de analisis de incidencias en `uis/backoffice`, accesible desde el menu, con upload, resumen en pantalla y descarga CSV.
+- Nombres de categorias, estados y reglas invalidas alineados al CONTEXT HealthCore (sin exponer `patient_id`).
 
-### Comando fijo recomendado
+### Backend implementado
 
-Ejecutar desde `packages/shared`:
+- `services/api/main.py` — app FastAPI, CORS para `localhost:3000` / `127.0.0.1:3000`, registro del router.
+- `services/api/routers/incidents.py` — endpoints HTTP; el router solo orquesta, la logica de negocio sigue en `incidents_analysis/`.
+  - `POST /api/incidents/analyze`: acepta `multipart/form-data` campo `file`; valida extension `.csv`; ejecuta `read_incidents` → `validate_incidents` → `analyze_incidents`; persiste ultimo resumen con `export_results` en `data/process/results.csv`; responde JSON.
+  - `GET /api/incidents/results/export`: sirve el ultimo CSV (`FileResponse`); `404` si no hay analisis previo.
+
+### Frontend implementado (`uis/backoffice`)
+
+- Menu: entrada **Incidents** → `/incidents` en `BackofficeShell.tsx`.
+- Pagina: `app/incidents/page.tsx` (upload → analizar → resumen → descargar).
+- Componentes:
+  - `IncidentCsvUpload.tsx` — selector + drag & drop (solo `.csv`).
+  - `IncidentAnalysisSummary.tsx` — totales, `invalid_breakdown` por regla CONTEXT, `by_category`, `by_status`, indice de satisfaccion.
+- Cliente: `lib/services/healthcoreApi.ts` → `NEXT_PUBLIC_HEALTHCORE_API_URL` (default `http://127.0.0.1:8000`). El cliente Tracker (`client.ts`) no se modifico.
+- Tipos: `types/incidents.ts` con claves CONTEXT (`APPOINTMENT`, `OPEN`/`CLOSED`/`DISCARDED`, reglas `invalid_*`, etc.).
+
+### Como arrancar (validacion local)
 
 ```bash
-npm run test:types:models
+# API (raiz del repo)
+python -m uvicorn services.api.main:app --reload
+
+# UI
+cd uis/backoffice
+npm run dev
 ```
 
-### Paso a paso para principiantes
+- Abrir `/incidents`, subir `data/raw/incidents-healthcore.csv`.
+- Esperado: ~100 total / 94 validos / 6 invalidos; desglose de invalidos por regla; descarga de `results.csv`.
 
-1. Abrir terminal en la raiz del proyecto.
-2. Entrar a la carpeta del paquete:
- - `cd /workspaces/ocielgallardo-company-choice/packages/shared`
-3. Ejecutar el test:
- - `npm run test:types:models`
-4. Resultado esperado:
- - Si no aparece ningun error TypeScript, la validacion paso correctamente.
+### Estado
 
-### Comando equivalente (referencia)
+- **Cerrado:** Fase 2 integracion API + UI sobre la misma pipeline del CLI.
+- La logica de negocio permanece en un solo lugar: `services/incidents_analysis/`.
 
-```bash
-npx -y -p typescript tsc --noEmit ../../src/types/models.ts ../../src/types/models.type-test.ts --strict
-```
+### Resultado
+
+Priya Nair (Patient Access) puede analizar el CSV de incidentes desde el backoffice HealthCore y exportar metricas sin PHI, reutilizando exactamente el cerebro del script CLI.
+
+## Hitos alcanzados
+
+- ✅ Arquitectura del analizador definida.
+- ✅ Separación entre CLI y lógica de negocio.
+- ✅ Modelo `Incident` implementado mediante `dataclass`.
+- ✅ Lectura del CSV oficial de HealthCore.
+- ✅ Validación completa según el CONTEXT.
+- ✅ Cálculo de métricas y generación del resumen.
+- ✅ Exportación de resultados a CSV.
+- ✅ Pipeline CLI funcional y preparado para reutilizarse en FastAPI.
+- ✅ API FastAPI: `POST /api/incidents/analyze` + `GET /api/incidents/results/export`.
+- ✅ UI backoffice `/incidents` (upload, resumen CONTEXT, descarga CSV).
+
+## Próximo objetivo
+
+Endurecer validacion HTTP de errores de entrada (fichero vacio / CSV ilegible) si el evaluador lo exige de forma explicita; documentar dependencias Python (`fastapi`, `uvicorn`, `python-multipart`) en un `requirements` del servicio API si se estandariza el empaquetado.
