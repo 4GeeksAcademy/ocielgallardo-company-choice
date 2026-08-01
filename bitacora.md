@@ -121,6 +121,8 @@ Leer los archivos de contexto y comenzar implementacion en TypeScript basada en 
 
 Queda lista la base TypeScript de entidades y utilidades para continuar con siguientes iteraciones (datos de prueba, integracion UI/API, tests y reglas avanzadas).
 
+Queda lista la base TypeScript de entidades y utilidades para continuar con siguientes iteraciones (datos de prueba, integracion UI/API, tests y reglas avanzadas).
+
 ## Actualizacion 2026-06-13 (ordenamientos y busquedas)
 
 ### Solicitud del cliente
@@ -216,10 +218,10 @@ npx http-server . -p 3000 -a 0.0.0.0
 ### Resultado de valores nulos
 
 - Parcialmente cubierto:
-  - En `collections.ts`, `compareValues(...)` contempla `null` y `undefined`.
-  - En validaciones, `phone` y `email` opcionales se manejan de forma segura.
+    En `collections.ts`, `compareValues(...)` contempla `null` y `undefined`.
+    En validaciones, `phone` y `email` opcionales se manejan de forma segura.
 - Riesgo residual:
-  - Si en runtime llegan `null` en campos que TypeScript tipa como `string`/`array` obligatorios (por ejemplo `invoice.billingCodes` o `patient.fullName`), algunas validaciones podrian fallar por acceso directo (`.trim()`, `.length`) antes de construir errores de negocio.
+    Si en runtime llegan `null` en campos que TypeScript tipa como `string`/`array` obligatorios (por ejemplo `invoice.billingCodes` o     `patient.fullName`), algunas validaciones podrian fallar por acceso directo (`.trim()`, `.length`) antes de construir errores de negocio.
 
 ### Conclusión
 
