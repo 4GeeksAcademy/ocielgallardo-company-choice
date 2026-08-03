@@ -1,69 +1,151 @@
-# Propocion de arquitectura Back-end
+# Propuesta de Arquitectura de Backend
 
-He considerado la **arquitectura hexagonal** por su capacidad para desacoplar la lógica de negocio de las tecnologías e integraciones externas. Sin embargo, en la fase actual de HealthCore el backend se centra principalmente en exponer una API REST, gestionar los dominios de pacientes, citas, facturación y reportes, y servir de soporte al frontend. En este contexto, una **arquitectura en capas** organizada por dominios ofrece un equilibrio adecuado entre simplicidad, mantenibilidad y escalabilidad. Además, esta organización permite evolucionar hacia una arquitectura hexagonal si en el futuro aumentan las integraciones y la complejidad del sistema
+## Arquitectura Propuesta
 
-## Propuesta de arquitectura de carpetas y modulos
+Consideré usar una **Arquitectura Hexagonal** porque proporciona una clara separación entre la lógica de negocio y las tecnologías externas. Sin embargo, en la etapa actual de HealthCore, creo que introduciría una complejidad innecesaria.
 
-"Propongo una estructura modular organizada por dominios de negocio. Cada módulo agrupa sus routers, servicios, repositorios, modelos y esquemas relacionados, reduciendo el acoplamiento entre áreas funcionales. Los elementos compartidos, como la configuración, la conexión a la base de datos y las utilidades comunes, se ubican en carpetas independientes (**core, database y common**) para evitar duplicación de código y mantener responsabilidades bien definidas."
+Actualmente, el backend se centra en exponer una API REST, procesar el análisis de incidentes y dar soporte a las interfaces de usuario existentes. Dominios futuros como Pacientes, Citas, Facturación, Reclamaciones e Informes se incorporarán gradualmente, pero el sistema aún no requiere la cantidad de integraciones que justificarían una arquitectura hexagonal completa.
 
-**Core** tendría la responsabilidad de centralizar la configuración global del backend, como la carga de variables de entorno y parámetros comunes de la aplicación. En la fase actual del proyecto no incluiría otros componentes como autenticación o middleware porque todavía no forman parte de los requisitos documentados.
+Por esta razón, propongo usar una **arquitectura por capas organizada por dominios de negocio**. Este enfoque mantiene el proyecto simple, mantenible y escalable, a la vez que permite su evolución hacia una arquitectura más avanzada si los requisitos futuros lo exigen.
 
-**Database** agrupa todos los componentes relacionados con la persistencia de datos. Su objetivo es centralizar la configuración y el acceso a la base de datos para que los distintos módulos del sistema (Patients, Appointments, Billing, Claims, etc.) compartan una misma infraestructura de almacenamiento sin duplicar configuración. Además, esta separación facilita el mantenimiento y la evolución del sistema, ya que cualquier cambio relacionado con la persistencia puede realizarse en un único lugar sin afectar a la lógica de negocio de cada dominio.
+--
 
-**Common** estaría destinada únicamente a componentes reutilizables por varios módulos del backend. Su contenido crecería únicamente cuando aparezcan necesidades compartidas entre dominios, evitando duplicar código.
+# Propuesta de Estructura de Backend
 
-## Organización de endpoints y ruters
+El repositorio actual ya separa el backend en el directorio **services/**. En lugar de rediseñar esta estructura, propongo extenderla manteniendo los mismos principios de organización.
 
-Propongo que al igual que la API del Talent Pipeline Tracker organizaba sus recursos alrededor de un dominio (records), el backend de HealthCore organice sus endpoints alrededor de los dominios del negocio (patients, appointments, billing, claims, reports). Esa decisión hace que la API sea más consistente, fácil de navegar y más sencilla de mantener conforme crezca el proyecto.
+```
+servicios/
+│
+├── api/
+│ ├── main.py
+│ └── routers/
+│ ├── incidents.py
+│ ├── patients.py (futuro)
+│ ├── appointments.py (futuro)
+│ ├── billing.py (futuro)
+│ ├── claims.py (futuro)
+│ └── reports.py (futuro)
+│
+├── incidents_analysis/
+│ ├── analyzer.py
+│ ├── csv_reader.py
+│ ├── validator.py
+│ ├── exporter.py
+│ └── models.py
+│
+├── core/ (futuro)
+│
+├── database/ (futuro)
+│
+└── common/ (futuro, solo si aparecen componentes compartidos)
+```
 
-## Estructura en FastApi
+El proyecto actual ya demuestra una buena separación entre la capa de API y la lógica de análisis de incidentes. La evolución propuesta mantiene el mismo principio al permitir que nuevos dominios de negocio expongan sus propios endpoints, manteniendo su lógica de negocio aislada de la capa HTTP.
 
-Tras investigar las estructuras más habituales en proyectos FastAPI, observé que es común separar responsabilidades como routers, servicios, modelos, esquemas y configuración para mejorar la organización y el mantenimiento del código. Aunque FastAPI no impone una estructura oficial, estas convenciones sirvieron como base para mi propuesta. En el caso de HealthCore, decidí adaptarlas organizando el backend por dominios de negocio (Patients, Appointments, Billing, Claims y Reports), ya que esta organización refleja mejor la estructura funcional del proyecto y facilita su crecimiento y mantenimiento a largo plazo.
+---
 
-## Organizacion de la App
+# Módulos
 
-En una arquitectura con frontend y backend separados, ambas aplicaciones funcionan de forma independiente y se comunican mediante una API REST. El frontend se encarga de la interfaz de usuario y realiza peticiones HTTP al backend, mientras que el backend concentra la lógica de negocio y el acceso a la base de datos. Cada aplicación mantiene sus propias variables de entorno y configuración, y la comunicación entre ambas requiere configurar CORS cuando se ejecutan en orígenes distintos. En el caso de HealthCore, considero adecuado mantener el enfoque de monorepo ya existente, incorporando el backend como un módulo independiente que pueda ser consumido tanto por la web pública como por el backoffice, favoreciendo la reutilización y el mantenimiento del proyecto.
+## api/
 
-## Puntos de Atencion 🛐
+Contiene la aplicación FastAPI.
 
-### Riesgo 1. Mezclar responsabilidades
+Su función es exponer endpoints REST, validar las solicitudes entrantes y delegar el procesamiento a los módulos de negocio correspondientes.
 
-Si la lógica de negocio se implementa directamente en los routers, cada endpoint terminará haciendo demasiado trabajo.
+Los enrutadores deben ser ligeros y evitar implementar lógica de negocio.
 
-Consecuencias:
+--
 
-código difícil de mantener;
-lógica duplicada;
-cambios más propensos a introducir errores.
+## incidents_analysis/
 
-Justificación: la responsabilidad del router debería ser recibir la petición y delegar el trabajo a la capa de servicios.
+Contiene toda la lógica de negocio relacionada con el procesamiento de incidentes CSV.
 
-### Riesgo 2. No organizar el backend por dominios
+Las responsabilidades actuales incluyen:
 
-Si todos los endpoints, modelos y servicios se concentran en pocos archivos o carpetas generales, el proyecto será cada vez más difícil de entender conforme se añadan módulos como Patients, Billing o Reports.
+- lectura de archivos CSV;
 
-Consecuencias:
+- validación de su contenido;
 
-mayor dificultad para localizar el código;
-más conflictos entre desarrolladores;
-mantenimiento más complejo.
+- cálculo de métricas;
 
-### Riesgo 3. Duplicación de lógica
+- exportación de resultados;
 
-Si cada módulo implementa sus propias validaciones o consultas similares sin reutilizar componentes, aparecerá código duplicado.
+- definición de modelos de análisis.
 
-Consecuencias:
+Este módulo ya puede reutilizarse en diferentes puntos de entrada, como la herramienta de línea de comandos y la API REST, evitando así la duplicación de lógica.
 
-más tiempo de mantenimiento;
-inconsistencias entre módulos;
-mayor probabilidad de errores.
+--
 
-### Riesgo 4. Acoplamiento excesivo
+## core (futuro)
 
-Si los módulos dependen demasiado unos de otros, un cambio en Patients podría afectar a Billing o Reports.
+Este módulo centralizaría la configuración del backend.
 
-Consecuencias:
+Inicialmente, solo contendría:
 
-cambios más arriesgados;
-pruebas más complicadas;
-menor capacidad para evolucionar el sistema.
+- configuración de la aplicación;
+
+- carga de variables de entorno;
+
+- valores de configuración compartidos.
+
+Evitaría incluir autenticación o middleware hasta que existan dichos requisitos.
+
+--
+
+## database (futuro)
+
+Responsable de la configuración y persistencia de la base de datos.
+
+Mantener esta responsabilidad aislada permite que todos los módulos de negocio compartan la misma configuración de base de datos sin duplicar código.
+
+---
+
+## Común (futuro)
+
+Este directorio solo se creará cuando se implementen componentes de backend reutilizables.
+
+Su propósito es alojar utilidades compartidas por varios módulos, evitando implementaciones duplicadas y la creación de código genérico innecesario.
+
+---
+
+# Organización de puntos finales
+
+Propongo organizar la API REST por dominios de negocio en lugar de por operaciones técnicas.
+
+La implementación actual ya sigue esta idea a través del punto final de análisis de incidentes.
+
+Los dominios futuros deben seguir utilizando la misma convención.
+
+| Dominio | Puntos finales de ejemplo | Responsabilidad |
+
+|----------|-----------------|----------------|
+
+| Incidentes | GET /incidents<br>POST /incidents/analyze | Análisis de incidentes |
+
+| Pacientes | GET /patients<br>POST /patients | Gestión de pacientes |
+
+| Citas | GET /appointments<br>POST /appointments | Programación de citas |
+
+| Facturación | GET /billing | Información de facturación |
+| Reclamaciones | GET /claims | Reclamaciones de seguros |
+
+| Informes | GET /reports | Paneles de control e informes empresariales |
+
+Esta organización facilita la comprensión de la API, mantiene los endpoints relacionados agrupados y simplifica el mantenimiento futuro.
+
+--
+
+# Convenciones de FastAPI
+
+Tras investigar las estructuras de proyectos FastAPI más comunes, observé que la mayoría de las aplicaciones separan las responsabilidades en enrutadores, lógica de negocio, modelos, esquemas y configuración.
+
+Aunque FastAPI no impone una estructura de proyecto oficial, estas convenciones influyeron en mi propuesta.
+
+En lugar de crear una organización completamente nueva, propongo adaptar estas prácticas al repositorio actual, manteniendo la capa de API independiente de los módulos de lógica de negocio y ampliando la estructura existente a medida que se añadan nuevos dominios.
+
+--
+
+# Organización del frontend y el backend
+
+HealthCore utiliza un monorepo.
