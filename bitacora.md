@@ -670,3 +670,26 @@ Priya Nair (Patient Access) puede analizar el CSV de incidentes desde el backoff
 ## Próximo objetivo
 
 Endurecer validacion HTTP de errores de entrada (fichero vacio / CSV ilegible) si el evaluador lo exige de forma explicita; documentar dependencias Python (`fastapi`, `uvicorn`, `python-multipart`) en un `requirements` del servicio API si se estandariza el empaquetado.
+
+## Actualizacion 2026-08-04 (alineacion documental Milestone 09)
+
+### Solicitud del cliente
+
+Registrar en bitacora los cambios recientes de `docs/` como evidencia de alineacion con el proyecto academico.
+
+### Cambios documentados
+
+- Se incorporo una nueva seccion de contexto para el hito **09 - Lightweight Storage API** en `docs/supplier-directory/`.
+- Se agregaron los archivos:
+  - `docs/supplier-directory/CONTEXT-HealthCore.md` (ingles).
+  - `docs/supplier-directory/CONTEXT-HealthCore.es.md` (espanol).
+- La nueva documentacion define el dominio **Supplier Directory** de HealthCore:
+  - modelo de proveedor;
+  - categorias y estados validos;
+  - dataset semilla (`SUPPLIERS_SEED`);
+  - restricciones de negocio (moneda por pais, trazabilidad de tarifa, suspension en lugar de borrado);
+  - requerimientos funcionales para frontend.
+
+### Resultado
+
+La base documental del repositorio queda actualizada para iniciar implementacion de almacenamiento ligero (TinyDB) en las rutas permitidas por la academia, con reglas de negocio y alcance funcional claramente definidos.

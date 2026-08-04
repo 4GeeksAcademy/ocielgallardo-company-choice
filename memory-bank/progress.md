@@ -16,6 +16,12 @@
   - Root `AGENTS.md` policy file.
   - Focused rule files in `.agents/rules/`.
 
+## Recently Completed (Supplier directory models)
+- Pydantic enums and models in `services/api/models.py` for Milestone 09 supplier directory:
+  - Enums: `Country`, `Currency`, `SupplierStatus`, `SupplierCategory`, `ComplianceAgreement`.
+  - Models: `SupplierCreate`, `SupplierRateUpdate`, `SupplierStatusUpdate`, `Supplier`.
+  - Enforces USA/USD and UK/GBP pairing via `model_validator`.
+
 ## Recently Completed (API structure)
 - HealthCore FastAPI entrypoint at `services/api/main.py` (CORS for local backoffice origins).
 - Incidents HTTP routes in `services/api/routers/incidents.py`:
