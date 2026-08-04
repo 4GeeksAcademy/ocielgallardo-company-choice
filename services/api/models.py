@@ -5,8 +5,12 @@ from __future__ import annotations
 from datetime import date, datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
+
+# ==========================================================
+# Enums
+# ==========================================================
 
 class Country(str, Enum):
     USA = "USA"
@@ -42,8 +46,12 @@ class ComplianceAgreement(str, Enum):
     BOTH = "both"
 
 
-class SupplierCreate(BaseModel):
-    """Payload to register a new supplier."""
+# ==========================================================
+# Base model
+# ==========================================================
+
+class SupplierBase(BaseModel):
+    """Common supplier fields."""
 
     name: str = Field(min_length=1)
     country: Country
@@ -53,30 +61,46 @@ class SupplierCreate(BaseModel):
     status: SupplierStatus = SupplierStatus.ACTIVE
     compliance_agreement: ComplianceAgreement | None = None
     contract_renewal_date: date | None = None
-    contact_email: str | None = None
+    contact_email: EmailStr | None = None
     notes: str | None = None
 
-    @field_validator("contact_email")
-    @classmethod
-    def email_must_look_valid(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        if "@" not in value or "." not in value.split("@")[-1]:
-            raise ValueError("contact_email must be a valid email address")
-        return value
+
+# ==========================================================
+# Create supplier
+# ==========================================================
+
+class SupplierCreate(SupplierBase):
+    """Payload to register a new supplier."""
 
     @model_validator(mode="after")
-    def currency_must_match_country(self) -> SupplierCreate:
-        expected = Currency.USD if self.country is Country.USA else Currency.GBP
-        if self.currency is not expected:
+    def currency_must_match_country(self):
+        expected = Currency.USD if self.country == Country.USA else Currency.GBP
+
+        if self.currency != expected:
             raise ValueError(
                 f"currency must be '{expected.value}' when country is '{self.country.value}'"
             )
+
         return self
 
 
+# ==========================================================
+# Response model
+# ==========================================================
+
+class Supplier(SupplierCreate):
+    """Supplier returned by the API."""
+
+    id: int
+    updated_at: datetime
+
+
+# ==========================================================
+# PATCH models
+# ==========================================================
+
 class SupplierRateUpdate(BaseModel):
-    """Payload to update a supplier's monthly rate."""
+    """Payload to update the supplier monthly rate."""
 
     monthly_rate: float = Field(gt=0)
 
@@ -85,10 +109,3 @@ class SupplierStatusUpdate(BaseModel):
     """Payload to activate or suspend a supplier."""
 
     status: SupplierStatus
-
-
-class Supplier(SupplierCreate):
-    """Supplier record as returned by the API (includes system fields)."""
-
-    id: int
-    updated_at: datetime
