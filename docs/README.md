@@ -6,3 +6,25 @@ This folder holds **cross-cutting documentation** for the monorepo: architecture
 - **Recommendation**: organize docs by topic (architecture, deployment, data, security, observability, etc.) and keep links from each component’s README to these guides.
 
 > _Spanish version: [README.es.md](./README.es.md)._
+
+docs/
+├── README.md
+├── README.es.md
+│
+├── architecture/
+│   ├── ARCHITECTURE_PROPOSAL.md
+│   └── ARCHITECTURE_PROPOSAL.es.md
+│
+├── data-contract/
+│   ├── CONTEXT-HealthCore.md
+│   ├── CONTEXT-HealthCore.es.md
+│   ├── functional-design-analyze.md
+│   └── functional-design-analyze.es.md
+│
+├── api/                  (futuro)
+│
+├── decisions/            (futuro)
+│
+├── diagrams/             (futuro)
+│
+└── sprint-notes/         (futuro)
