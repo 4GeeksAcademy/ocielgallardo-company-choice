@@ -18,3 +18,6 @@ env/
 
 # Regenerable analysis export (CLI + POST /api/incidents/analyze)
 data/process/results.csv
+
+# Runtime TinyDB file for Supplier Directory API
+data/process/suppliers/suppliers.json

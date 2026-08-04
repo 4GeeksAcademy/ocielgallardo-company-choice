@@ -92,7 +92,7 @@ class Supplier(SupplierCreate):
     """Supplier returned by the API."""
 
     id: int
-    updated_at: datetime
+    updated_at: datetime | None = None
 
 
 # ==========================================================

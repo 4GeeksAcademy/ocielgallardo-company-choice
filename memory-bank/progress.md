@@ -29,6 +29,16 @@
   - `GET /api/incidents/results/export` — downloadable CSV of last analysis (`404` if none).
 - Business logic remains in `services/incidents_analysis/` (no duplication in the router).
 
+## Recently Completed (Supplier runtime data organization)
+- Reorganized TinyDB runtime persistence for supplier directory:
+  - from `data/suppliers.json`
+  - to `data/process/suppliers/suppliers.json`
+- Updated `services/api/database.py` to point to the new runtime path and ensure parent directory creation.
+- Updated `.gitignore` to ignore runtime artifacts:
+  - `data/process/results.csv`
+  - `data/process/suppliers/suppliers.json`
+- Verified API continuity after reorganization with `GET /suppliers` returning `200`.
+
 ## Recently Completed (Incidents backoffice UI)
 - Nav entry `Incidents` → `/incidents` in `uis/backoffice/components/layout/BackofficeShell.tsx`.
 - Page `uis/backoffice/app/incidents/page.tsx` with CSV upload (drag/drop), analyze, summary panels, and CSV download.

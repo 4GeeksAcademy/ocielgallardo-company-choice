@@ -693,3 +693,27 @@ Registrar en bitacora los cambios recientes de `docs/` como evidencia de alineac
 ### Resultado
 
 La base documental del repositorio queda actualizada para iniciar implementacion de almacenamiento ligero (TinyDB) en las rutas permitidas por la academia, con reglas de negocio y alcance funcional claramente definidos.
+
+## Actualizacion 2026-08-04 (orden de runtime en data + ignore de artefactos)
+
+### Solicitud del cliente
+
+Ordenar los archivos entregados por la API dentro de `data/` por responsabilidad, sin eliminar contenido, y evitar versionar archivos runtime locales.
+
+### Cambios aplicados
+
+- Se movio `data/suppliers.json` a `data/process/suppliers/suppliers.json` para alinear persistencia TinyDB con la carpeta de outputs operativos.
+- Se actualizo `services/api/database.py` para leer/escribir TinyDB desde la nueva ruta:
+  - `data/process/suppliers/suppliers.json`
+- Se actualizo `.gitignore` para no versionar artefactos runtime:
+  - `data/process/results.csv`
+  - `data/process/suppliers/suppliers.json`
+
+### Validacion ejecutada
+
+- `GET /suppliers` respondio `200` tras el movimiento de ruta, confirmando que la API mantiene funcionalidad.
+- Se verifico presencia del archivo en la nueva ubicacion `data/process/suppliers/suppliers.json`.
+
+### Resultado
+
+La estructura de `data/` queda mas ordenada por responsabilidad (raw/process/eval/pipelines) y los artefactos de ejecucion local quedan fuera de versionado para evitar ruido en commits.
