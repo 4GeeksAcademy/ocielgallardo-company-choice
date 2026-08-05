@@ -29,11 +29,34 @@
   - `GET /api/incidents/results/export` — downloadable CSV of last analysis (`404` if none).
 - Business logic remains in `services/incidents_analysis/` (no duplication in the router).
 
+## Recently Completed (Supplier runtime data organization)
+- Reorganized TinyDB runtime persistence for supplier directory:
+  - from `data/suppliers.json`
+  - to `data/process/suppliers/suppliers.json`
+- Updated `services/api/database.py` to point to the new runtime path and ensure parent directory creation.
+- Updated `.gitignore` to ignore runtime artifacts:
+  - `data/process/results.csv`
+  - `data/process/suppliers/suppliers.json`
+- Verified API continuity after reorganization with `GET /suppliers` returning `200`.
+
 ## Recently Completed (Incidents backoffice UI)
 - Nav entry `Incidents` → `/incidents` in `uis/backoffice/components/layout/BackofficeShell.tsx`.
 - Page `uis/backoffice/app/incidents/page.tsx` with CSV upload (drag/drop), analyze, summary panels, and CSV download.
 - Client `uis/backoffice/lib/services/healthcoreApi.ts` targets `NEXT_PUBLIC_HEALTHCORE_API_URL` (default `http://127.0.0.1:8000`); Tracker client unchanged.
 - Types in `uis/backoffice/types/incidents.ts` use CONTEXT category/status/invalid rule names.
+
+## Recently Completed (Supplier directory backoffice UI)
+- Added nav entry `Suppliers` in `uis/backoffice/components/layout/BackofficeShell.tsx`.
+- Added route `uis/backoffice/app/suppliers/page.tsx`.
+- Implemented supplier module in `uis/backoffice/components/SuppliersWorkspace.tsx`:
+  - list from `GET /suppliers`
+  - client-side filters by country/category
+  - loading, error, and empty states
+  - optimistic in-memory refresh after create/rate/status actions
+- Added create form `uis/backoffice/components/forms/SupplierForm.tsx` with basic client validation.
+- Added `uis/backoffice/lib/services/suppliersApi.ts` and `uis/backoffice/hooks/useSuppliers.ts`.
+- Added supplier types and labels in `uis/backoffice/types/suppliers.ts`.
+- Verified with `cd uis/backoffice && npm run build` (route `/suppliers` generated successfully).
 
 ## Recently Completed (Architecture Migration)
 - Migrated internal UI app path from `uis/talent-pipeline-tracker` to `uis/backoffice`.

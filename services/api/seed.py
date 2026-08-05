@@ -1,3 +1,23 @@
+"""Seeder for the HealthCore Supplier Directory.
+
+Loads initial suppliers from SUPPLIERS_SEED into TinyDB.
+Idempotent: running it multiple times does not create duplicates.
+
+Usage:
+    python -m services.api.seed
+"""
+import sys
+from pathlib import Path
+
+# Ensure the repo root is on sys.path so we can import from services.api
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from services.api.database import suppliers_table
+from services.api.models import SupplierCreate
+
+
 SUPPLIERS_SEED = [
     {
         "name": "McKesson Medical Supplies",
@@ -166,3 +186,31 @@ SUPPLIERS_SEED = [
         "contact_email": "procurement@nuffieldhealth.com",
     },
 ]
+
+
+def run_seed():
+    """Insert seed suppliers if they do not already exist (by name)."""
+    existing_names = {doc["name"] for doc in suppliers_table.all()}
+    inserted = 0
+
+    for data in SUPPLIERS_SEED:
+        if data["name"] in existing_names:
+            continue
+
+        # Validate via Pydantic before inserting
+        validated = SupplierCreate(**data)
+        doc = validated.model_dump(mode="json")
+        # Convertir date a string ISO y datetime a None (aún no actualizado)
+        doc["updated_at"] = None
+        suppliers_table.insert(doc)
+        inserted += 1
+
+    print(f"Seed completed. {inserted} new supplier(s) inserted.")
+    print(f"Total suppliers in database: {len(suppliers_table)}")
+
+    if inserted == 0:
+        print("No duplicates found. Database already up to date.")
+
+
+if __name__ == "__main__":
+    run_seed()

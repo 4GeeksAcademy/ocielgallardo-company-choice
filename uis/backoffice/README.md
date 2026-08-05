@@ -18,8 +18,35 @@ Internal Next.js application for HealthCore employees.
 - `/claims` Placeholder module
 - `/reports` Placeholder module
 - `/incidents` Patient incident CSV analysis (upload, summary, CSV download)
+- `/suppliers` Supplier directory (list, filters, create, rate update, status update)
 - `/applications` Candidate pipeline list and create form
 - `/candidates/[id]` Candidate detail, edit, stage/status controls, notes
+
+## Supplier directory (`/suppliers`)
+
+Uses the local HealthCore FastAPI supplier endpoints exposed by `services/api`.
+
+### What the UI supports
+
+1. Loads suppliers from `GET /suppliers`.
+2. Filters the list by country and category without page reload.
+3. Registers a new supplier with client-side validation for required fields.
+4. Shows API validation errors returned by the backend.
+5. Updates `monthly_rate` with `PATCH /suppliers/{id}/rate`.
+6. Updates `status` with `PATCH /suppliers/{id}/status`.
+7. Visually distinguishes `active` and `suspended` suppliers.
+
+### Related files
+
+| Path | Role |
+| --- | --- |
+| `app/suppliers/page.tsx` | Supplier directory route |
+| `components/SuppliersWorkspace.tsx` | Main supplier UI orchestration |
+| `components/forms/SupplierForm.tsx` | Create supplier form with client validation |
+| `components/suppliers/SupplierStatusBadge.tsx` | Visual status badge |
+| `hooks/useSuppliers.ts` | Supplier loading state and refresh |
+| `lib/services/suppliersApi.ts` | `GET /suppliers`, `POST /suppliers`, supplier PATCH actions |
+| `types/suppliers.ts` | Supplier types, options, labels, and helpers |
 
 ## Patient incidents (`/incidents`)
 
@@ -63,6 +90,10 @@ Client: `lib/services/healthcoreApi.ts`
 
 - Default: `http://127.0.0.1:8000`
 - Override: set `NEXT_PUBLIC_HEALTHCORE_API_URL` (restart `npm run dev` after changing it)
+- Local file ready to edit: `uis/backoffice/.env.local`
+- Commit-safe example: `uis/backoffice/.env.example`
+
+If you open the UI through a published Codespaces URL instead of localhost, replace the value in `.env.local` with the published URL of the API port.
 
 CORS on the API allows `localhost` / `127.0.0.1` on ports **3000** and **3001**. If Next uses another port, add that origin in `services/api/main.py`.
 

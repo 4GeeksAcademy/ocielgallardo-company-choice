@@ -693,3 +693,64 @@ Registrar en bitacora los cambios recientes de `docs/` como evidencia de alineac
 ### Resultado
 
 La base documental del repositorio queda actualizada para iniciar implementacion de almacenamiento ligero (TinyDB) en las rutas permitidas por la academia, con reglas de negocio y alcance funcional claramente definidos.
+
+## Actualizacion 2026-08-04 (orden de runtime en data + ignore de artefactos)
+
+### Solicitud del cliente
+
+Ordenar los archivos entregados por la API dentro de `data/` por responsabilidad, sin eliminar contenido, y evitar versionar archivos runtime locales.
+
+### Cambios aplicados
+
+- Se movio `data/suppliers.json` a `data/process/suppliers/suppliers.json` para alinear persistencia TinyDB con la carpeta de outputs operativos.
+- Se actualizo `services/api/database.py` para leer/escribir TinyDB desde la nueva ruta:
+  - `data/process/suppliers/suppliers.json`
+- Se actualizo `.gitignore` para no versionar artefactos runtime:
+  - `data/process/results.csv`
+  - `data/process/suppliers/suppliers.json`
+
+### Validacion ejecutada
+
+- `GET /suppliers` respondio `200` tras el movimiento de ruta, confirmando que la API mantiene funcionalidad.
+- Se verifico presencia del archivo en la nueva ubicacion `data/process/suppliers/suppliers.json`.
+
+### Resultado
+
+La estructura de `data/` queda mas ordenada por responsabilidad (raw/process/eval/pipelines) y los artefactos de ejecucion local quedan fuera de versionado para evitar ruido en commits.
+
+## Actualizacion 2026-08-05 (Supplier Directory — frontend backoffice)
+
+### Solicitud del cliente
+
+Completar la parte faltante del hito 09 implementando en `uis/backoffice` la interfaz del directorio de proveedores conectada a la API ya construida.
+
+### Cambios aplicados
+
+- Se agrego la ruta `uis/backoffice/app/suppliers/page.tsx`.
+- Se agrego acceso de navegacion **Suppliers** en `BackofficeShell.tsx`.
+- Se implemento `SuppliersWorkspace` como orquestador de la pantalla:
+  - carga desde `GET /suppliers`;
+  - filtros en cliente por `country` y `category` sin recarga;
+  - estados `loading`, error y vacio;
+  - refresco visual tras crear o actualizar proveedores.
+- Se creo `SupplierForm` con validacion cliente para:
+  - nombre obligatorio;
+  - al menos una categoria;
+  - `monthly_rate > 0`;
+  - email valido si se informa.
+- Se creo cliente HTTP `lib/services/suppliersApi.ts` para:
+  - `GET /suppliers`;
+  - `POST /suppliers`;
+  - `PATCH /suppliers/{id}/rate`;
+  - `PATCH /suppliers/{id}/status`.
+- Se agregaron tipos y constantes en `types/suppliers.ts`.
+- Se agrego `SupplierStatusBadge` para diferenciar visualmente proveedores `active` y `suspended`.
+
+### Validacion ejecutada
+
+- `cd uis/backoffice && npm run build` → OK.
+- La build genero correctamente la nueva ruta estatica `/suppliers`.
+
+### Resultado
+
+El backoffice ya permite visualizar y operar el Supplier Directory de HealthCore desde interfaz: listado, filtros, alta, cambio de tarifa y cambio de estado, conectado al backend FastAPI del hito.

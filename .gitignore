@@ -1,20 +1,56 @@
+# Dependencies
 node_modules/
-.next/
-.env*
-.personal-style/
 
-# Python bytecode / caches
+# Next.js / frontend build
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment secrets (keep examples tracked)
+.env
+.env.*
+!.env.example
+!.env*.example
+
+# Logs & debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors / IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-
-# Local virtual environments (FastAPI / uvicorn installs)
 .venv/
 venv/
 env/
+*.egg-info/
+.coverage
+htmlcov/
+.tox/
+.Python
 
-# Regenerable analysis export (CLI + POST /api/incidents/analyze)
+# Project-specific
+.personal-style/
 data/process/results.csv

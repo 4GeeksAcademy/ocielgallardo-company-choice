@@ -111,6 +111,10 @@ Read the linked `README.md` inside each folder before you start coding there.
 | [`data/process/`](./data/process/README.md)     | Clean / intermediate outputs | Save artifacts produced by pipelines (features, aggregates, clean tables) |
 | [`data/eval/`](./data/eval/README.md)           | Quality measurement          | Golden sets, RAG/agent eval datasets, experiment metrics                  |
 
+Runtime note:
+- API runtime artifacts are also persisted under `data/process/` when needed by local execution.
+- Current examples: `data/process/results.csv` (incidents export) and `data/process/suppliers/suppliers.json` (TinyDB for supplier directory).
+
 **Flow:** `raw` → `pipelines` → `process` → consumed by `services/`, `uis/`, or `agents/`. Use `eval` to prove quality.
 
 ### `agents/` — AI agents
