@@ -54,3 +54,6 @@ htmlcov/
 # Project-specific
 .personal-style/
 data/process/results.csv
+
+# Runtime TinyDB file for Supplier Directory API
+data/process/suppliers/suppliers.json

@@ -38,6 +38,7 @@
   - `data/process/results.csv`
   - `data/process/suppliers/suppliers.json`
 - Verified API continuity after reorganization with `GET /suppliers` returning `200`.
+- Restored ignore for `data/process/suppliers/suppliers.json` after it was accidentally re-tracked on `main`; file kept local-only via `git rm --cached`.
 
 ## Recently Completed (Incidents backoffice UI)
 - Nav entry `Incidents` → `/incidents` in `uis/backoffice/components/layout/BackofficeShell.tsx`.
