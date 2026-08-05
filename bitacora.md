@@ -717,3 +717,40 @@ Ordenar los archivos entregados por la API dentro de `data/` por responsabilidad
 ### Resultado
 
 La estructura de `data/` queda mas ordenada por responsabilidad (raw/process/eval/pipelines) y los artefactos de ejecucion local quedan fuera de versionado para evitar ruido en commits.
+
+## Actualizacion 2026-08-05 (Supplier Directory — frontend backoffice)
+
+### Solicitud del cliente
+
+Completar la parte faltante del hito 09 implementando en `uis/backoffice` la interfaz del directorio de proveedores conectada a la API ya construida.
+
+### Cambios aplicados
+
+- Se agrego la ruta `uis/backoffice/app/suppliers/page.tsx`.
+- Se agrego acceso de navegacion **Suppliers** en `BackofficeShell.tsx`.
+- Se implemento `SuppliersWorkspace` como orquestador de la pantalla:
+  - carga desde `GET /suppliers`;
+  - filtros en cliente por `country` y `category` sin recarga;
+  - estados `loading`, error y vacio;
+  - refresco visual tras crear o actualizar proveedores.
+- Se creo `SupplierForm` con validacion cliente para:
+  - nombre obligatorio;
+  - al menos una categoria;
+  - `monthly_rate > 0`;
+  - email valido si se informa.
+- Se creo cliente HTTP `lib/services/suppliersApi.ts` para:
+  - `GET /suppliers`;
+  - `POST /suppliers`;
+  - `PATCH /suppliers/{id}/rate`;
+  - `PATCH /suppliers/{id}/status`.
+- Se agregaron tipos y constantes en `types/suppliers.ts`.
+- Se agrego `SupplierStatusBadge` para diferenciar visualmente proveedores `active` y `suspended`.
+
+### Validacion ejecutada
+
+- `cd uis/backoffice && npm run build` → OK.
+- La build genero correctamente la nueva ruta estatica `/suppliers`.
+
+### Resultado
+
+El backoffice ya permite visualizar y operar el Supplier Directory de HealthCore desde interfaz: listado, filtros, alta, cambio de tarifa y cambio de estado, conectado al backend FastAPI del hito.

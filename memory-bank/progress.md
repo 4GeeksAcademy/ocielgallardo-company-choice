@@ -45,6 +45,19 @@
 - Client `uis/backoffice/lib/services/healthcoreApi.ts` targets `NEXT_PUBLIC_HEALTHCORE_API_URL` (default `http://127.0.0.1:8000`); Tracker client unchanged.
 - Types in `uis/backoffice/types/incidents.ts` use CONTEXT category/status/invalid rule names.
 
+## Recently Completed (Supplier directory backoffice UI)
+- Added nav entry `Suppliers` in `uis/backoffice/components/layout/BackofficeShell.tsx`.
+- Added route `uis/backoffice/app/suppliers/page.tsx`.
+- Implemented supplier module in `uis/backoffice/components/SuppliersWorkspace.tsx`:
+  - list from `GET /suppliers`
+  - client-side filters by country/category
+  - loading, error, and empty states
+  - optimistic in-memory refresh after create/rate/status actions
+- Added create form `uis/backoffice/components/forms/SupplierForm.tsx` with basic client validation.
+- Added `uis/backoffice/lib/services/suppliersApi.ts` and `uis/backoffice/hooks/useSuppliers.ts`.
+- Added supplier types and labels in `uis/backoffice/types/suppliers.ts`.
+- Verified with `cd uis/backoffice && npm run build` (route `/suppliers` generated successfully).
+
 ## Recently Completed (Architecture Migration)
 - Migrated internal UI app path from `uis/talent-pipeline-tracker` to `uis/backoffice`.
 - Added a new public Next.js app at `uis/website` (App Router, componentized sections, and intake form route).
