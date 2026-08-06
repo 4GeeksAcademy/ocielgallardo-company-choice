@@ -1,23 +1,17 @@
-"""Supplier Directory endpoints for HealthCore.
-
-Separación de responsabilidades:
-- El router solo orquesta HTTP (recibir peticiones, devolver respuestas).
-- database.py gestiona TinyDB.
-- models.py define las reglas de validación.
-"""
+"""Supplier directory business logic (TinyDB persistence)."""
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query
-
-from services.api.database import suppliers_table
-from services.api.models import (
+from services.app.core.database import suppliers_table
+from services.app.models.supplier import (
     Supplier,
     SupplierCreate,
     SupplierRateUpdate,
     SupplierStatusUpdate,
 )
 
-router = APIRouter(prefix="/suppliers", tags=["suppliers"])
+
+class SupplierNotFoundError(LookupError):
+    """Raised when a supplier id does not exist in TinyDB."""
 
 
 def _doc_to_response(doc) -> Supplier:
@@ -38,9 +32,8 @@ def _doc_to_response(doc) -> Supplier:
     )
 
 
-@router.post("", response_model=Supplier, status_code=201)
-def create_supplier(payload: SupplierCreate):
-    """Register a new supplier. Rejects invalid data with 422."""
+def create_supplier(payload: SupplierCreate) -> Supplier:
+    """Register a new supplier."""
     doc = payload.model_dump(mode="json")
     doc["updated_at"] = None
     doc_id = suppliers_table.insert(doc)
@@ -48,12 +41,11 @@ def create_supplier(payload: SupplierCreate):
     return _doc_to_response(stored)
 
 
-@router.get("", response_model=list[Supplier])
 def list_suppliers(
-    country: str | None = Query(default=None),
-    category: str | None = Query(default=None),
-):
-    """List all suppliers, optionally filtered by country and/or category."""
+    country: str | None = None,
+    category: str | None = None,
+) -> list[Supplier]:
+    """List suppliers, optionally filtered by country and/or category."""
     results = suppliers_table.all()
 
     if country:
@@ -64,21 +56,19 @@ def list_suppliers(
     return [_doc_to_response(r) for r in results]
 
 
-@router.get("/{supplier_id}", response_model=Supplier)
-def get_supplier(supplier_id: int):
-    """Get a single supplier by ID. Returns 404 if not found."""
+def get_supplier(supplier_id: int) -> Supplier:
+    """Get a single supplier by ID."""
     doc = suppliers_table.get(doc_id=supplier_id)
     if doc is None:
-        raise HTTPException(status_code=404, detail="Supplier not found")
+        raise SupplierNotFoundError("Supplier not found")
     return _doc_to_response(doc)
 
 
-@router.patch("/{supplier_id}/rate", response_model=Supplier)
-def update_supplier_rate(supplier_id: int, payload: SupplierRateUpdate):
+def update_supplier_rate(supplier_id: int, payload: SupplierRateUpdate) -> Supplier:
     """Update a supplier's monthly rate and record the timestamp."""
     doc = suppliers_table.get(doc_id=supplier_id)
     if doc is None:
-        raise HTTPException(status_code=404, detail="Supplier not found")
+        raise SupplierNotFoundError("Supplier not found")
 
     now = datetime.now(timezone.utc).isoformat()
     suppliers_table.update(
@@ -89,12 +79,13 @@ def update_supplier_rate(supplier_id: int, payload: SupplierRateUpdate):
     return _doc_to_response(updated)
 
 
-@router.patch("/{supplier_id}/status", response_model=Supplier)
-def update_supplier_status(supplier_id: int, payload: SupplierStatusUpdate):
-    """Activate or suspend a supplier. Rejects invalid status with 422."""
+def update_supplier_status(
+    supplier_id: int, payload: SupplierStatusUpdate
+) -> Supplier:
+    """Activate or suspend a supplier."""
     doc = suppliers_table.get(doc_id=supplier_id)
     if doc is None:
-        raise HTTPException(status_code=404, detail="Supplier not found")
+        raise SupplierNotFoundError("Supplier not found")
 
     suppliers_table.update(
         {"status": payload.status.value},
@@ -104,12 +95,10 @@ def update_supplier_status(supplier_id: int, payload: SupplierStatusUpdate):
     return _doc_to_response(updated)
 
 
-@router.delete("/{supplier_id}", status_code=200)
-def delete_supplier(supplier_id: int):
-    """Delete a supplier from the directory. Returns 404 if not found."""
+def delete_supplier(supplier_id: int) -> None:
+    """Delete a supplier from the directory."""
     doc = suppliers_table.get(doc_id=supplier_id)
     if doc is None:
-        raise HTTPException(status_code=404, detail="Supplier not found")
+        raise SupplierNotFoundError("Supplier not found")
 
     suppliers_table.remove(doc_ids=[supplier_id])
-    return {"detail": "Supplier deleted"}

@@ -15,30 +15,30 @@ Por esta razón, propongo usar una **arquitectura por capas organizada por domin
 El repositorio actual ya separa el backend en el directorio **services/**. En lugar de rediseñar esta estructura, propongo extenderla manteniendo los mismos principios de organización.
 
 ```
-servicios/
+services/
 │
-├── api/
-│ ├── main.py
-│ └── routers/
-│ ├── incidents.py
-│ ├── patients.py (futuro)
-│ ├── appointments.py (futuro)
-│ ├── billing.py (futuro)
-│ ├── claims.py (futuro)
-│ └── reports.py (futuro)
+├── app/
+│   ├── main.py
+│   ├── core/                    # database (TinyDB), seed
+│   ├── models/                  # modelos Pydantic (p. ej. supplier)
+│   ├── domain/                  # orquestacion de negocio
+│   └── routers/
+│       ├── incidents.py
+│       ├── suppliers.py
+│       ├── patients.py          (futuro)
+│       ├── appointments.py      (futuro)
+│       ├── billing.py           (futuro)
+│       ├── claims.py            (futuro)
+│       └── reports.py           (futuro)
 │
 ├── incidents_analysis/
-│ ├── analyzer.py
-│ ├── csv_reader.py
-│ ├── validator.py
-│ ├── exporter.py
-│ └── models.py
+│   ├── analyzer.py
+│   ├── csv_reader.py
+│   ├── validator.py
+│   ├── exporter.py
+│   └── models.py
 │
-├── core/ (futuro)
-│
-├── database/ (futuro)
-│
-└── common/ (futuro, solo si aparecen componentes compartidos)
+└── (placeholders de dominio: gateway, clinical-operations, revenue-cycle, compliance)
 ```
 
 El proyecto actual ya demuestra una buena separación entre la capa de API y la lógica de análisis de incidentes. La evolución propuesta mantiene el mismo principio al permitir que nuevos dominios de negocio expongan sus propios endpoints, manteniendo su lógica de negocio aislada de la capa HTTP.
@@ -47,9 +47,15 @@ El proyecto actual ya demuestra una buena separación entre la capa de API y la 
 
 # Módulos
 
-## api/
+## app/
 
-Contiene la aplicación FastAPI.
+Contiene la aplicación FastAPI, organizada en capas:
+
+- `main.py` — entrypoint, CORS, registro de routers
+- `core/` — infraestructura compartida (TinyDB, seed)
+- `models/` — modelos Pydantic
+- `domain/` — orquestación de negocio (llama a paquetes como `incidents_analysis`)
+- `routers/` — solo endpoints HTTP
 
 Su función es exponer endpoints REST, validar las solicitudes entrantes y delegar el procesamiento a los módulos de negocio correspondientes.
 
@@ -77,35 +83,30 @@ Este módulo ya puede reutilizarse en diferentes puntos de entrada, como la herr
 
 --
 
-## core (futuro)
+## core/
 
-Este módulo centralizaría la configuración del backend.
+Vive en `services/app/core/` y centraliza la infraestructura compartida del backend.
 
-Inicialmente, solo contendría:
+Actualmente incluye:
 
-- configuración de la aplicación;
+- inicializacion TinyDB del directorio de proveedores;
+- script de seed de proveedores.
 
-- carga de variables de entorno;
-
-- valores de configuración compartidos.
-
-Evitaría incluir autenticación o middleware hasta que existan dichos requisitos.
-
---
-
-## database (futuro)
-
-Responsable de la configuración y persistencia de la base de datos.
-
-Mantener esta responsabilidad aislada permite que todos los módulos de negocio compartan la misma configuración de base de datos sin duplicar código.
+La configuracion de aplicacion / variables de entorno puede crecer aqui cuando haga falta. Evitar autenticacion o middleware hasta que existan esos requisitos.
 
 ---
 
-## Común (futuro)
+## database/
 
-Este directorio solo se creará cuando se implementen componentes de backend reutilizables.
+Los adaptadores de persistencia viven por ahora en `app/core/` (TinyDB). Un paquete top-level `database/` solo deberia crearse si aparecen multiples backends o factories de conexion compartidas.
 
-Su propósito es alojar utilidades compartidas por varios módulos, evitando implementaciones duplicadas y la creación de código genérico innecesario.
+---
+
+## Comun (futuro)
+
+Este directorio solo se creara cuando se implementen componentes de backend reutilizables.
+
+Su proposito es alojar utilidades compartidas por varios modulos, evitando implementaciones duplicadas y la creacion de codigo generico innecesario.
 
 ---
 

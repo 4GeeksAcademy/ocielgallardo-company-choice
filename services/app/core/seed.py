@@ -4,18 +4,18 @@ Loads initial suppliers from SUPPLIERS_SEED into TinyDB.
 Idempotent: running it multiple times does not create duplicates.
 
 Usage:
-    python -m services.api.seed
+    python -m services.app.core.seed
 """
 import sys
 from pathlib import Path
 
-# Ensure the repo root is on sys.path so we can import from services.api
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+# Ensure the repo root is on sys.path so we can import from services.app
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from services.api.database import suppliers_table
-from services.api.models import SupplierCreate
+from services.app.core.database import suppliers_table
+from services.app.models.supplier import SupplierCreate
 
 
 SUPPLIERS_SEED = [
