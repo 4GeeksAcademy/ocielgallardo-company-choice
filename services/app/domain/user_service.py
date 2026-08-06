@@ -64,3 +64,7 @@ def get_user_by_email(email: str) -> dict | None:
     User = Query()
     rows = users_table.search(User.email == email)
     return rows[0] if rows else None
+
+def list_users() -> list[UserPublic]:
+    """Return all users without password hashes."""
+    return [_doc_to_public(doc) for doc in users_table.all()]
