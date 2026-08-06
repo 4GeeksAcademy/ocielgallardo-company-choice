@@ -14,3 +14,10 @@ DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 db = TinyDB(DB_PATH)
 suppliers_table = db.table("suppliers")
+
+AUTH_DB_PATH = DATA_DIR / "process" / "auth" / "auth.json"
+AUTH_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+auth_db = TinyDB(AUTH_DB_PATH)
+users_table = auth_db.table("users")
+profiles_table = auth_db.table("profiles")
