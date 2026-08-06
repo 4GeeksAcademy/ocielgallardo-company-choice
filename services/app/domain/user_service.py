@@ -3,8 +3,12 @@ from tinydb import Query
 
 from services.app.core.database import users_table, profiles_table
 from services.app.core.security import hash_password
-from services.app.models.user import UserCreate, UserPublic, UserRole
-
+from services.app.models.user import (
+    UserCreate, 
+    UserPublic, 
+    UserRole, 
+    UserUpdate,
+)
 
 def create_user(payload: UserCreate) -> UserPublic:
     User = Query()
@@ -68,3 +72,35 @@ def get_user_by_email(email: str) -> dict | None:
 def list_users() -> list[UserPublic]:
     """Return all users without password hashes."""
     return [_doc_to_public(doc) for doc in users_table.all()]
+
+def update_user(user_id: int, payload: UserUpdate) -> UserPublic:
+    doc = users_table.get(doc_id=user_id)
+    if doc is None:
+        raise UserNotFoundError(f"User {user_id} not found")
+    changes = payload.model_dump(exclude_unset=True)
+    if "password" in changes:
+        plain = changes.pop("password")
+        if plain is not None:
+            changes["hashed_password"] = hash_password(plain)
+    if "email" in changes and changes["email"] is not None:
+        changes["email"] = str(changes["email"])
+        User = Query()
+        clashes = users_table.search(User.email == changes["email"])
+        if any(row.doc_id != user_id for row in clashes):
+            raise ValueError("Email already registered")
+    if "role" in changes and changes["role"] is not None:
+        role = changes["role"]
+        changes["role"] = role.value if hasattr(role, "value") else role
+    if changes:
+        users_table.update(changes, doc_ids=[user_id])
+    updated = users_table.get(doc_id=user_id)
+    return _doc_to_public(updated)
+
+def delete_user(user_id: int) -> None:
+    doc = users_table.get(doc_id=user_id)
+    if doc is None:
+        raise UserNotFoundError(f"User {user_id} not found")
+
+    Profile = Query()
+    profiles_table.remove(Profile.user_id == user_id)
+    users_table.remove(doc_ids=[user_id])

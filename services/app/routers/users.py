@@ -4,12 +4,12 @@ from services.app.domain.user_service import (
     create_user,
     list_users,
     get_user_by_id,
+    update_user,
+    delete_user,
     UserNotFoundError,
-    #update_user,
-    #delete_user,
 )
 
-from services.app.models.user import UserCreate, UserPublic
+from services.app.models.user import UserCreate, UserPublic, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -32,6 +32,20 @@ def get_user_endpoint(user_id: int):
     except UserNotFoundError:
         raise HTTPException(status_code=404, detail="User not found")
 
-# Patch /users/{id}
+@router.put("/{user_id}", response_model=UserPublic)
+def update_user_endpoint(user_id: int, payload: UserUpdate):
+    try:
+        return update_user(user_id, payload)
+    except UserNotFoundError:
+        raise HTTPException(status_code=404, detail="User not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 # Delete /users/{id}
+@router.delete("/{user_id}", status_code=200)
+def delete_user_endpoint(user_id: int):
+    try:
+        delete_user(user_id)
+        return {"detail": "User deleted"}
+    except UserNotFoundError:
+        raise HTTPException(status_code=404, detail="User not found")
