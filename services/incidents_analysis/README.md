@@ -4,13 +4,13 @@ Reusable **patient incident report** analysis for HealthCore — the shared brai
 
 Package import path: `services.incidents_analysis` (underscore — required by Python).
 
-Priya Nair's team needs a trustworthy summary of clinic incident CSVs. This package owns that logic so `scripts/analyze.py` and a future `POST /api/incidents/analyze` can call the **same** modules.
+Priya Nair's team needs a trustworthy summary of clinic incident CSVs. This package owns that logic so `scripts/analyze.py` and `POST /api/incidents/analyze` (via `services/app`) call the **same** modules.
 
 ## Why this service exists
 
 ```text
-CLI path                         Future API path
---------                         ---------------
+CLI path                         API path
+--------                         --------
 analyze.py                       POST /api/incidents/analyze
      |                                    |
      +----------->  this package  <-------+
@@ -62,6 +62,6 @@ Expected against the official sample: **100** rows, **94** valid, **6** invalid;
 
 **CLI pipeline implemented** (Paso 3 closed): `models` → `csv_reader` → `validator` → `analyzer` → `exporter`, orchestrated by `scripts/analyze.py`.
 
-Next project milestone: FastAPI (and UI) reusing these same modules — not started here.
+**API reuse implemented:** `services/app/domain/incident_service.py` and `services/app/routers/incidents.py` call these same modules (no duplicated rules).
 
 > Spanish twin of the contract: [CONTEXT-HealthCore.es.md](../../docs/data-contract/CONTEXT-HealthCore.es.md).

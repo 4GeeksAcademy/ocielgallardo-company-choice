@@ -17,10 +17,14 @@ The current repository already separates the backend under the **services/** dir
 ```
 services/
 │
-├── api/
+├── app/
 │   ├── main.py
+│   ├── core/                    # database (TinyDB), seed
+│   ├── models/                  # Pydantic models (e.g. supplier)
+│   ├── domain/                  # business orchestration services
 │   └── routers/
 │       ├── incidents.py
+│       ├── suppliers.py
 │       ├── patients.py          (future)
 │       ├── appointments.py      (future)
 │       ├── billing.py           (future)
@@ -34,11 +38,7 @@ services/
 │   ├── exporter.py
 │   └── models.py
 │
-├── core/                        (future)
-│
-├── database/                    (future)
-│
-└── common/                      (future, only if shared components appear)
+└── (domain placeholders: gateway, clinical-operations, revenue-cycle, compliance)
 ```
 
 The current project already demonstrates a good separation between the API layer and the incident analysis logic. The proposed evolution keeps the same principle by allowing new business domains to expose their own endpoints while keeping their business logic isolated from the HTTP layer.
@@ -47,9 +47,15 @@ The current project already demonstrates a good separation between the API layer
 
 # Modules
 
-## api/
+## app/
 
-Contains the FastAPI application.
+Contains the FastAPI application, organized in layers:
+
+- `main.py` — application entrypoint, CORS, router registration
+- `core/` — shared infrastructure (TinyDB, seed)
+- `models/` — Pydantic request/response and domain models
+- `domain/` — business orchestration (calls packages such as `incidents_analysis`)
+- `routers/` — HTTP endpoints only
 
 Its responsibility is to expose REST endpoints, validate incoming requests and delegate processing to the corresponding business modules.
 
@@ -73,25 +79,22 @@ This module can already be reused by different entry points, such as the command
 
 ---
 
-## core (future)
+## core/
 
-This module would centralize the backend configuration.
+Lives under `services/app/core/` and centralizes shared backend infrastructure.
 
-Initially it would only contain:
+Currently includes:
 
-- application configuration;
-- environment variable loading;
-- shared configuration values.
+- TinyDB initialization for the supplier directory;
+- supplier seed script.
 
-I would avoid including authentication or middleware until those requirements exist.
+Application-wide config / environment loading can grow here when needed. Avoid including authentication or middleware until those requirements exist.
 
 ---
 
-## database (future)
+## database/
 
-Responsible for database configuration and persistence.
-
-Keeping this responsibility isolated allows every business module to share the same database configuration without duplicating code.
+Persistence adapters live with infrastructure under `app/core/` for now (TinyDB). A separate top-level `database/` package should only be introduced if multiple backends or shared connection factories appear.
 
 ---
 

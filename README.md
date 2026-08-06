@@ -91,7 +91,7 @@ Read the linked `README.md` inside each folder before you start coding there.
 
 **Put here:**
 
-- One main FastAPI app (e.g. `api/`) with routers/modules per domain (locations, menus, sales, telemetry, etc.)
+- One main FastAPI app (`app/`) with routers/modules per domain (incidents, suppliers, and future domains)
 - Background workers only when they truly need to run separately from the API
 
 **Recommendation:** avoid splitting into many microservices early. Add endpoints to the same FastAPI app; extract a worker only when necessary.

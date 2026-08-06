@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-seed = "services.api.seed:run_seed"
+seed = "services.app.core.seed:run_seed"
 
 [tool.hatch.build.targets.wheel]
 packages = ["services"]

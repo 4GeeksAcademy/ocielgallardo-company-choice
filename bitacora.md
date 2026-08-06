@@ -616,8 +616,8 @@ Integrar la logica reutilizable de `services/incidents_analysis/` en la platafor
 
 ### Backend implementado
 
-- `services/api/main.py` — app FastAPI, CORS para `localhost:3000` / `127.0.0.1:3000`, registro del router.
-- `services/api/routers/incidents.py` — endpoints HTTP; el router solo orquesta, la logica de negocio sigue en `incidents_analysis/`.
+- `services/app/main.py` — app FastAPI, CORS para `localhost:3000` / `127.0.0.1:3000`, registro del router.
+- `services/app/routers/incidents.py` — endpoints HTTP; el router solo orquesta, la logica de negocio sigue en `incidents_analysis/` (vía `domain/incident_service.py`).
   - `POST /api/incidents/analyze`: acepta `multipart/form-data` campo `file`; valida extension `.csv`; ejecuta `read_incidents` → `validate_incidents` → `analyze_incidents`; persiste ultimo resumen con `export_results` en `data/process/results.csv`; responde JSON.
   - `GET /api/incidents/results/export`: sirve el ultimo CSV (`FileResponse`); `404` si no hay analisis previo.
 
@@ -635,7 +635,7 @@ Integrar la logica reutilizable de `services/incidents_analysis/` en la platafor
 
 ```bash
 # API (raiz del repo)
-python -m uvicorn services.api.main:app --reload
+python -m uvicorn services.app.main:app --reload
 
 # UI
 cd uis/backoffice
@@ -703,7 +703,7 @@ Ordenar los archivos entregados por la API dentro de `data/` por responsabilidad
 ### Cambios aplicados
 
 - Se movio `data/suppliers.json` a `data/process/suppliers/suppliers.json` para alinear persistencia TinyDB con la carpeta de outputs operativos.
-- Se actualizo `services/api/database.py` para leer/escribir TinyDB desde la nueva ruta:
+- Se actualizo `services/app/core/database.py` para leer/escribir TinyDB desde la nueva ruta:
   - `data/process/suppliers/suppliers.json`
 - Se actualizo `.gitignore` para no versionar artefactos runtime:
   - `data/process/results.csv`
@@ -754,3 +754,43 @@ Completar la parte faltante del hito 09 implementando en `uis/backoffice` la int
 ### Resultado
 
 El backoffice ya permite visualizar y operar el Supplier Directory de HealthCore desde interfaz: listado, filtros, alta, cambio de tarifa y cambio de estado, conectado al backend FastAPI del hito.
+
+## Actualizacion 2026-08-05 (refactor capas en `services/app`)
+
+### Solicitud del cliente
+
+Reorganizar el backend FastAPI en capas (`core`, `models`, `domain`, `routers`) sin romper contratos HTTP ni rutas de datos, y alinear documentacion operativa.
+
+### Cambios aplicados
+
+- Se reorganizo el backend en `services/app/` con:
+  - `main.py` — entrypoint FastAPI + CORS;
+  - `core/database.py` — TinyDB (`data/process/suppliers/suppliers.json`);
+  - `core/seed.py` — seed idempotente de proveedores;
+  - `models/supplier.py` — enums y modelos Pydantic;
+  - `domain/supplier_service.py` — logica TinyDB de suppliers;
+  - `domain/incident_service.py` — wrapper fino sobre `incidents_analysis`;
+  - `routers/suppliers.py` y `routers/incidents.py` — solo HTTP.
+- Se actualizo `pyproject.toml`: `seed = "services.app.core.seed:run_seed"`.
+- Se actualizaron docs operativos: `services/README(.es).md`, `uis/backoffice/README(.es).md`, `memory-bank/progress.md`, `memory-bank/techContext.md`.
+- Contratos HTTP sin cambio: `/suppliers`, `/api/incidents/analyze`, `/api/incidents/results/export`.
+- `services/incidents_analysis/` sin cambios de layout ni de reglas.
+
+### Comandos vigentes
+
+```bash
+python -m uvicorn services.app.main:app --reload
+python -m services.app.core.seed
+```
+
+### Validacion ejecutada
+
+- Import: `from services.app.main import app`.
+- Seed idempotente (15 suppliers).
+- `GET /suppliers` → 200.
+- `POST /api/incidents/analyze` + `GET /api/incidents/results/export` → 200.
+- Pipeline CLI vía `incidents_analysis`: 100 / 94 / 6 / satisfaction 3.58.
+
+### Resultado
+
+El backend queda en capas alineadas con la evolucion del monorepo, sin alterar la API consumida por el backoffice ni el CLI de incidentes.

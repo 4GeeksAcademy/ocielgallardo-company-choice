@@ -24,7 +24,7 @@ Internal Next.js application for HealthCore employees.
 
 ## Supplier directory (`/suppliers`)
 
-Uses the local HealthCore FastAPI supplier endpoints exposed by `services/api`.
+Uses the local HealthCore FastAPI supplier endpoints exposed by `services/app`.
 
 ### What the UI supports
 
@@ -62,7 +62,7 @@ Two processes:
 ```bash
 # Terminal A — from repository root
 python -m pip install fastapi uvicorn python-multipart   # once
-python -m uvicorn services.api.main:app --reload
+python -m uvicorn services.app.main:app --reload
 
 # Terminal B — this app
 cd uis/backoffice
@@ -95,7 +95,7 @@ Client: `lib/services/healthcoreApi.ts`
 
 If you open the UI through a published Codespaces URL instead of localhost, replace the value in `.env.local` with the published URL of the API port.
 
-CORS on the API allows `localhost` / `127.0.0.1` on ports **3000** and **3001**. If Next uses another port, add that origin in `services/api/main.py`.
+CORS on the API allows `localhost` / `127.0.0.1` on ports **3000** and **3001**. If Next uses another port, add that origin in `services/app/main.py`.
 
 ### Related files
 
@@ -148,7 +148,7 @@ npm start
 ## Notes
 
 - Candidate API integration uses the 4Geeks Talent Tracker API (`/records`).
-- Incident analysis uses the local HealthCore FastAPI (`services/api`).
+- Incident analysis uses the local HealthCore FastAPI (`services/app`).
 - `next.config.ts` enables external directory imports to consume root Hito 2 utilities.
 
 > Spanish version: [README.es.md](./README.es.md).

@@ -36,7 +36,7 @@ CSV → read → validate → analyze → (export metrics)
    services/incidents_analysis/
 ```
 
-CLI (`scripts/analyze.py`) and API (`services/api/routers/incidents.py`) both call that package. Do not copy validators into the router.
+CLI (`scripts/analyze.py`) and API (`services/app/routers/incidents.py` via `domain/incident_service.py`) both call that package. Do not copy validators into the router.
 
 ### Phase 1 — build the brain first
 
@@ -55,14 +55,14 @@ Official sample expectation: **100** rows, **94** valid, **6** invalid, satisfac
 
 ### Phase 2 backend — expose the brain over HTTP
 
-1. **`main.py` vs routers** — `services/api/main.py` creates `FastAPI`, CORS, `include_router`. Endpoints live in `services/api/routers/incidents.py`.
-2. **Keep `__init__.py`** — marks `services/api` and `routers` as packages so `uvicorn services.api.main:app` imports cleanly.
+1. **`main.py` vs routers** — `services/app/main.py` creates `FastAPI`, CORS, `include_router`. Endpoints live in `services/app/routers/incidents.py` (orchestration in `domain/incident_service.py`).
+2. **Keep `__init__.py`** — marks `services/app` and nested packages so `uvicorn services.app.main:app` imports cleanly.
 3. **`POST /api/incidents/analyze`** — `multipart/form-data`, field name `file`, `UploadFile` + `File(...)`. Needs `python-multipart`. Reject non-`.csv` with HTTP **400**.
 4. **Bridge upload → disk reader** — `read_incidents` expects a path: write bytes to a temp file, analyze, delete temp in `finally`.
 5. **Persist last run for export** — inside the `try`, after `summary = analyze_incidents(...)`, call `export_results(summary, RESULTS_CSV)` **before** `return summary`. Code after `return` never runs.
 6. **POST returns JSON; GET returns file** — POST → summary dict. `GET /api/incidents/results/export` → `FileResponse` of last CSV, or **404** if missing.
 7. **CORS** — browser UI on another origin/port needs `CORSMiddleware`. Allow every local UI port you actually use (e.g. `3000` and `3001` when Next picks an alternate port).
-8. **Run from repo root** — `python -m uvicorn services.api.main:app --reload` (prefer `python -m uvicorn` over bare `uvicorn` on Windows).
+8. **Run from repo root** — `python -m uvicorn services.app.main:app --reload` (prefer `python -m uvicorn` over bare `uvicorn` on Windows).
 
 ### Compliance (always)
 
@@ -88,7 +88,7 @@ python scripts/analyze.py data/raw/incidents-healthcore.csv
 python -m pip install fastapi uvicorn python-multipart
 
 # Phase 2 — start API from repo root
-python -m uvicorn services.api.main:app --reload
+python -m uvicorn services.app.main:app --reload
 
 # Smoke tests
 curl -X POST "http://127.0.0.1:8000/api/incidents/analyze" \
@@ -113,12 +113,13 @@ data/raw/incidents-healthcore.csv
 data/process/results.csv          # generated; often gitignored
 ```
 
-API layout (Phase 2):
+API layout (Phase 2 — current):
 
 ```text
-services/api/
-  main.py                 # FastAPI + CORS + include_router
-  routers/incidents.py    # POST /analyze, GET /results/export
+services/app/
+  main.py                      # FastAPI + CORS + include_router
+  domain/incident_service.py   # thin wrapper over incidents_analysis
+  routers/incidents.py         # POST /analyze, GET /results/export
 ```
 
 POST orchestration pattern:
@@ -155,6 +156,7 @@ return summary                        # JSON to client
 - `docs/data-contract/functional-design-analyze.md` / `.es.md`
 - `services/incidents_analysis/`
 - `scripts/analyze.py`
-- `services/api/main.py`
-- `services/api/routers/incidents.py`
-- `bitacora.md` — entries 2026-07-31 (Pasos 1–3) and 2026-08-01 (Fase 2)
+- `services/app/main.py`
+- `services/app/routers/incidents.py`
+- `services/app/domain/incident_service.py`
+- `bitacora.md` — entries 2026-07-31 (Pasos 1–3), 2026-08-01 (Fase 2), 2026-08-05 (refactor `api` → `app`)

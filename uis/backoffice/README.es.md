@@ -35,7 +35,7 @@ Dos procesos:
 ```bash
 # Terminal A — desde la raíz del repositorio
 python -m pip install fastapi uvicorn python-multipart   # una vez
-python -m uvicorn services.api.main:app --reload
+python -m uvicorn services.app.main:app --reload
 
 # Terminal B — esta app
 cd uis/backoffice
@@ -64,7 +64,7 @@ Cliente: `lib/services/healthcoreApi.ts`
 - Por defecto: `http://127.0.0.1:8000`
 - Override: variable `NEXT_PUBLIC_HEALTHCORE_API_URL` (reinicia `npm run dev` tras cambiarla)
 
-CORS en la API permite `localhost` / `127.0.0.1` en puertos **3000** y **3001**. Si Next usa otro puerto, añade ese origen en `services/api/main.py`.
+CORS en la API permite `localhost` / `127.0.0.1` en puertos **3000** y **3001**. Si Next usa otro puerto, añade ese origen en `services/app/main.py`.
 
 ### Archivos relacionados
 
@@ -117,7 +117,7 @@ npm start
 ## Notas
 
 - Candidatos: API Talent Tracker de 4Geeks (`/records`).
-- Incidentes: FastAPI local HealthCore (`services/api`).
+- Incidentes: FastAPI local HealthCore (`services/app`).
 - `next.config.ts` permite imports externos a utilidades de Hito 2.
 
 > English version: [README.md](./README.md).

@@ -23,6 +23,10 @@
   - `services/clinical-operations`
   - `services/revenue-cycle`
   - `services/compliance`
+- Implemented backend FastAPI app:
+  - `services/app/` (`main`, `core`, `models`, `domain`, `routers`)
+  - `services/incidents_analysis/` (CLI/API shared incident CSV pipeline)
+  - Run: `python -m uvicorn services.app.main:app --reload`
 
 ## Validation and Local Checks
 - Type validation command (documented):

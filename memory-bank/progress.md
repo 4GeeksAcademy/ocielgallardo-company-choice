@@ -16,15 +16,27 @@
   - Root `AGENTS.md` policy file.
   - Focused rule files in `.agents/rules/`.
 
+## Recently Completed (services/api → services/app refactor)
+- Migrated FastAPI package from `services/api/` to layered `services/app/`:
+  - `core/` — TinyDB (`database.py`) and supplier seed (`seed.py`)
+  - `models/supplier.py` — supplier Pydantic models/enums
+  - `domain/` — `supplier_service.py`, `incident_service.py` (thin wrapper over `incidents_analysis`)
+  - `routers/` — HTTP-only `suppliers.py` and `incidents.py`
+  - `main.py` — FastAPI entrypoint (`uvicorn services.app.main:app`)
+- HTTP contracts unchanged: `/suppliers`, `/api/incidents/analyze`, `/api/incidents/results/export`.
+- Runtime data paths unchanged: `data/process/suppliers/suppliers.json`, `data/process/results.csv`.
+- Updated `pyproject.toml` seed entry to `services.app.core.seed:run_seed`.
+- Updated operational docs: `services/README(.es).md`, `uis/backoffice/README(.es).md`, root `README(.es).md`, `docs/architecture/ARCHITECTURE_PROPOSAL(.es).md`, `lesson2learn/...cli-a-fastapi.md`, `bitacora.md`, and this memory-bank entry.
+
 ## Recently Completed (Supplier directory models)
-- Pydantic enums and models in `services/api/models.py` for Milestone 09 supplier directory:
+- Pydantic enums and models in `services/app/models/supplier.py` for Milestone 09 supplier directory:
   - Enums: `Country`, `Currency`, `SupplierStatus`, `SupplierCategory`, `ComplianceAgreement`.
   - Models: `SupplierCreate`, `SupplierRateUpdate`, `SupplierStatusUpdate`, `Supplier`.
   - Enforces USA/USD and UK/GBP pairing via `model_validator`.
 
 ## Recently Completed (API structure)
-- HealthCore FastAPI entrypoint at `services/api/main.py` (CORS for local backoffice origins).
-- Incidents HTTP routes in `services/api/routers/incidents.py`:
+- HealthCore FastAPI entrypoint at `services/app/main.py` (CORS for local backoffice origins).
+- Incidents HTTP routes in `services/app/routers/incidents.py` (orchestration via `domain/incident_service.py`):
   - `POST /api/incidents/analyze` — multipart CSV → JSON summary; persists last run via `export_results` to `data/process/results.csv`.
   - `GET /api/incidents/results/export` — downloadable CSV of last analysis (`404` if none).
 - Business logic remains in `services/incidents_analysis/` (no duplication in the router).
@@ -33,7 +45,7 @@
 - Reorganized TinyDB runtime persistence for supplier directory:
   - from `data/suppliers.json`
   - to `data/process/suppliers/suppliers.json`
-- Updated `services/api/database.py` to point to the new runtime path and ensure parent directory creation.
+- TinyDB path is configured in `services/app/core/database.py` (ensures parent directory creation).
 - Updated `.gitignore` to ignore runtime artifacts:
   - `data/process/results.csv`
   - `data/process/suppliers/suppliers.json`

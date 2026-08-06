@@ -91,7 +91,7 @@ Lee el `README.md` enlazado dentro de cada carpeta antes de empezar a programar 
 
 **Pon aquí:**
 
-- Una app FastAPI principal (p. ej. `api/`) con routers/módulos por dominio (ubicaciones, menús, ventas, telemetría, etc.)
+- Una app FastAPI principal (`app/`) con routers/módulos por dominio (incidentes, proveedores y dominios futuros)
 - Workers en background solo cuando de verdad necesiten correr separados de la API
 
 **Recomendación:** evita dividir en muchos microservicios al inicio. Añade endpoints a la misma app FastAPI; extrae un worker solo cuando sea necesario.
