@@ -5,6 +5,7 @@ from services.app.routers.incidents import router as incidents_router
 from services.app.routers.suppliers import router as suppliers_router
 from services.app.routers.users import router as users_router
 from services.app.routers.auth import router as auth_router
+from services.app.routers.profiles import router as profiles_router
 
 
 
@@ -27,3 +28,4 @@ app.include_router(incidents_router)
 app.include_router(suppliers_router)
 app.include_router(users_router)
 app.include_router(auth_router)
+app.include_router(profiles_router)

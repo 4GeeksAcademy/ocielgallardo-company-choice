@@ -2,8 +2,9 @@
 
 The router only orchestrates HTTP; persistence and rules live in domain/models.
 """
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from services.app.core.deps import get_current_user
 from services.app.domain.supplier_service import (
     SupplierNotFoundError,
     create_supplier,
@@ -19,12 +20,16 @@ from services.app.models.supplier import (
     SupplierRateUpdate,
     SupplierStatusUpdate,
 )
+from services.app.models.user import UserPublic
 
 router = APIRouter(prefix="/suppliers", tags=["suppliers"])
 
 
 @router.post("", response_model=Supplier, status_code=201)
-def create_supplier_endpoint(payload: SupplierCreate):
+def create_supplier_endpoint(
+    payload: SupplierCreate,
+    _current_user: UserPublic = Depends(get_current_user),
+):
     """Register a new supplier. Rejects invalid data with 422."""
     return create_supplier(payload)
 
@@ -33,13 +38,17 @@ def create_supplier_endpoint(payload: SupplierCreate):
 def list_suppliers_endpoint(
     country: str | None = Query(default=None),
     category: str | None = Query(default=None),
+    _current_user: UserPublic = Depends(get_current_user),
 ):
     """List all suppliers, optionally filtered by country and/or category."""
     return list_suppliers(country=country, category=category)
 
 
 @router.get("/{supplier_id}", response_model=Supplier)
-def get_supplier_endpoint(supplier_id: int):
+def get_supplier_endpoint(
+    supplier_id: int,
+    _current_user: UserPublic = Depends(get_current_user),
+):
     """Get a single supplier by ID. Returns 404 if not found."""
     try:
         return get_supplier(supplier_id)
@@ -48,7 +57,11 @@ def get_supplier_endpoint(supplier_id: int):
 
 
 @router.patch("/{supplier_id}/rate", response_model=Supplier)
-def update_supplier_rate_endpoint(supplier_id: int, payload: SupplierRateUpdate):
+def update_supplier_rate_endpoint(
+    supplier_id: int,
+    payload: SupplierRateUpdate,
+    _current_user: UserPublic = Depends(get_current_user),
+):
     """Update a supplier's monthly rate and record the timestamp."""
     try:
         return update_supplier_rate(supplier_id, payload)
@@ -57,7 +70,11 @@ def update_supplier_rate_endpoint(supplier_id: int, payload: SupplierRateUpdate)
 
 
 @router.patch("/{supplier_id}/status", response_model=Supplier)
-def update_supplier_status_endpoint(supplier_id: int, payload: SupplierStatusUpdate):
+def update_supplier_status_endpoint(
+    supplier_id: int,
+    payload: SupplierStatusUpdate,
+    _current_user: UserPublic = Depends(get_current_user),
+):
     """Activate or suspend a supplier. Rejects invalid status with 422."""
     try:
         return update_supplier_status(supplier_id, payload)
@@ -66,7 +83,10 @@ def update_supplier_status_endpoint(supplier_id: int, payload: SupplierStatusUpd
 
 
 @router.delete("/{supplier_id}", status_code=200)
-def delete_supplier_endpoint(supplier_id: int):
+def delete_supplier_endpoint(
+    supplier_id: int,
+    _current_user: UserPublic = Depends(get_current_user),
+):
     """Delete a supplier from the directory. Returns 404 if not found."""
     try:
         delete_supplier(supplier_id)

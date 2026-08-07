@@ -97,6 +97,10 @@ If you open the UI through a published Codespaces URL instead of localhost, repl
 
 CORS on the API allows `localhost` / `127.0.0.1` on ports **3000** and **3001**. If Next uses another port, add that origin in `services/app/main.py`.
 
+### Auth note (AUTH-01 in progress)
+
+The HealthCore API now supports JWT login (`POST /auth/login`) and protected routes such as `GET /auth/me` and `/profiles/me`. Supplier and incident UI clients do **not** send `Authorization` headers yet. When those API routes become token-gated, Incidents/Suppliers calls will return **401** until the backoffice is updated to attach the Bearer token (expected temporary gap per the milestone).
+
 ### Related files
 
 | Path | Role |

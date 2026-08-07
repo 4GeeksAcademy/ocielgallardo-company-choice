@@ -66,6 +66,10 @@ Cliente: `lib/services/healthcoreApi.ts`
 
 CORS en la API permite `localhost` / `127.0.0.1` en puertos **3000** y **3001**. Si Next usa otro puerto, añade ese origen en `services/app/main.py`.
 
+### Nota de auth (AUTH-01 en progreso)
+
+La API HealthCore ya tiene login JWT (`POST /auth/login`) y rutas protegidas como `GET /auth/me` y `/profiles/me`. Los clientes de Incidents/Suppliers **aún no** envían `Authorization`. Cuando esas rutas exijan token, devolverán **401** hasta que el backoffice adjunte el Bearer (hueco temporal previsto en el hito).
+
 ### Archivos relacionados
 
 | Ruta | Rol |

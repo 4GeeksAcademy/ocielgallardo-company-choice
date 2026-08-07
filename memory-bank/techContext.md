@@ -26,7 +26,8 @@
 - Implemented backend FastAPI app:
   - `services/app/` (`main`, `core`, `models`, `domain`, `routers`)
   - `services/incidents_analysis/` (CLI/API shared incident CSV pipeline)
-  - Run: `python -m uvicorn services.app.main:app --reload`
+  - Auth (in progress): JWT via `python-jose`, passwords via `passlib`/`bcrypt`, config from root `.env`
+  - Run: `python -m uvicorn services.app.main:app --reload` (prefer `uv run`)
 
 ## Validation and Local Checks
 - Type validation command (documented):
