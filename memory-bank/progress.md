@@ -6,6 +6,24 @@
 - Core TypeScript domain/utilities for Milestone 2 are implemented.
 - Manual browser playground for utility inspection is available.
 - Type-level model validation command is available in `packages/shared`.
+- AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
+
+## Recently Completed (AUTH-01 — authentication foundation)
+- Branch: `feature/auth`.
+- Dependencies: `passlib[bcrypt]`, `bcrypt==4.0.1`, `python-jose[cryptography]`, `python-dotenv`.
+- Env (repo root): `.env` / `.env.example` with `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`.
+- TinyDB auth store: `data/process/auth/auth.json` (gitignored) via `users_table` / `profiles_table` in `services/app/core/database.py`.
+- Models: `services/app/models/user.py` (`UserRole`, create/update/public, login/token), `services/app/models/profile.py`.
+- Domain: `user_service.py` (CRUD + `authenticate_user`), `profile_service.py` (get/update by `user_id`).
+- Security: `services/app/core/security.py` (bcrypt hash/verify, JWT create/decode).
+- Deps: `services/app/core/deps.py` — `OAuth2PasswordBearer`, `get_current_user`, `require_self_or_admin`.
+- Routers registered in `main.py`:
+  - `/users` — `POST /users` public; `GET/PUT/DELETE` require Bearer; PUT/DELETE require self or admin; only admin may change `role`.
+  - `/auth` — `POST /auth/login`, `GET /auth/me` (protected).
+  - `/profiles` — `GET/PUT /profiles/me` (protected).
+  - `/suppliers` — all six routes require Bearer (meets AUTH-01 “≥5 existing routes” requirement).
+- User and Profile remain in TinyDB only (no Supabase/SQL user tables).
+- Known gap (non-blocking): Swagger Authorize OAuth2 form vs JSON login mismatch; use curl/`Authorization: Bearer` for manual checks. Backoffice does not send tokens yet (expected 401 on suppliers until frontend phase).
 
 ## Recently Completed (Documentation Context Setup)
 - Created Memory Bank baseline:

@@ -794,3 +794,67 @@ python -m services.app.core.seed
 ### Resultado
 
 El backend queda en capas alineadas con la evolucion del monorepo, sin alterar la API consumida por el backoffice ni el CLI de incidentes.
+
+## Actualizacion 2026-08-07 (AUTH-01 — autenticacion JWT, en progreso)
+
+### Solicitud / hito
+
+Implementar autenticacion JWT en la API HealthCore existente (rama `feature/auth`): users + profiles en TinyDB, login, `get_current_user`, y proteccion de rutas sensibles.
+
+### Cambios aplicados
+
+- Dependencias: `passlib[bcrypt]`, `bcrypt==4.0.1`, `python-jose[cryptography]`, `python-dotenv`.
+- `.env` / `.env.example` en la raiz: `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`.
+- TinyDB auth: `data/process/auth/auth.json` (ignorado en git) — tablas `users` y `profiles`.
+- Capas en `services/app/`:
+  - `models/user.py`, `models/profile.py`
+  - `domain/user_service.py` (CRUD + `authenticate_user`)
+  - `domain/profile_service.py`
+  - `core/security.py` (hash/verify + JWT)
+  - `core/deps.py` (`OAuth2PasswordBearer`, `get_current_user`)
+  - routers: `users.py`, `auth.py`, `profiles.py` registrados en `main.py`
+- Endpoints:
+  - `POST /users` (publico, crea User + Profile; password hasheada)
+  - `GET/PUT/DELETE /users...` (CRUD completo; token aun no obligatorio en todas)
+  - `POST /auth/login` → JWT
+  - `GET /auth/me` (protegido; email, role, profile)
+  - `GET/PUT /profiles/me` (protegido)
+- User/Profile solo en TinyDB (sin tablas SQL de usuarios).
+
+### Validacion manual
+
+- Registro / listado / get / update / delete de users.
+- Login JSON + `Authorization: Bearer <token>` → `GET /auth/me` 200.
+- Nota: el boton Authorize de Swagger (flujo OAuth2 form `username`/`password`) no encaja con login JSON actual → 422; probar con curl o adaptar a `OAuth2PasswordRequestForm` mas adelante.
+- Cuidado en Windows: varios procesos `uvicorn` en el puerto 8000 pueden servir codigo viejo; usar un solo server (`scripts/kill-uvicorn.ps1` si hace falta).
+
+### Pendiente para cerrar AUTH-01
+
+- Exigir token en `/users` excepto `POST /users`.
+- Proteger al menos 5 rutas de suppliers/incidents.
+- 403 cuando un no-admin modifica otro usuario.
+- Confirmacion final 401 sin token / token invalido.
+
+### Resultado parcial
+
+Base de autenticacion operativa (~75–80% del hito). El backoffice aun no envia token; al proteger suppliers/incidents esas pantallas fallaran hasta la fase de frontend (esperado segun el enunciado).
+
+## Actualizacion 2026-08-07 (AUTH-01 — proteccion de rutas y 403)
+
+### Cambios
+
+- `core/deps.py`: helper `require_self_or_admin`.
+- `routers/users.py`: `GET/PUT/DELETE` con Bearer; PUT/DELETE solo dueño o admin; solo admin puede cambiar `role`.
+- `routers/suppliers.py`: las 6 rutas exigen Bearer (cubre el minimo de 5 rutas fuera de `/users` y `/auth`).
+- `POST /users` sigue publico. Incidents sin cambio (siguen publicas).
+
+### Validacion esperada
+
+- Sin token: `GET /suppliers` y `GET /users` → 401.
+- Con token valido: esas rutas → 200.
+- User no-admin `PUT /users/{otro_id}` → 403.
+- `POST /users` sin token → 201.
+
+### Resultado
+
+AUTH-01 cerrado en backend respecto a proteccion de rutas. El backoffice de suppliers devolvera 401 hasta que envie el JWT.
