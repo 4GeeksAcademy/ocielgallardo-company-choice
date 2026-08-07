@@ -9,6 +9,7 @@ from services.app.models.user import (
     UserRole, 
     UserUpdate,
 )
+from services.app.core.security import verify_password, create_access_token
 
 def create_user(payload: UserCreate) -> UserPublic:
     User = Query()
@@ -104,3 +105,20 @@ def delete_user(user_id: int) -> None:
     Profile = Query()
     profiles_table.remove(Profile.user_id == user_id)
     users_table.remove(doc_ids=[user_id])
+
+class InvalidCredentialsError(Exception):
+    """Raised when login email/password are invalid."""
+    
+def authenticate_user(email: str, password: str) -> str:
+    """Return a JWT access token or raise InvalidCredentialsError."""
+    doc = get_user_by_email(email)
+    if doc is None:
+        raise InvalidCredentialsError("Invalid email or password")
+    
+    if not verify_password(password, doc["hashed_password"]):
+        raise InvalidCredentialsError("Invalid email or password")
+    
+    if not doc.get("is_active", True):
+        raise InvalidCredentialsError("Invalid email or password")
+    
+    return create_access_token(doc.doc_id)
