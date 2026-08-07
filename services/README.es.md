@@ -20,15 +20,15 @@ Esta carpeta define los límites de servicios backend dentro de la arquitectura 
 
 - `incidents_analysis/` — análisis CSV de incidentes de pacientes HealthCore (`models`, `csv_reader`, `validator`, `analyzer`, `exporter`). Lo consumen `scripts/analyze.py` y la capa de dominio de la API.
 - `app/` — aplicación FastAPI (`services/app/main.py`) en capas:
-	- `core/` — TinyDB (`database.py`), seed de proveedores (`seed.py`), helpers JWT/password (`security.py`), `deps.py` (`get_current_user`)
-	- `models/` — modelos Pydantic (`supplier`, `user`, `profile`)
-	- `domain/` — orquestación de negocio (`supplier_service`, `incident_service`, `user_service`, `profile_service`)
-	- `routers/` — solo HTTP:
-		- `incidents.py` → `POST /api/incidents/analyze`, `GET /api/incidents/results/export`
-		- `suppliers.py` → CRUD + filtros + rate/status del directorio de proveedores (**requiere Bearer**)
-		- `users.py` → CRUD de credenciales (`POST` público; `GET/PUT/DELETE` requieren Bearer; PUT/DELETE dueño o admin)
-		- `auth.py` → `POST /auth/login`, `GET /auth/me` (JWT)
-		- `profiles.py` → `GET/PUT /profiles/me` (JWT)
+  - `core/` — TinyDB (`database.py`), seed de proveedores (`seed.py`), helpers JWT/password (`security.py`), `deps.py` (`get_current_user`)
+  - `models/` — modelos Pydantic (`supplier`, `user`, `profile`)
+  - `domain/` — orquestación de negocio (`supplier_service`, `incident_service`, `user_service`, `profile_service`)
+  - `routers/` — solo HTTP:
+    - `incidents.py` → `POST /api/incidents/analyze`, `GET /api/incidents/results/export`
+    - `suppliers.py` → CRUD + filtros + rate/status del directorio de proveedores (**requiere Bearer**)
+    - `users.py` → CRUD de credenciales (`POST` público; `GET/PUT/DELETE` requieren Bearer; PUT/DELETE dueño o admin)
+    - `auth.py` → `POST /auth/login`, `GET /auth/me` (JWT)
+    - `profiles.py` → `GET/PUT /profiles/me` (JWT)
 
 Notas de auth (AUTH-01, rama `feature/auth`):
 

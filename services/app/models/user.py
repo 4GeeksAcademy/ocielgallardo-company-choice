@@ -34,8 +34,9 @@ class UserPublic(BaseModel):
     created_at: datetime
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    username: EmailStr
     password: str
+    grant_type: str = "password"
 
 
 class TokenResponse(BaseModel):

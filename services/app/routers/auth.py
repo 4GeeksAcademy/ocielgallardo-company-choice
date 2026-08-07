@@ -14,7 +14,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest):
     try:
-        token = authenticate_user(str(payload.email), payload.password)
+        token = authenticate_user(str(payload.username), payload.password)
         return TokenResponse(access_token=token)
     except InvalidCredentialsError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
