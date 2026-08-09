@@ -858,3 +858,65 @@ Base de autenticacion operativa (~75–80% del hito). El backoffice aun no envia
 ### Resultado
 
 AUTH-01 cerrado en backend respecto a proteccion de rutas. El backoffice de suppliers devolvera 401 hasta que envie el JWT.
+
+## Actualizacion 2026-08-09 (AUTH-02 fases 1–2 — login/register frontend)
+
+### Alcance
+
+Backoffice (`uis/backoffice`) en rama `feature/auth-frontend`: ciclo de vida del token + vistas `/login` y `/register`. Sin guard de rutas ni profile/logout aún.
+
+### Decision de estructura
+
+Se eligió layout mínimo (`AppChrome` + páginas en `app/login` y `app/register`) en lugar de route groups `(auth)`/`(app)`, para no mover páginas existentes. Token y fetch viven en `lib/services/` (mismo patrón que suppliers/incidents), no en una carpeta `lib/auth/` nueva.
+
+### Cambios
+
+- `lib/services/healthcoreClient.ts`: `localStorage` (`healthcore_access_token`), Bearer en llamadas, 401 → clear + redirect `/login`.
+- `lib/services/authApi.ts`: login (`username`=email), register, registerAndLogin.
+- `app/login`, `app/register` + formularios; redirect a `/` tras éxito.
+- `AppChrome`: login/register sin `BackofficeShell`.
+- `suppliersApi` / `healthcoreApi` usan el cliente compartido (Bearer).
+- `uis/website` sin cambios.
+
+### Docs actualizadas
+
+- `uis/backoffice/README(.es).md`, `uis/README(.es).md`
+- `services/README(.es).md`
+- `memory-bank/progress.md`, `memory-bank/techContext.md`
+- esta bitácora
+
+### Validacion
+
+- `cd uis/backoffice && npm run build` — OK (rutas `/login`, `/register` generadas).
+
+### Como probar manualmente
+
+1. API HealthCore en `:8000` + `npm run dev` en `uis/backoffice`.
+2. `/register` → cuenta nueva → debe redirigir a `/` y guardar token en `localStorage`.
+3. Con sesión, `/suppliers` debe cargar (Bearer enviado).
+4. Forzar 401 (borrar/alterar token) en una llamada protegida → clear + redirect `/login`.
+
+### Pendiente AUTH-02
+
+- Protección de rutas (AuthGuard).
+- `/account/profile`.
+- Logout en shell.
+
+## Actualizacion 2026-08-09 (AUTH-02 fase 3 — guard de rutas)
+
+### Cambios
+
+- `AppChrome`: guard por presencia de token (`useSyncExternalStore` + redirects); sin `setState` en el effect (arregla lint React).
+- Sin token en rutas internas → `/login`; con token en `/login` o `/register` → `/`.
+- `RegisterForm`: campo confirmar contraseña + validación de coincidencia.
+- Docs: `progress.md`, `techContext.md`, `uis/backoffice/README(.es).md`.
+
+### Validacion
+
+- Lint limpio en `AppChrome` / `RegisterForm`.
+- `cd uis/backoffice && npm run build`.
+
+### Pendiente AUTH-02
+
+- `/account/profile`.
+- Logout en shell.

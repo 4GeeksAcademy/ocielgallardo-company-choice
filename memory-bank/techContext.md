@@ -16,6 +16,12 @@
 - UI applications:
   - `uis/website` (public Next.js website)
   - `uis/backoffice` (internal Next.js workspace)
+- Backoffice auth client (AUTH-02 phases 1–3 complete):
+  - Token key `healthcore_access_token` in `localStorage` via `uis/backoffice/lib/services/healthcoreClient.ts`
+  - Pages `/login` and `/register`; successful auth redirects to `/`
+  - Bearer attached on HealthCore API calls (`suppliersApi`, `healthcoreApi`); 401 clears session and redirects to `/login`
+  - Layout: `AppChrome` omits `BackofficeShell` on auth pages and guards routes (token presence); logged-in users hitting auth pages go to `/`
+  - TODO: `/account/profile`, shell logout
 - Internal Hito 2 demo surface:
   - `uis/backoffice/components/dashboard/Hito2Playground.tsx`
 - Service architecture placeholders:
@@ -26,7 +32,7 @@
 - Implemented backend FastAPI app:
   - `services/app/` (`main`, `core`, `models`, `domain`, `routers`)
   - `services/incidents_analysis/` (CLI/API shared incident CSV pipeline)
-  - Auth (in progress): JWT via `python-jose`, passwords via `passlib`/`bcrypt`, config from root `.env`
+  - Auth (AUTH-01 complete): JWT via `python-jose`, passwords via `passlib`/`bcrypt`, config from root `.env`
   - Run: `python -m uvicorn services.app.main:app --reload` (prefer `uv run`)
 
 ## Validation and Local Checks

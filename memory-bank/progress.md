@@ -7,6 +7,24 @@
 - Manual browser playground for utility inspection is available.
 - Type-level model validation command is available in `packages/shared`.
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
+- AUTH-02 phases 1–3 complete on `feature/auth-frontend`: login/register UI, Bearer client, and client route guard. Remaining: profile page, logout.
+
+## Recently Completed (AUTH-02 phase 3 — route guard + register confirm)
+- `AppChrome` protects all backoffice routes except `/login` and `/register` using `localStorage` token via `useSyncExternalStore` (no `setState` in effect); missing token → `/login`, token on auth pages → `/`.
+- Register form requires password confirmation (client-side match check).
+- Website untouched.
+
+## Recently Completed (AUTH-02 phases 1–2 — frontend auth views)
+- Branch: `feature/auth-frontend`.
+- Shared HealthCore client: `uis/backoffice/lib/services/healthcoreClient.ts` (token get/set/clear, Bearer header, 401 → clear + redirect `/login`).
+- Auth API helpers: `uis/backoffice/lib/services/authApi.ts` (`login`, `register`, `registerAndLogin`).
+- Types: `uis/backoffice/types/auth.ts`.
+- Pages: `/login`, `/register` with forms under `components/forms/`; redirect to `/` on success.
+- `AppChrome` skips `BackofficeShell` on auth pages (no route-group restructure in this cut).
+- `suppliersApi` and `healthcoreApi` send Bearer via the shared client.
+- Website (`uis/website`) untouched — no auth checks.
+- Validation: `cd uis/backoffice && npm run build` (routes `/login`, `/register` generated).
+- Remaining for AUTH-02: `/account/profile`, logout control in shell.
 
 ## Recently Completed (AUTH-01 — authentication foundation)
 - Branch: `feature/auth`.
@@ -23,7 +41,7 @@
   - `/profiles` — `GET/PUT /profiles/me` (protected).
   - `/suppliers` — all six routes require Bearer (meets AUTH-01 “≥5 existing routes” requirement).
 - User and Profile remain in TinyDB only (no Supabase/SQL user tables).
-- Known gap (non-blocking): Swagger Authorize OAuth2 form vs JSON login mismatch; use curl/`Authorization: Bearer` for manual checks. Backoffice does not send tokens yet (expected 401 on suppliers until frontend phase).
+- Known gap (non-blocking): Swagger Authorize OAuth2 form vs JSON login mismatch; use curl/`Authorization: Bearer` for manual checks. Backoffice Bearer wiring delivered in AUTH-02 phases 1–2.
 
 ## Recently Completed (Documentation Context Setup)
 - Created Memory Bank baseline:
