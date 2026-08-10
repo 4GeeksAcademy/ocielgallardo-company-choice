@@ -16,12 +16,11 @@
 - UI applications:
   - `uis/website` (public Next.js website)
   - `uis/backoffice` (internal Next.js workspace)
-- Backoffice auth client (AUTH-02 phases 1–3 complete):
+- Backoffice auth client (AUTH-02 complete):
   - Token key `healthcore_access_token` in `localStorage` via `uis/backoffice/lib/services/healthcoreClient.ts`
-  - Pages `/login` and `/register`; successful auth redirects to `/`
-  - Bearer attached on HealthCore API calls (`suppliersApi`, `healthcoreApi`); 401 clears session and redirects to `/login`
-  - Layout: `AppChrome` omits `BackofficeShell` on auth pages and guards routes (token presence); logged-in users hitting auth pages go to `/`
-  - TODO: `/account/profile`, shell logout
+  - Pages `/login`, `/register`, `/account/profile`; successful auth redirects to `/`
+  - Bearer on HealthCore API calls; 401 clears session and redirects to `/login`
+  - `AppChrome` guards routes; `BackofficeShell` exposes Profile nav + logout (`clearSessionAndRedirectToLogin`)
 - Internal Hito 2 demo surface:
   - `uis/backoffice/components/dashboard/Hito2Playground.tsx`
 - Service architecture placeholders:

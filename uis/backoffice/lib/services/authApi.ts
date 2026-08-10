@@ -3,6 +3,8 @@ import type {
   RegisterInput,
   TokenResponse,
   UserPublic,
+  AuthMeResponse,
+  ProfilePublic,
 } from "@/types/auth";
 import {
   healthcoreRequest,
@@ -43,4 +45,19 @@ export async function registerAndLogin(
 ): Promise<TokenResponse> {
   await register(input);
   return login({ email: input.email, password: input.password });
+}
+
+export function fetchCurrentUser(): Promise<AuthMeResponse> {
+  return healthcoreRequest<AuthMeResponse>("/auth/me");
+}
+
+export function updateMyProfile(input: {
+  name?: string | null;
+  phone?: string | null;
+  address?: string | null;
+}): Promise<ProfilePublic> {
+  return healthcoreRequest<ProfilePublic>("/profiles/me", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }

@@ -23,6 +23,7 @@ Aplicación Next.js interna para empleados de HealthCore.
 - `/suppliers` Directorio de proveedores (API protegida con Bearer)
 - `/applications` Pipeline de candidatos y formulario de alta
 - `/candidates/[id]` Detalle, edición, estado/etapa y notas
+- `/account/profile` Perfil (email + name/phone/address)
 
 ## Incidentes de pacientes (`/incidents`)
 
@@ -69,29 +70,30 @@ Cliente: `lib/services/healthcoreApi.ts`
 
 CORS en la API permite `localhost` / `127.0.0.1` en puertos **3000** y **3001**. Si Next usa otro puerto, añade ese origen en `services/app/main.py`.
 
-### Auth frontend (AUTH-02 — fases 1–2)
+### Auth frontend (AUTH-02 — completo)
 
-- `POST /auth/login` y `POST /users` desde `/login` y `/register`.
-- Token JWT en `localStorage` (`healthcore_access_token`).
-- Cliente compartido `lib/services/healthcoreClient.ts`: adjunta `Authorization: Bearer` y ante **401** limpia el token y redirige a `/login`.
-- `suppliersApi` y `healthcoreApi` usan ese cliente.
-- Tras login/registro exitoso → redirect al dashboard (`/`).
-- `AppChrome` renderiza login/register sin `BackofficeShell` y protege el resto (sin token → `/login`; con token en auth → `/`).
-- Register incluye confirmación de contraseña (validación en cliente).
-- Pendiente (fases siguientes): `/account/profile`, logout en el shell.
+- `/login` y `/register`: JWT en `localStorage` (`healthcore_access_token`); redirect a `/`.
+- `healthcoreClient.ts`: Bearer en llamadas; **401** → clear + `/login`.
+- `AppChrome`: sin shell en auth; sin token en el resto → `/login`.
+- `/account/profile`: `GET /auth/me` + `PUT /profiles/me` (email solo lectura).
+- Shell: enlace Profile + **Cerrar sesión** (`clearSessionAndRedirectToLogin`).
+- Website público sin auth. Runtime `data/process/auth/auth.json` en `.gitignore`.
 
 ### Archivos de auth
 
 | Ruta | Rol |
 | --- | --- |
-| `app/login/page.tsx` | Página de inicio de sesión |
-| `app/register/page.tsx` | Página de registro |
-| `components/forms/LoginForm.tsx` | Formulario → API → token → `/` |
-| `components/forms/RegisterForm.tsx` | Registro (+ perfil opcional) → login → `/` |
-| `components/layout/AppChrome.tsx` | Omite el shell en `/login` y `/register` |
-| `lib/services/healthcoreClient.ts` | Token, fetch con Bearer, manejo 401 |
-| `lib/services/authApi.ts` | `login`, `register`, `registerAndLogin` |
-| `types/auth.ts` | Tipos de request/response de auth |
+| `app/login/page.tsx` | Inicio de sesión |
+| `app/register/page.tsx` | Registro |
+| `app/account/profile/page.tsx` | Perfil |
+| `components/forms/LoginForm.tsx` | Login → token → `/` |
+| `components/forms/RegisterForm.tsx` | Registro + confirmación de contraseña |
+| `components/forms/ProfileForm.tsx` | Editar name/phone/address |
+| `components/layout/AppChrome.tsx` | Guard de rutas + shell |
+| `components/layout/BackofficeShell.tsx` | Nav + logout |
+| `lib/services/healthcoreClient.ts` | Token, Bearer, 401 |
+| `lib/services/authApi.ts` | login, register, me, updateMyProfile |
+| `types/auth.ts` | Tipos auth |
 
 ### Archivos relacionados
 

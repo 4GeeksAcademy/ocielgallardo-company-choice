@@ -920,3 +920,20 @@ Se eligió layout mínimo (`AppChrome` + páginas en `app/login` y `app/register
 
 - `/account/profile`.
 - Logout en shell.
+
+## Actualizacion 2026-08-10 (AUTH-02 fases 4–5 — profile + logout)
+
+### Cambios
+
+- `/account/profile`: `GET /auth/me`, formulario editable → `PUT /profiles/me`.
+- Nav Profile; botón **Cerrar sesión** en `BackofficeShell` → clear token + `/login`.
+- Docs: progress, techContext, backoffice README(.es); AUTH-02 cerrado (fases 1–5).
+- `data/process/auth/auth.json` ya estaba en `.gitignore` (sin cambio).
+
+### Validacion
+
+- `cd uis/backoffice && npm run build`.
+
+### Resultado
+
+AUTH-02 frontend cerrado: login/register, guard, profile, logout, Bearer + 401.
