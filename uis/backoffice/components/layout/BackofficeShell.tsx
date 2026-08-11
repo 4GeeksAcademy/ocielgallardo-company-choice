@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/suppliers", label: "Suppliers" },
   { href: "/applications", label: "People & Talent" },
   { href: "/account/profile", label: "Profile" },
+  { href: "/account/change-password", label: "Change password" },
 ] as const;
 
 interface BackofficeShellProps {

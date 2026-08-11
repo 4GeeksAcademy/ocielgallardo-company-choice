@@ -8,6 +8,16 @@
 - Type-level model validation command is available in `packages/shared`.
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
 - AUTH-02 complete on `feature/auth-frontend`: login/register, Bearer client, route guard, profile page, shell logout.
+- AUTH-03 complete on `feature/password-reset`: forgot/reset/change password + Resend email.
+
+## Recently Completed (AUTH-03 — password recovery and change)
+- Branch: `feature/password-reset`.
+- Backend: `POST /auth/forgot-password` (always 200), `POST /auth/reset-password` (400 invalid/expired/used), `POST /auth/change-password` (Bearer; 400 wrong current).
+- TinyDB table `password_reset_tokens` (hash + expires_at; prior tokens removed on new request; deleted after successful reset).
+- Resend via env: `RESEND_API_KEY`, `EMAIL_FROM=onboarding@resend.dev`, `FRONTEND_BASE_URL`, `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES`, optional `EMAIL_SSL_VERIFY` (local Windows SSL workaround). Email failures logged server-side without leaking enumeration. Uses `certifi` for TLS when verify is enabled.
+- Backoffice: `/forgot-password`, `/reset-password?token=…`, `/account/change-password`; login link “¿Olvidaste tu contraseña?”; nav “Change password”; public AUTH paths include forgot/reset.
+- Docs: `bitacora.md`, services/uis/backoffice README(.es), `.env.example`, this memory-bank.
+- Website untouched. Validation: API smoke + real Resend delivery; `tsc --noEmit` OK; full `next build` blocked in this environment by Google Fonts SSL (unrelated to auth).
 
 ## Recently Completed (AUTH-02 phases 4–5 — profile + logout)
 - `/account/profile`: `GET /auth/me` + editable name/phone/address via `PUT /profiles/me` (`ProfileForm`, `fetchCurrentUser`, `updateMyProfile`).

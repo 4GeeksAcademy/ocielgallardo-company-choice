@@ -80,6 +80,11 @@ export function LoginForm() {
           Regístrate
         </Link>
       </p>
+      <p className="text-center text-sm text-slate-600">
+        <Link href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-700">
+          ¿Olvidaste tu contraseña?
+        </Link>
+      </p>
     </form>
   );
 }

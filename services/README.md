@@ -22,21 +22,26 @@ This folder contains backend service boundaries for the monorepo architecture.
 - `app/` — FastAPI application (`services/app/main.py`) with layered layout:
   - `core/` — TinyDB (`database.py`), supplier seed (`seed.py`), JWT/password helpers (`security.py`), `deps.py` (`get_current_user`)
   - `models/` — Pydantic models (`supplier`, `user`, `profile`)
-  - `domain/` — business orchestration (`supplier_service`, `incident_service`, `user_service`, `profile_service`)
+  - `domain/` — business orchestration (`supplier_service`, `incident_service`, `user_service`, `profile_service`, `password_reset_service`)
   - `routers/` — HTTP only:
     - `incidents.py` → `POST /api/incidents/analyze`, `GET /api/incidents/results/export`
 		- `suppliers.py` → supplier directory CRUD + filters + rate/status updates (**Bearer required**)
 		- `users.py` → user credential CRUD (`POST` public; `GET/PUT/DELETE` require Bearer; PUT/DELETE self-or-admin)
-		- `auth.py` → `POST /auth/login`, `GET /auth/me` (JWT)
+		- `auth.py` → `POST /auth/login`, `GET /auth/me`, `POST /auth/forgot-password`, `POST /auth/reset-password`, `POST /auth/change-password`
 		- `profiles.py` → `GET/PUT /profiles/me` (JWT)
 
-Auth notes (AUTH-01, branch `feature/auth`):
+Auth notes (AUTH-01 / AUTH-03):
 
 - Passwords hashed with `passlib` + `bcrypt` (pin `bcrypt==4.0.1` for passlib compatibility).
 - JWT signed with `python-jose`; `SECRET_KEY` and `ACCESS_TOKEN_EXPIRE_MINUTES` from repo-root `.env` (see `.env.example`).
-- User and Profile stored only in TinyDB (not PostgreSQL/Supabase).
+- User and Profile stored only in TinyDB (not PostgreSQL/Supabase). Password-reset tokens live in TinyDB table `password_reset_tokens` (hashed, short TTL, single-use).
 - All `/suppliers` routes and non-public `/users` routes require `Authorization: Bearer <token>` (401 without it).
-- Frontend consumer (AUTH-02 phases 1–2): backoffice stores the JWT in `localStorage` and sends Bearer via `uis/backoffice/lib/services/healthcoreClient.ts` (`/login`, `/register`).
+- Password recovery (AUTH-03, branch `feature/password-reset`):
+  - `POST /auth/forgot-password` always returns 200 (anti-enumeration); emails via Resend when the user exists.
+  - `POST /auth/reset-password` validates token/expiry/single-use; updates hash; invalidates token.
+  - `POST /auth/change-password` requires Bearer; verifies current password first.
+  - Env: `RESEND_API_KEY`, `EMAIL_FROM` (use `onboarding@resend.dev` for Resend onboarding), `FRONTEND_BASE_URL`, `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES`, optional `EMAIL_SSL_VERIFY` (local Windows TLS workaround). Never commit real keys.
+- Frontend consumer (AUTH-02/03): backoffice stores the JWT in `localStorage` and sends Bearer via `uis/backoffice/lib/services/healthcoreClient.ts` (`/login`, `/register`, forgot/reset/change-password flows).
 
 Run from repo root:
 
@@ -49,10 +54,10 @@ uv run python -m services.app.core.seed
 
 - `data/process/results.csv` — latest incidents summary export.
 - `data/process/suppliers/suppliers.json` — TinyDB runtime file for supplier directory.
-- `data/process/auth/auth.json` — TinyDB runtime file for users and profiles (gitignored).
+- `data/process/auth/auth.json` — TinyDB runtime file for users, profiles, and password-reset tokens (gitignored).
 
 ## Status
 
-Incident analysis business logic lives under `incidents_analysis/` and is reused by API routes via `app/domain/incident_service`. AUTH-01 JWT protection is applied to users (except register) and all supplier routes; incidents remain public for now. Backoffice AUTH-02 phases 1–2 attach Bearer from `localStorage` after `/login` or `/register`. Other domain folders (`gateway`, `clinical-operations`, `revenue-cycle`, `compliance`) remain placeholders.
+Incident analysis business logic lives under `incidents_analysis/` and is reused by API routes via `app/domain/incident_service`. AUTH-01 JWT protection is applied to users (except register) and all supplier routes; incidents remain public for now. AUTH-03 adds forgot/reset/change-password with Resend. Backoffice AUTH-02/03 attach Bearer from `localStorage` after `/login` or `/register` and expose password recovery UI. Other domain folders (`gateway`, `clinical-operations`, `revenue-cycle`, `compliance`) remain placeholders.
 
 > Spanish version: [README.es.md](./README.es.md).

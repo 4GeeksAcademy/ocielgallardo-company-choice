@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { BackofficeShell } from "@/components/layout/BackofficeShell";
 import { getAccessToken } from "@/lib/services/healthcoreClient";
 
-const AUTH_PATHS = new Set(["/login", "/register"]);
+const AUTH_PATHS = new Set(["/login", "/register", "/forgot-password", "/reset-password"]);
 
 function subscribe(onStoreChange: () => void) {
   if (typeof window === "undefined") {
