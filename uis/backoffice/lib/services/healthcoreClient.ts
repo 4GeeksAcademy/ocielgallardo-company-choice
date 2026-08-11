@@ -82,9 +82,21 @@ export function getFieldErrors(
 
   const errors: Record<string, string> = {};
   for (const item of detail) {
+    if (typeof item !== "object" || !item) {
+      continue;
+    }
+
+    // FastAPI / our API: { field, message }
+    if ("field" in item && "message" in item) {
+      const field = String((item as { field: unknown }).field ?? "");
+      if (field) {
+        errors[field] = String((item as { message: unknown }).message);
+      }
+      continue;
+    }
+
+    // Pydantic-style: { loc, msg }
     if (
-      typeof item === "object" &&
-      item &&
       "loc" in item &&
       "msg" in item &&
       Array.isArray((item as { loc: unknown }).loc)

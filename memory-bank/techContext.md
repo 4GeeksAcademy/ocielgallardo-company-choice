@@ -4,6 +4,7 @@
 - Frontend apps: Next.js + React for public and internal UIs.
 - Domain and utilities: TypeScript (typed models and utility modules).
 - Package tooling: npm scripts via `packages/shared/package.json`.
+- Shared Python package: `packages/shared/healthcore_shared` (CSV validation + incident-manager constants/maps). Import via `PYTHONPATH=packages/shared` or hatch `dev-mode-dirs`.
 
 ## Verified Technical Areas
 - TypeScript domain package in `src/`:
@@ -36,9 +37,10 @@
   - `services/compliance`
 - Implemented backend FastAPI app:
   - `services/app/` (`main`, `core`, `models`, `domain`, `routers`)
-  - `services/incidents_analysis/` (CLI/API shared incident CSV pipeline)
+  - `services/incidents_analysis/` (CLI/API shared incident CSV pipeline; validator re-exports `healthcore_shared`)
+  - Incident manager: TinyDB `data/process/incidents/incidents.json`; CRUD + `/api/incidents/summary` + status lifecycle; seed via `scripts/seed_incidents.py`
   - Auth (AUTH-01 complete): JWT via `python-jose`, passwords via `passlib`/`bcrypt`, config from root `.env`
-  - Run: `python -m uvicorn services.app.main:app --reload` (prefer `uv run`)
+  - Run: `PYTHONPATH=packages/shared uv run uvicorn services.app.main:app --reload`
 
 ## Validation and Local Checks
 - Type validation command (documented):

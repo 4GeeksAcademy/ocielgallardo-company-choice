@@ -7,7 +7,7 @@ Aplicación Next.js interna para empleados de HealthCore.
 - Separar el workspace interno del sitio público.
 - Mantener el tracker de candidatos (People & Talent).
 - Exponer utilidades de negocio de Hito 2 en el dashboard.
-- Analizar CSVs de incidentes de pacientes contra la API FastAPI local de HealthCore.
+- Analizar y gestionar incidencias contra la API FastAPI local de HealthCore (registro, listado, resumen + análisis CSV).
 
 ## Secciones actuales
 
@@ -21,28 +21,39 @@ Aplicación Next.js interna para empleados de HealthCore.
 - `/billing` Módulo placeholder
 - `/claims` Módulo placeholder
 - `/reports` Módulo placeholder
-- `/incidents` Análisis CSV de incidentes (subida, resumen, descarga)
+- `/incidents` Gestor: listado (filtros + cambio de estado)
+- `/incidents/new` Registrar incidencia (aviso PHI en description)
+- `/incidents/summary` Métricas agregadas por status/categoría/origen/sede
+- `/incidents/analyze` Análisis CSV de incidentes (subida, resumen, descarga)
 - `/suppliers` Directorio de proveedores (API protegida con Bearer)
 - `/applications` Pipeline de candidatos y formulario de alta
 - `/candidates/[id]` Detalle, edición, estado/etapa y notas
 - `/account/profile` Perfil (email + name/phone/address)
 - `/account/change-password` Cambio de contraseña con sesión
 
-## Incidentes de pacientes (`/incidents`)
+## Gestor de incidencias (`/incidents`)
 
-Usa la misma pipeline de negocio que el CLI (`services/incidents_analysis/`), expuesta por FastAPI.
+Registro y seguimiento centralizado para las clínicas HealthCore. Contrato: `docs/incident-manager/CONTEXT-HealthCore.es.md`. Etiquetas de UI en **inglés**.
+
+### Rutas
+
+| Ruta | Rol |
+| --- | --- |
+| `/incidents` | Listado + filtros (`status`, `origin`, `branch`) + transiciones de estado con rollback si falla |
+| `/incidents/new` | Formulario de alta; `branch` siempre obligatorio; se destaca si `origin === branch`; aviso PHI antes de description |
+| `/incidents/summary` | Totales de `GET /api/incidents/summary` (carga/error aislados) |
+| `/incidents/analyze` | UI del analizador CSV (misma pipeline que el CLI) |
 
 ### Qué debe estar en marcha
 
-Dos procesos:
-
 1. **API HealthCore** (raíz del repo) — por defecto `http://127.0.0.1:8000`
-2. **Este backoffice** — normalmente `http://localhost:3000` (o `3001` si el 3000 está ocupado)
+2. **Este backoffice** — normalmente `http://localhost:3000` (o `3001`)
 
 ```bash
 # Terminal A — desde la raíz del repositorio
-python -m pip install fastapi uvicorn python-multipart   # una vez
-python -m uvicorn services.app.main:app --reload
+PYTHONPATH=packages/shared uv run uvicorn services.app.main:app --reload
+# seed histórico opcional
+PYTHONPATH=packages/shared uv run python scripts/seed_incidents.py
 
 # Terminal B — esta app
 cd uis/backoffice
@@ -50,23 +61,38 @@ npm install   # una vez
 npm run dev
 ```
 
-Abre la URL que imprima Next (por ejemplo `http://localhost:3001/incidents` si el puerto 3000 está ocupado).
+Inicia sesión primero (el gestor exige Bearer). Swagger: `http://127.0.0.1:8000/docs`
 
-Swagger de la API: `http://127.0.0.1:8000/docs`
+### Archivos del gestor
+
+| Ruta | Rol |
+| --- | --- |
+| `app/incidents/page.tsx` | Listado |
+| `app/incidents/new/page.tsx` | Alta |
+| `app/incidents/summary/page.tsx` | Resumen |
+| `components/incidents/IncidentListPanel.tsx` | Filtros, tabla, status |
+| `components/incidents/IncidentCreateForm.tsx` | Formulario + aviso PHI |
+| `components/incidents/IncidentSummaryPanel.tsx` | Paneles de métricas |
+| `lib/services/incidentsManagerApi.ts` | Cliente API + errores amigables |
+| `types/incidentManager.ts` | Tipos, opciones y etiquetas |
+
+## Análisis CSV de incidentes (`/incidents/analyze`)
+
+Usa la misma pipeline que el CLI (`services/incidents_analysis/`), expuesta por FastAPI. Las reglas de validación viven en `packages/shared/healthcore_shared`.
 
 ### Cómo analizar un CSV
 
-1. En el menú, entra en **Incidents**.
-2. Arrastra o selecciona un `.csv` (muestra: `data/raw/incidents-healthcore.csv` en la raíz del repo).
+1. Abre **CSV analyzer** desde Incidents (o `/incidents/analyze`).
+2. Arrastra o selecciona un `.csv` (muestra: `data/raw/incidents-healthcore.csv`).
 3. Pulsa **Analyze CSV**.
-4. Revisa totales, desglose de inválidos por regla, categoría, estado y satisfacción.
-5. Pulsa **Download results CSV** para bajar el último análisis (`GET /api/incidents/results/export`).
+4. Revisa totales, inválidos por regla, categoría, estado y satisfacción.
+5. Pulsa **Download results CSV** (`GET /api/incidents/results/export`).
 
-Con el CSV oficial se espera: **100** total / **94** válidos / **6** inválidos; media de satisfacción **3.58**.
+Con el CSV oficial: **100** total / **94** válidos / **6** inválidos; media de satisfacción **3.58**.
 
 ### URL base de la API
 
-Cliente: `lib/services/healthcoreApi.ts`
+Clientes: `lib/services/healthcoreClient.ts`, `incidentsManagerApi.ts`, `healthcoreApi.ts`
 
 - Por defecto: `http://127.0.0.1:8000`
 - Override: variable `NEXT_PUBLIC_HEALTHCORE_API_URL` (reinicia `npm run dev` tras cambiarla)
@@ -109,17 +135,17 @@ CORS en la API permite `localhost` / `127.0.0.1` en puertos **3000** y **3001**.
 | `lib/services/authApi.ts` | login, register, me, profile, forgot/reset/change |
 | `types/auth.ts` | Tipos auth |
 
-### Archivos relacionados
+### Archivos del analizador CSV
 
 | Ruta | Rol |
 | --- | --- |
-| `app/incidents/page.tsx` | Página: subir → analizar → resumen → descargar |
+| `app/incidents/analyze/page.tsx` | Subir → analizar → resumen → descargar |
 | `components/incidents/IncidentCsvUpload.tsx` | Selector + drag and drop |
 | `components/incidents/IncidentAnalysisSummary.tsx` | Métricas alineadas al CONTEXT |
 | `lib/services/healthcoreApi.ts` | `POST /api/incidents/analyze`, `GET .../results/export` |
 | `types/incidents.ts` | Tipos del resumen JSON |
 
-Las reglas de negocio viven en `services/incidents_analysis/` (sin duplicarlas aquí). El Tracker sigue usando `lib/services/client.ts` (API 4Geeks).
+Las reglas del gestor viven en `packages/shared/healthcore_shared` y `services/app/domain/incident_manager_service.py`. El Tracker sigue usando `lib/services/client.ts` (API 4Geeks).
 
 ## Integración Hito 2
 
@@ -148,7 +174,7 @@ npm install
 npm run dev
 ```
 
-Para análisis de incidentes, arranca también la API (ver [Incidentes de pacientes](#incidentes-de-pacientes-incidents)).
+Para el gestor o el análisis CSV, arranca también la API (ver [Gestor de incidencias](#gestor-de-incidencias-incidents)).
 
 ## Build
 
@@ -160,7 +186,7 @@ npm start
 ## Notas
 
 - Candidatos: API Talent Tracker de 4Geeks (`/records`).
-- Incidentes: FastAPI local HealthCore (`services/app`).
+- Gestor de incidencias y análisis CSV: FastAPI local HealthCore (`services/app`).
 - Auth HealthCore: login/register/forgot/reset/change-password en este backoffice; el website público no usa JWT.
 - `next.config.ts` permite imports externos a utilidades de Hito 2.
 

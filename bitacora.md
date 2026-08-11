@@ -998,3 +998,71 @@ Rama `feature/password-reset`: forgot/reset por email (Resend) + change-password
 ### Resultado
 
 AUTH-03 cerrado: recuperación por email real, reset de un solo uso, cambio de contraseña autenticado, secretos solo en env.
+
+## Actualizacion 2026-08-11 (Gestor de Incidencias Centralizado)
+
+### Alcance
+
+Integrar un gestor de incidencias en el monorepo HealthCore (plataforma Hito 5+): modelo TinyDB, seed del CSV histórico, API CRUD/summary con ciclo de vida, y UI en backoffice (registro, listado, resumen). Contrato: `docs/incident-manager/CONTEXT-HealthCore(.es).md`.
+
+### Decisiones
+
+- Validación CSV del analizador + enums/maps del gestor en `packages/shared/healthcore_shared` (una sola fuente; script y API la reutilizan).
+- `services/incidents_analysis/validator.py` solo reexporta reglas compartidas (sin duplicar).
+- Seed **no** inserta filas CSV crudas: valida → mapea status/categoría/`clinic_id`→`branch` → inserta con `origin: customer`. Idempotencia por `source_incident_id`.
+- Rutas del gestor bajo `/api/incidents` conviven con `/analyze` y `/results/export`. `GET /summary` registrado **antes** de `/{id}`.
+- Manager routes requieren Bearer (como suppliers). Analyze/export siguen públicos.
+- UI en **inglés** (CONTEXT). Analizador CSV movido a `/incidents/analyze`; listado en `/incidents`.
+- Aviso PHI obligatorio antes de `description` en el formulario.
+- Errores: 400 con `{field, message}`; 500 genérico sin stack trace.
+
+### Shared + seed
+
+- Paquete: `packages/shared/healthcore_shared/` (`csv_validation`, `manager_constants`, `seed_mapping`, `manager_validation`).
+- `scripts/seed_incidents.py` (+ entry `uv run seed-incidents`). CSV canónico: `data/raw/incidents-healthcore.csv`.
+- Runtime TinyDB: `data/process/incidents/incidents.json` (gitignored).
+- `pyproject.toml`: `dev-mode-dirs` + force-include de `healthcore_shared`; preferir `PYTHONPATH=packages/shared` al arrancar API/seed.
+
+### Backend (`services/app`)
+
+- Modelo Pydantic `models/incident.py`; dominio `domain/incident_manager_service.py`.
+- Endpoints: `POST /api/incidents`, `GET /api/incidents` (filtros), `GET /api/incidents/summary`, `GET /api/incidents/{id}`, `PATCH /api/incidents/{id}/status`.
+- Transiciones: `open→in_progress|discarded`, `in_progress→resolved|discarded`; `resolved`/`discarded` finales.
+- Handlers globales en `main.py` para validación 400 y excepciones no controladas 500.
+
+### Frontend (`uis/backoffice`)
+
+- `/incidents` — listado + filtros + cambio de estado (rollback si falla).
+- `/incidents/new` — formulario + PHI warning + highlight de branch si `origin=branch`.
+- `/incidents/summary` — métricas aisladas (error no rompe el resto).
+- `/incidents/analyze` — UI CSV previa.
+- Cliente: `lib/services/incidentsManagerApi.ts`; tipos en `types/incidentManager.ts`.
+- Nav: Incidents, New incident, Incident summary.
+
+### Docs tocadas
+
+- `bitacora.md` (esta entrada)
+- `memory-bank/progress.md`, `memory-bank/techContext.md`
+- `scripts/README(.es).md`, `docs/README(.es).md` (carpeta `incident-manager/`)
+- `services/README(.es).md`, `services/incidents_analysis/README.md`
+- `packages/README(.es).md`, `packages/shared/README.md`
+- `uis/README(.es).md`, `uis/backoffice/README(.es).md`
+- `data/process/README(.es).md`
+
+### Validacion
+
+- Seed ×2: 94 inserts / 0 en segunda pasada; 6 inválidos reportados.
+- Summary post-seed coincide CONTEXT: status open 28 / resolved 52 / discarded 14; category patient_experience 61 / billing_error 20 / other 13; branches (p. ej. manchester_central 15).
+- Smoke API (Bearer): summary, list, create, transición ilegal 400, transición OK, validación 400, 404.
+- `cd uis/backoffice && npx tsc --noEmit` OK.
+
+### Como probar manualmente
+
+1. `PYTHONPATH=packages/shared uv run python scripts/seed_incidents.py`
+2. `PYTHONPATH=packages/shared uv run uvicorn services.app.main:app --reload`
+3. `cd uis/backoffice && npm run dev` → login → Incidents / New incident / Summary.
+4. Swagger: `http://127.0.0.1:8000/docs`
+
+### Resultado
+
+Gestor centralizado operable: histórico cargado, registro en tiempo real desde el navegador, ciclo de vida, métricas y UX con estados de carga/vacío/error.

@@ -41,6 +41,19 @@ python scripts/analyze.py data/raw/incidents-healthcore.csv
 
 🛡 **Compliance reminder:** never print or export `patient_id`. If the script surfaces a patient identifier, the output is not usable.
 
+### `seed_incidents.py` — load historical customer incidents into TinyDB
+
+Validates `data/raw/incidents-healthcore.csv` with shared analyzer rules (`packages/shared/healthcore_shared`), maps rows to the incident-manager model (CONTEXT transforms), and inserts idempotently by `source_incident_id`.
+
+```bash
+# from repo root
+PYTHONPATH=packages/shared uv run python scripts/seed_incidents.py
+# or
+uv run seed-incidents
+```
+
+**Source of truth:** `docs/incident-manager/CONTEXT-HealthCore.md`
+
 ## 💡 Tips
 
 - Keep each script focused: parse args, call services, present results.

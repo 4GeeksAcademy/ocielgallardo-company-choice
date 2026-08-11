@@ -37,7 +37,7 @@ Aplicación interna de Next.js para personal de HealthCore.
   - Billing
   - Claims
   - Reports
-  - Incidents / Suppliers
+  - Incidents (gestor: listado / alta / resumen + análisis CSV) / Suppliers
   - People & Talent (`/applications`, `/candidates/[id]`)
 - El sitio público (`website`) permanece sin autenticación.
 

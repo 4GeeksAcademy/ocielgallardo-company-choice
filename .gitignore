@@ -58,3 +58,5 @@ data/process/results.csv
 # Runtime TinyDB file for Supplier Directory API
 data/process/suppliers/suppliers.json
 data/process/auth/auth.json
+# Runtime TinyDB for incident manager
+data/process/incidents/incidents.json

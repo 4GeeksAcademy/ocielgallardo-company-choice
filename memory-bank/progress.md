@@ -2,6 +2,8 @@
 
 ## Current Status Snapshot
 - Business context source established in `CONTEXT.md`.
+- Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`).
+- Centralized incident manager implemented (shared validation, seed, API, backoffice UI).
 - Web deliverables for Milestone 1 are implemented.
 - Core TypeScript domain/utilities for Milestone 2 are implemented.
 - Manual browser playground for utility inspection is available.
@@ -9,6 +11,22 @@
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
 - AUTH-02 complete on `feature/auth-frontend`: login/register, Bearer client, route guard, profile page, shell logout.
 - AUTH-03 complete on `feature/password-reset`: forgot/reset/change password + Resend email.
+
+## Recently Completed (incident manager — docs pass)
+- Documented milestone in `bitacora.md` and READMEs: `services`, `uis/backoffice`, `packages/shared`, `scripts`, `data/process`, `incidents_analysis`, `uis`, `docs`.
+
+## Recently Completed (incident manager — centralized incidents)
+- Shared Python package `packages/shared/healthcore_shared`: CSV validation, manager enums/transitions, seed mapping, create/status field validation.
+- `services/incidents_analysis/validator.py` re-exports shared CSV rules (no duplication).
+- TinyDB `data/process/incidents/incidents.json`; domain `incident_manager_service.py`; models in `services/app/models/incident.py`.
+- API under `/api/incidents`: POST create, GET list/filters, GET summary, GET by id, PATCH status (+ retained analyze/export). Auth required on manager routes. Validation 400 with `{field,message}`; generic 500 handler.
+- Seed: `scripts/seed_incidents.py` — 94 valid inserts, 6 invalids reported; second run inserts 0 (idempotent). Summary matches CONTEXT post-transform totals.
+- Backoffice (English): `/incidents` list+status, `/incidents/new` form with PHI warning, `/incidents/summary`, CSV analyzer moved to `/incidents/analyze`. Nav links added.
+- Validation: seed×2 + curl smoke (summary/list/create/bad transition/good transition/400/404); `uis/backoffice` `tsc --noEmit` OK.
+
+## Recently Completed (docs — incident-manager folder)
+- Added `docs/incident-manager/` with placeholder `CONTEXT-HealthCore.md` and `CONTEXT-HealthCore.es.md` (content pending paste).
+- Updated `docs/README.md` and `docs/README.es.md` tree to include `supplier-directory/` and `incident-manager/`.
 
 ## Recently Completed (AUTH-03 — password recovery and change)
 - Branch: `feature/password-reset`.
