@@ -15,6 +15,7 @@ import {
   SUPPLIER_CATEGORY_OPTIONS,
   SUPPLIER_STATUS_OPTIONS,
 } from "@/types/suppliers";
+import { friendlyApiErrorEs } from "@/lib/utils/friendlyApiError";
 
 interface SupplierFormProps {
   isSubmitting: boolean;
@@ -118,7 +119,7 @@ export function SupplierForm({ isSubmitting, onSubmit, onCancel }: SupplierFormP
       setValues(initialState);
     } catch (err) {
       setFormStatus(
-        err instanceof Error ? err.message : "No se pudo registrar el proveedor."
+        friendlyApiErrorEs(err, "No se pudo registrar el proveedor.")
       );
     }
   }

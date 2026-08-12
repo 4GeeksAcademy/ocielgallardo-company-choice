@@ -37,8 +37,8 @@ export function ChangePasswordForm() {
       setNewPassword("");
       setConfirmNewPassword("");
     } catch (err) {
-      if (err instanceof HealthcoreApiError) {
-        setFormError(err.message || "No se pudo cambiar la contraseña.");
+      if (err instanceof HealthcoreApiError && err.status === 400) {
+        setFormError("La contraseña actual no es correcta.");
       } else {
         setFormError("No se pudo cambiar la contraseña. Inténtalo de nuevo.");
       }

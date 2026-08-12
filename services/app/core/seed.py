@@ -212,5 +212,15 @@ def run_seed():
         print("No duplicates found. Database already up to date.")
 
 
+def main() -> None:
+    import sys
+
+    try:
+        run_seed()
+    except Exception as exc:
+        print(f"Seed failed: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+
 if __name__ == "__main__":
-    run_seed()
+    main()

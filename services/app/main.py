@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +12,8 @@ from services.app.routers.users import router as users_router
 from services.app.routers.auth import router as auth_router
 from services.app.routers.profiles import router as profiles_router
 
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="HealthCore API")
 
@@ -51,6 +55,11 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     if isinstance(exc, (HTTPException, StarletteHTTPException, RequestValidationError)):
         # Let FastAPI/Starlette dedicated handlers run
         raise exc
+    logger.exception(
+        "Unhandled error on %s %s",
+        request.method,
+        request.url.path,
+    )
     return JSONResponse(
         status_code=500,
         content={

@@ -11,6 +11,13 @@
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
 - AUTH-02 complete on `feature/auth-frontend`: login/register, Bearer client, route guard, profile page, shell logout.
 - AUTH-03 complete on `feature/password-reset`: forgot/reset/change password + Resend email.
+- Error-handling resilience pass applied across `services/`, `uis/backoffice/`, and `uis/website/`.
+
+## Recently Completed (error-handling resilience)
+- Backend: global 500 handler now logs exceptions; password-reset logs redact PII/provider bodies; analyze/export require auth and map CSV/parse failures to 400; auth reset/change no longer force all HTTPException → 400; seed scripts exit non-zero on critical failure.
+- Backoffice: shared `friendlyApiError` sanitizer; API clients wrap network/JSON failures; hooks/forms stop forwarding raw `Error ${status}` / API detail; profile + candidate detail Retry CTAs; create-supplier catch; demo playground uses synthetic identifiers.
+- Website: patient form three-state submit (loading/success/error + CTA); `app/error.tsx` + `app/not-found.tsx`; hero image `onError` fallback.
+- Validation: `uis/backoffice` and `uis/website` `tsc --noEmit` OK.
 
 ## Recently Completed (incident manager — docs pass)
 - Documented milestone in `bitacora.md` and READMEs: `services`, `uis/backoffice`, `packages/shared`, `scripts`, `data/process`, `incidents_analysis`, `uis`, `docs`.

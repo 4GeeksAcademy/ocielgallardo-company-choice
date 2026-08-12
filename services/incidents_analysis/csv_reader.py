@@ -3,6 +3,17 @@ from pathlib import Path
 
 from .models import Incident
 
+REQUIRED_HEADERS = (
+    "incident_id",
+    "date",
+    "clinic_id",
+    "country",
+    "category",
+    "description",
+    "status",
+    "patient_id",
+)
+
 
 def _parse_satisfaction_score(raw: str | None) -> int | None:
     """Empty cell -> None. Non-empty -> int (validator will check 1-5 later)."""
@@ -18,11 +29,18 @@ def read_incidents(path: str | Path) -> list[Incident]:
     """Read a UTF-8 comma-separated incidents CSV into Incident objects.
 
     Does not validate business rules and must not print patient_id.
+    Raises UnicodeDecodeError, KeyError, ValueError, or csv.Error on bad input.
     """
     incidents: list[Incident] = []
 
     with open(path, newline="", encoding="utf-8") as csvfile:
         reader = csv.DictReader(csvfile)
+        if reader.fieldnames is None:
+            raise ValueError("CSV has no header row")
+        missing = [h for h in REQUIRED_HEADERS if h not in reader.fieldnames]
+        if missing:
+            raise KeyError(f"Missing required CSV columns: {', '.join(missing)}")
+
         for row in reader:
             incidents.append(
                 Incident(

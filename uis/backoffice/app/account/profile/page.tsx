@@ -1,20 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/Button";
 import { ProfileForm } from "@/components/forms/ProfileForm";
 import { fetchCurrentUser } from "@/lib/services/authApi";
-import { HealthcoreApiError } from "@/lib/services/healthcoreClient";
 import type { AuthMeResponse } from "@/types/auth";
+import { friendlyApiErrorEs } from "@/lib/utils/friendlyApiError";
 
 export default function ProfilePage() {
   const [me, setMe] = useState<AuthMeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchCurrentUser();
+      setMe(data);
+    } catch (err) {
+      setMe(null);
+      setError(
+        friendlyApiErrorEs(err, "No se pudo cargar el perfil.")
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
+    async function bootstrap() {
       setLoading(true);
       setError(null);
       try {
@@ -22,10 +39,9 @@ export default function ProfilePage() {
         if (!cancelled) setMe(data);
       } catch (err) {
         if (!cancelled) {
+          setMe(null);
           setError(
-            err instanceof HealthcoreApiError
-              ? err.message
-              : "No se pudo cargar el perfil."
+            friendlyApiErrorEs(err, "No se pudo cargar el perfil.")
           );
         }
       } finally {
@@ -33,7 +49,7 @@ export default function ProfilePage() {
       }
     }
 
-    load();
+    void bootstrap();
     return () => {
       cancelled = true;
     };
@@ -45,9 +61,14 @@ export default function ProfilePage() {
 
   if (error || !me) {
     return (
-      <p className="text-sm text-red-600" role="alert">
-        {error ?? "Perfil no disponible."}
-      </p>
+      <div className="space-y-3" role="alert">
+        <p className="text-sm text-red-600">
+          {error ?? "Perfil no disponible."}
+        </p>
+        <Button type="button" variant="secondary" onClick={() => void load()}>
+          Reintentar
+        </Button>
+      </div>
     );
   }
 

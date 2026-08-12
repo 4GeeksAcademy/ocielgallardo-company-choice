@@ -11,6 +11,7 @@ const HERO_IMAGES = [
 
 export function HeroCarousel() {
   const [index, setIndex] = useState(0);
+  const [failed, setFailed] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -28,16 +29,23 @@ export function HeroCarousel() {
       >
         {HERO_IMAGES.map((src) => (
           <div key={src} className="hero-carousel-slide">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={src}
-              alt=""
-              className={
-                src.includes("hero-002")
-                  ? "hero-carousel-image hero-carousel-image--top"
-                  : "hero-carousel-image"
-              }
-            />
+            {failed[src] ? (
+              <div className="hero-carousel-image hero-carousel-fallback" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={src}
+                alt=""
+                onError={() =>
+                  setFailed((current) => ({ ...current, [src]: true }))
+                }
+                className={
+                  src.includes("hero-002")
+                    ? "hero-carousel-image hero-carousel-image--top"
+                    : "hero-carousel-image"
+                }
+              />
+            )}
           </div>
         ))}
       </div>

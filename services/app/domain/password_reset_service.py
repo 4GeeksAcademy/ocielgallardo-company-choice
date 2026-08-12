@@ -23,6 +23,8 @@ load_dotenv(_ROOT_ENV)
 
 logger = logging.getLogger(__name__)
 
+_GENERIC_EMAIL_FAILURE = "Unable to send email. Please try again later."
+
 
 def _ssl_context() -> ssl.SSLContext:
     """
@@ -53,6 +55,25 @@ def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _token_expire_minutes() -> int:
+    raw = os.getenv("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", "30")
+    try:
+        minutes = int(raw)
+    except (TypeError, ValueError):
+        logger.error("Invalid PASSWORD_RESET_TOKEN_EXPIRE_MINUTES value.")
+        raise HTTPException(
+            status_code=500,
+            detail=_GENERIC_EMAIL_FAILURE,
+        ) from None
+    if minutes <= 0:
+        logger.error("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES must be positive.")
+        raise HTTPException(
+            status_code=500,
+            detail=_GENERIC_EMAIL_FAILURE,
+        )
+    return minutes
+
+
 def create_password_reset_token(user_id: int) -> str:
     """
     Creates a short-lived, single-use reset token and stores its state server-side.
@@ -63,10 +84,7 @@ def create_password_reset_token(user_id: int) -> str:
 
     token = secrets.token_urlsafe(32)
     token_hash = _sha256(token)
-    expires_minutes = int(
-        os.getenv("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", "30")
-    )
-    expires_at = _now_utc() + timedelta(minutes=expires_minutes)
+    expires_at = _now_utc() + timedelta(minutes=_token_expire_minutes())
 
     password_reset_tokens_table.insert(
         {
@@ -90,15 +108,14 @@ def _get_user_doc_by_id(user_id: int) -> dict:
 def _send_password_reset_email(*, to_email: str, reset_url: str) -> None:
     provider = os.getenv("PASSWORD_RESET_EMAIL_PROVIDER", "resend").lower()
     if provider != "resend":
-        raise HTTPException(status_code=500, detail="Unsupported email provider.")
+        logger.error("Unsupported password-reset email provider configured.")
+        raise HTTPException(status_code=500, detail=_GENERIC_EMAIL_FAILURE)
 
     resend_api_key = os.getenv("RESEND_API_KEY")
     email_from = os.getenv("EMAIL_FROM")
     if not resend_api_key or not email_from:
-        raise HTTPException(
-            status_code=500,
-            detail="Email provider is not configured (missing env vars).",
-        )
+        logger.error("Email provider is not configured (missing env vars).")
+        raise HTTPException(status_code=500, detail=_GENERIC_EMAIL_FAILURE)
 
     subject = "HealthCore: Restablecer contraseña"
     html = f"""
@@ -130,23 +147,24 @@ def _send_password_reset_email(*, to_email: str, reset_url: str) -> None:
         with urllib.request.urlopen(req, timeout=15, context=_ssl_context()) as resp:
             resp.read()
     except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
+        # Do not log recipient email (PII) or provider response body.
         logger.error(
-            "Resend HTTP %s when sending password reset to %s: %s",
+            "Resend HTTP error when sending password reset (status=%s).",
             exc.code,
-            to_email,
-            body,
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Email provider error ({exc.code}).",
+            detail=_GENERIC_EMAIL_FAILURE,
         ) from exc
-    except urllib.error.URLError as exc:
-        logger.error("Resend network error when sending password reset: %s", exc)
+    except urllib.error.URLError:
+        logger.error(
+            "Resend network error when sending password reset (type=%s).",
+            "URLError",
+        )
         raise HTTPException(
             status_code=500,
-            detail="Email provider network error.",
-        ) from exc
+            detail=_GENERIC_EMAIL_FAILURE,
+        ) from None
 
 
 def forgot_password(email: str) -> dict:
@@ -163,26 +181,41 @@ def forgot_password(email: str) -> dict:
     user_id = int(user_doc.doc_id)
     to_email = str(user_doc["email"])
 
-    token = create_password_reset_token(user_id)
-
     frontend_base_url = os.getenv("FRONTEND_BASE_URL")
     if not frontend_base_url:
-        logger.error("FRONTEND_BASE_URL is not configured.")
+        logger.error("FRONTEND_BASE_URL is not configured; skipping token creation.")
+        return {"message": "ok"}
+
+    resend_api_key = os.getenv("RESEND_API_KEY")
+    email_from = os.getenv("EMAIL_FROM")
+    if not resend_api_key or not email_from:
+        logger.error(
+            "Email provider env incomplete; skipping token creation for user_id=%s.",
+            user_id,
+        )
+        return {"message": "ok"}
+
+    try:
+        token = create_password_reset_token(user_id)
+    except HTTPException:
+        logger.warning(
+            "Password reset token not created for user_id=%s (config error).",
+            user_id,
+        )
         return {"message": "ok"}
 
     reset_url = f"{frontend_base_url.rstrip('/')}/reset-password?token={token}"
     try:
         _send_password_reset_email(to_email=to_email, reset_url=reset_url)
-    except HTTPException as exc:
+    except HTTPException:
         logger.warning(
-            "Password reset email not sent for user_id=%s: %s",
+            "Password reset email not sent for user_id=%s.",
             user_id,
-            exc.detail,
         )
         return {"message": "ok"}
-    except Exception:
+    except (urllib.error.URLError, OSError, TimeoutError, ValueError):
         logger.exception(
-            "Unexpected error sending password reset email for user_id=%s",
+            "Expected transport/config error sending password reset for user_id=%s.",
             user_id,
         )
         return {"message": "ok"}
@@ -198,7 +231,12 @@ def reset_password(*, token: str, new_password: str) -> dict:
         raise HTTPException(status_code=400, detail="Invalid or expired token.")
 
     record = docs[0]
-    expires_at = datetime.fromisoformat(record["expires_at"])
+    try:
+        expires_at = datetime.fromisoformat(record["expires_at"])
+    except (KeyError, TypeError, ValueError):
+        logger.warning("Corrupt password-reset token expiry; treating as invalid.")
+        raise HTTPException(status_code=400, detail="Invalid or expired token.") from None
+
     used = bool(record.get("used", False))
 
     if used or _now_utc() > expires_at:

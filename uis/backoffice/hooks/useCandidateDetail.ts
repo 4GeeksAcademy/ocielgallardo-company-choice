@@ -3,13 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Application, Note } from "@/types/application";
 import type { AsyncStatus } from "@/types/async";
-import { ApiError } from "@/lib/services/client";
 import { fetchRecordById } from "@/lib/services/records";
 import { fetchNotes } from "@/lib/services/notes";
-
-function resolveErrorMessage(err: unknown, fallback: string): string {
-  return err instanceof ApiError ? err.message : fallback;
-}
+import { friendlyApiErrorEs } from "@/lib/utils/friendlyApiError";
 
 function sortNotes(notes: Note[]): Note[] {
   return [...notes].sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -32,7 +28,7 @@ export function useCandidateDetail(candidateId: string) {
       setRecordStatus("success");
     } catch (err) {
       setRecordError(
-        resolveErrorMessage(err, "No se pudo cargar la candidatura.")
+        friendlyApiErrorEs(err, "No se pudo cargar la candidatura.")
       );
       setApplication(null);
       setRecordStatus("error");
@@ -48,7 +44,7 @@ export function useCandidateDetail(candidateId: string) {
       setNotesStatus("success");
     } catch (err) {
       setNotesError(
-        resolveErrorMessage(err, "No se pudieron cargar las notas internas.")
+        friendlyApiErrorEs(err, "No se pudieron cargar las notas internas.")
       );
       setNotes([]);
       setNotesStatus("error");
@@ -67,7 +63,7 @@ export function useCandidateDetail(candidateId: string) {
       } catch (err) {
         if (!isActive) return;
         setRecordError(
-          resolveErrorMessage(err, "No se pudo cargar la candidatura.")
+          friendlyApiErrorEs(err, "No se pudo cargar la candidatura.")
         );
         setApplication(null);
         setRecordStatus("error");
@@ -83,7 +79,7 @@ export function useCandidateDetail(candidateId: string) {
       } catch (err) {
         if (!isActive) return;
         setNotesError(
-          resolveErrorMessage(err, "No se pudieron cargar las notas internas.")
+          friendlyApiErrorEs(err, "No se pudieron cargar las notas internas.")
         );
         setNotes([]);
         setNotesStatus("error");

@@ -9,6 +9,7 @@ import {
   HealthcoreApiError,
   healthcoreRequest,
 } from "@/lib/services/healthcoreClient";
+import { friendlyApiError } from "@/lib/utils/friendlyApiError";
 
 export { HealthcoreApiError as IncidentManagerApiError };
 
@@ -58,38 +59,5 @@ export function fetchIncidentSummary(): Promise<IncidentSummary> {
 }
 
 export function friendlyIncidentError(err: unknown, fallback: string): string {
-  if (!(err instanceof HealthcoreApiError)) {
-    return fallback;
-  }
-  if (err.status >= 500) {
-    return "Something went wrong on the server. Please try again in a moment.";
-  }
-  if (err.status === 404) {
-    return "The requested incident was not found.";
-  }
-  if (err.status === 401 || err.status === 403) {
-    return "Your session expired. Please sign in again.";
-  }
-  // Prefer first field message when present
-  if (err.details && typeof err.details === "object" && "detail" in err.details) {
-    const detail = (err.details as { detail: unknown }).detail;
-    if (Array.isArray(detail) && detail[0] && typeof detail[0] === "object") {
-      const first = detail[0] as { message?: unknown; msg?: unknown };
-      const message = first.message ?? first.msg;
-      if (typeof message === "string" && message.trim()) {
-        return message;
-      }
-    }
-    if (typeof detail === "string" && detail.trim()) {
-      // Avoid technical jargon for users
-      if (/traceback|exception|stack/i.test(detail)) {
-        return fallback;
-      }
-      return detail;
-    }
-  }
-  if (/traceback|exception|stack/i.test(err.message)) {
-    return fallback;
-  }
-  return err.message || fallback;
+  return friendlyApiError(err, fallback);
 }

@@ -55,7 +55,10 @@ def _summary_to_rows(summary: dict) -> list[dict]:
 
 
 def export_results(summary: dict, output_path: str | Path) -> Path:
-    """Write analysis metrics to CSV (metric, value, percentage). No PHI."""
+    """Write analysis metrics to CSV (metric, value, percentage). No PHI.
+
+    Raises OSError when the output path cannot be created or written.
+    """
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 

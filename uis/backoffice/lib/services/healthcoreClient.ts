@@ -1,3 +1,22 @@
+function statusMessageEs(status: number): string {
+  if (status >= 500) {
+    return "Algo salió mal en el servidor. Inténtalo de nuevo en un momento.";
+  }
+  if (status === 404) {
+    return "No se encontró el recurso solicitado.";
+  }
+  if (status === 401 || status === 403) {
+    return "Tu sesión expiró. Vuelve a iniciar sesión.";
+  }
+  if (status === 409) {
+    return "Este registro ya existe o entra en conflicto con datos existentes.";
+  }
+  if (status === 400 || status === 422) {
+    return "Algunos datos enviados no son válidos. Revísalos e inténtalo de nuevo.";
+  }
+  return "No se pudo completar la solicitud. Inténtalo de nuevo.";
+}
+
 const HEALTHCORE_API_BASE_URL =
   process.env.NEXT_PUBLIC_HEALTHCORE_API_URL ?? "http://127.0.0.1:8000";
 
@@ -61,7 +80,9 @@ export function extractDetail(body: unknown, fallback: string): string {
         .map((item) =>
           typeof item === "object" && item && "msg" in item
             ? String((item as { msg: unknown }).msg)
-            : String(item)
+            : typeof item === "object" && item && "message" in item
+              ? String((item as { message: unknown }).message)
+              : String(item)
         )
         .join("; ");
     }
@@ -118,6 +139,13 @@ interface HealthcoreRequestOptions extends RequestInit {
   json?: boolean;
 }
 
+function networkError(): HealthcoreApiError {
+  return new HealthcoreApiError(
+    "No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.",
+    0
+  );
+}
+
 export async function healthcoreRequest<T>(
   path: string,
   options: HealthcoreRequestOptions = {}
@@ -136,10 +164,15 @@ export async function healthcoreRequest<T>(
     }
   }
 
-  const response = await fetch(`${HEALTHCORE_API_BASE_URL}${path}`, {
-    ...rest,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${HEALTHCORE_API_BASE_URL}${path}`, {
+      ...rest,
+      headers,
+    });
+  } catch {
+    throw networkError();
+  }
 
   if (response.status === 401 && auth) {
     clearSessionAndRedirectToLogin();
@@ -151,13 +184,21 @@ export async function healthcoreRequest<T>(
   }
 
   const contentType = response.headers.get("content-type");
-  const body = contentType?.includes("application/json")
-    ? await response.json()
-    : null;
+  let body: unknown = null;
+  if (contentType?.includes("application/json")) {
+    try {
+      body = await response.json();
+    } catch {
+      throw new HealthcoreApiError(
+        statusMessageEs(response.status),
+        response.status
+      );
+    }
+  }
 
   if (!response.ok) {
     throw new HealthcoreApiError(
-      extractDetail(body, `Error ${response.status}`),
+      statusMessageEs(response.status),
       response.status,
       body
     );
@@ -180,10 +221,15 @@ export async function healthcoreRequestBlob(
     }
   }
 
-  const response = await fetch(`${HEALTHCORE_API_BASE_URL}${path}`, {
-    ...rest,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${HEALTHCORE_API_BASE_URL}${path}`, {
+      ...rest,
+      headers,
+    });
+  } catch {
+    throw networkError();
+  }
 
   if (response.status === 401 && auth) {
     clearSessionAndRedirectToLogin();
@@ -191,13 +237,20 @@ export async function healthcoreRequestBlob(
   }
 
   if (!response.ok) {
-    let detail = `Error ${response.status}`;
+    let details: unknown;
     const contentType = response.headers.get("content-type");
     if (contentType?.includes("application/json")) {
-      const body = await response.json();
-      detail = extractDetail(body, detail);
+      try {
+        details = await response.json();
+      } catch {
+        details = undefined;
+      }
     }
-    throw new HealthcoreApiError(detail, response.status);
+    throw new HealthcoreApiError(
+      statusMessageEs(response.status),
+      response.status,
+      details
+    );
   }
 
   return response.blob();

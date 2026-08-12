@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/Button";
 import {
   analyzeIncidents,
   exportIncidentsResults,
-  HealthcoreApiError,
 } from "@/lib/services/healthcoreApi";
 import type { IncidentAnalysisSummary } from "@/types/incidents";
+import { friendlyApiError } from "@/lib/utils/friendlyApiError";
 
 export default function IncidentsAnalyzePage() {
   const [summary, setSummary] = useState<IncidentAnalysisSummary | null>(null);
@@ -34,11 +34,12 @@ export default function IncidentsAnalyzePage() {
       setSummary(result);
     } catch (err) {
       setSummary(null);
-      if (err instanceof HealthcoreApiError) {
-        setError(err.message);
-      } else {
-        setError("Could not analyze the file. Is the HealthCore API running?");
-      }
+      setError(
+        friendlyApiError(
+          err,
+          "Could not analyze the file. Check the HealthCore API and try again."
+        )
+      );
     } finally {
       setIsAnalyzing(false);
     }
@@ -51,11 +52,9 @@ export default function IncidentsAnalyzePage() {
     try {
       await exportIncidentsResults();
     } catch (err) {
-      if (err instanceof HealthcoreApiError) {
-        setError(err.message);
-      } else {
-        setError("Could not download results CSV.");
-      }
+      setError(
+        friendlyApiError(err, "Could not download results CSV.")
+      );
     } finally {
       setIsExporting(false);
     }
@@ -114,9 +113,19 @@ export default function IncidentsAnalyzePage() {
           </Button>
         </div>
         {error ? (
-          <p className="mt-3 text-sm text-red-600" role="alert">
-            {error}
-          </p>
+          <div className="mt-3 space-y-2" role="alert">
+            <p className="text-sm text-red-600">{error}</p>
+            {pendingFile ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void handleAnalyze()}
+                disabled={isAnalyzing}
+              >
+                Retry analysis
+              </Button>
+            ) : null}
+          </div>
         ) : null}
       </section>
 

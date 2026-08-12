@@ -2,12 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Supplier } from "@/types/suppliers";
-import { SupplierApiError, fetchSuppliers } from "@/lib/services/suppliersApi";
+import { fetchSuppliers } from "@/lib/services/suppliersApi";
 import type { AsyncStatus } from "@/types/async";
-
-function resolveErrorMessage(err: unknown, fallback: string): string {
-  return err instanceof SupplierApiError ? err.message : fallback;
-}
+import { friendlyApiErrorEs } from "@/lib/utils/friendlyApiError";
 
 export function useSuppliers() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -22,7 +19,9 @@ export function useSuppliers() {
       setSuppliers(data);
       setStatus("success");
     } catch (err) {
-      setError(resolveErrorMessage(err, "No se pudieron cargar los proveedores."));
+      setError(
+        friendlyApiErrorEs(err, "No se pudieron cargar los proveedores.")
+      );
       setStatus("error");
     }
   }, []);

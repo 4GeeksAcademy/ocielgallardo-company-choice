@@ -37,6 +37,7 @@ export function CandidateDetailWorkspace({
     isNotesLoading,
     isNotesError,
     notesError,
+    reloadRecord,
     reloadNotes,
   } = useCandidateDetail(candidateId);
 
@@ -69,7 +70,7 @@ export function CandidateDetailWorkspace({
       setApplication(updated);
     } catch {
       setApplication(previous);
-      throw new Error("status update failed");
+      throw new Error("No se pudo actualizar el estado.");
     } finally {
       setIsUpdating(false);
     }
@@ -85,7 +86,7 @@ export function CandidateDetailWorkspace({
       setApplication(updated);
     } catch {
       setApplication(previous);
-      throw new Error("stage update failed");
+      throw new Error("No se pudo actualizar la etapa.");
     } finally {
       setIsUpdating(false);
     }
@@ -101,8 +102,6 @@ export function CandidateDetailWorkspace({
         ...application,
         notes_count: application.notes_count + 1,
       });
-    } catch (error) {
-      throw error;
     } finally {
       setIsSubmittingNote(false);
     }
@@ -110,16 +109,12 @@ export function CandidateDetailWorkspace({
 
   const handleDeleteNote = async (noteId: string) => {
     if (!application) return;
-    try {
-      await deleteNote(application.id, noteId);
-      setNotes((current) => current.filter((note) => note.id !== noteId));
-      setApplication({
-        ...application,
-        notes_count: Math.max(0, application.notes_count - 1),
-      });
-    } catch (error) {
-      throw error;
-    }
+    await deleteNote(application.id, noteId);
+    setNotes((current) => current.filter((note) => note.id !== noteId));
+    setApplication({
+      ...application,
+      notes_count: Math.max(0, application.notes_count - 1),
+    });
   };
 
   const handleEdit = async (data: RecordCreateInput) => {
@@ -128,19 +123,29 @@ export function CandidateDetailWorkspace({
     setActionFeedback(null);
     try {
       await updateRecord(application.id, data);
-      const refreshed = await fetchRecordById(application.id);
-      setApplication(refreshed);
+      try {
+        const refreshed = await fetchRecordById(application.id);
+        setApplication(refreshed);
+      } catch {
+        setActionFeedback({
+          type: "error",
+          message:
+            "Cambios guardados, pero no se pudo refrescar la vista. Recarga la página.",
+        });
+        setIsEditing(false);
+        return;
+      }
       setIsEditing(false);
       setActionFeedback({
         type: "success",
         message: "Candidatura actualizada correctamente.",
       });
-    } catch (error) {
+    } catch {
       setActionFeedback({
         type: "error",
         message: "No se pudieron guardar los cambios. Inténtalo de nuevo.",
       });
-      throw error;
+      throw new Error("save failed");
     } finally {
       setIsSubmittingForm(false);
     }
@@ -163,7 +168,14 @@ export function CandidateDetailWorkspace({
             className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
             role="alert"
           >
-            {recordError}
+            <p>{recordError}</p>
+            <button
+              type="button"
+              className="mt-2 text-sm font-medium text-blue-700 hover:underline"
+              onClick={() => void reloadRecord()}
+            >
+              Reintentar
+            </button>
           </div>
         )}
 

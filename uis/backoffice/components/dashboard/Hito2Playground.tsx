@@ -19,29 +19,29 @@ import { validateInvoice } from "../../../../src/utils/validations";
 
 const patients: Patient[] = [
   {
-    patientId: "pat-1001",
-    fullName: "Ava Thompson",
-    phone: "+1 555-212-1001",
-    email: "ava.thompson@example.com",
-    medicalHistorySummary: "Type 2 diabetes follow-up.",
+    patientId: "pat-demo-001",
+    fullName: "Demo Patient A",
+    phone: "+1 555-010-0001",
+    email: "patient.a@example.com",
+    medicalHistorySummary: "Routine chronic-care follow-up (synthetic).",
     clinicSite: "Austin Downtown",
     country: "US",
     status: "active",
   },
   {
-    patientId: "pat-1002",
-    fullName: "Liam Turner",
-    phone: "+44 20 5555 1002",
-    email: "liam.turner@example.co.uk",
-    medicalHistorySummary: "Hypertension monitoring.",
+    patientId: "pat-demo-002",
+    fullName: "Demo Patient B",
+    phone: "+44 20 0000 0002",
+    email: "patient.b@example.co.uk",
+    medicalHistorySummary: "Routine monitoring visit (synthetic).",
     clinicSite: "London Central",
     country: "United Kingdom",
     status: "active",
   },
   {
-    patientId: "pat-1003",
-    fullName: "Mia Jackson",
-    medicalHistorySummary: "Preventive annual check-up.",
+    patientId: "pat-demo-003",
+    fullName: "Demo Patient C",
+    medicalHistorySummary: "Preventive check-up (synthetic).",
     clinicSite: "Houston Memorial",
     country: "US",
     status: "inactive",
@@ -50,8 +50,8 @@ const patients: Patient[] = [
 
 const appointments: Appointment[] = [
   {
-    appointmentId: "apt-2001",
-    patientId: "pat-1001",
+    appointmentId: "apt-demo-001",
+    patientId: "pat-demo-001",
     dateISO: "2026-07-16T09:00:00.000Z",
     clinicSite: "Austin Downtown",
     country: "US",
@@ -60,8 +60,8 @@ const appointments: Appointment[] = [
     noShowProbability: 0.21,
   },
   {
-    appointmentId: "apt-2002",
-    patientId: "pat-1002",
+    appointmentId: "apt-demo-002",
+    patientId: "pat-demo-002",
     dateISO: "2026-07-16T14:30:00.000Z",
     clinicSite: "London Central",
     country: "United Kingdom",
@@ -70,8 +70,8 @@ const appointments: Appointment[] = [
     noShowProbability: 0.39,
   },
   {
-    appointmentId: "apt-2003",
-    patientId: "pat-1003",
+    appointmentId: "apt-demo-003",
+    patientId: "pat-demo-003",
     dateISO: "2026-07-17T11:00:00.000Z",
     clinicSite: "Houston Memorial",
     country: "US",
@@ -83,8 +83,8 @@ const appointments: Appointment[] = [
 
 const noShowPredictions: NoShowPrediction[] = [
   {
-    predictionId: "nsp-1",
-    appointmentId: "apt-2001",
+    predictionId: "nsp-demo-1",
+    appointmentId: "apt-demo-001",
     probability: 0.21,
     criticalThreshold: 0.22,
     isCritical: false,
@@ -92,8 +92,8 @@ const noShowPredictions: NoShowPrediction[] = [
     status: "pending",
   },
   {
-    predictionId: "nsp-2",
-    appointmentId: "apt-2002",
+    predictionId: "nsp-demo-2",
+    appointmentId: "apt-demo-002",
     probability: 0.39,
     criticalThreshold: 0.22,
     isCritical: true,
@@ -104,8 +104,8 @@ const noShowPredictions: NoShowPrediction[] = [
 
 const invoices: Invoice[] = [
   {
-    invoiceId: "inv-3001",
-    patientId: "pat-1001",
+    invoiceId: "inv-demo-001",
+    patientId: "pat-demo-001",
     issueDateISO: "2026-07-10",
     category: "Revenue Cycle and Billing",
     status: "submitted",
@@ -115,8 +115,8 @@ const invoices: Invoice[] = [
     rejectionProbability: 0.16,
   },
   {
-    invoiceId: "inv-3002",
-    patientId: "pat-1002",
+    invoiceId: "inv-demo-002",
+    patientId: "pat-demo-002",
     issueDateISO: "2026-07-11",
     category: "Revenue Cycle and Billing",
     status: "rejected",

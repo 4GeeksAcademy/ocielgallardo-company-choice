@@ -96,24 +96,32 @@ def print_report(summary: dict, source_name: str) -> None:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print("Usage: python scripts/analyze.py <path-to-csv>")
+        print("Usage: python scripts/analyze.py <path-to-csv>", file=sys.stderr)
         sys.exit(1)
 
     csv_path = Path(sys.argv[1])
     if not csv_path.exists():
-        print(f"File not found: {csv_path}")
+        print(f"File not found: {csv_path}", file=sys.stderr)
         sys.exit(1)
 
-    incidents = read_incidents(csv_path)
-    valid, invalid_counts = validate_incidents(incidents)
-    summary = analyze_incidents(valid, invalid_counts, total=len(incidents))
+    try:
+        incidents = read_incidents(csv_path)
+        valid, invalid_counts = validate_incidents(incidents)
+        summary = analyze_incidents(valid, invalid_counts, total=len(incidents))
+    except (OSError, UnicodeDecodeError, KeyError, ValueError) as exc:
+        print(f"Failed to read or parse CSV: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     print_report(summary, source_name=csv_path.name)
 
     answer = input("Export results to CSV? [y / n]: ").strip().lower()
     if answer == "y":
         out = ROOT / "data" / "process" / "results.csv"
-        export_results(summary, out)
+        try:
+            export_results(summary, out)
+        except OSError as exc:
+            print(f"Failed to export results: {exc}", file=sys.stderr)
+            sys.exit(1)
         print(f"Exported to {out}")
     else:
         print("Export skipped.")

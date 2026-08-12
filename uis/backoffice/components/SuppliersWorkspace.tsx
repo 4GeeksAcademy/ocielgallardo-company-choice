@@ -22,6 +22,7 @@ import {
   type SupplierCategory,
   type SupplierStatus,
 } from "@/types/suppliers";
+import { friendlyApiError } from "@/lib/utils/friendlyApiError";
 
 function formatMoney(value: number, currency: Supplier["currency"]) {
   return new Intl.NumberFormat("en-US", {
@@ -67,6 +68,11 @@ export function SuppliersWorkspace() {
       setSuppliers((current) => [created, ...current]);
       setShowCreateForm(false);
       setActionFeedback("Supplier created successfully.");
+    } catch (err) {
+      setActionError(
+        friendlyApiError(err, "Could not create the supplier. Please try again.")
+      );
+      throw err;
     } finally {
       setIsSubmittingForm(false);
     }
@@ -88,7 +94,7 @@ export function SuppliersWorkspace() {
       setRateDrafts((current) => ({ ...current, [supplier.id]: String(updated.monthly_rate) }));
       setActionFeedback(`Rate updated for ${supplier.name}.`);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Could not update rate.");
+      setActionError(friendlyApiError(err, "Could not update rate."));
     } finally {
       setUpdatingRateId(null);
     }
@@ -108,7 +114,7 @@ export function SuppliersWorkspace() {
       setStatusDrafts((current) => ({ ...current, [supplier.id]: updated.status }));
       setActionFeedback(`Status updated for ${supplier.name}.`);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Could not update status.");
+      setActionError(friendlyApiError(err, "Could not update status."));
     } finally {
       setUpdatingStatusId(null);
     }
@@ -167,9 +173,15 @@ export function SuppliersWorkspace() {
         </section>
 
         {actionError && (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-            {actionError}
-          </p>
+          <div
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            role="alert"
+          >
+            <p>{actionError}</p>
+            <p className="mt-1 text-xs text-red-600">
+              Review the form or try the action again.
+            </p>
+          </div>
         )}
 
         {actionFeedback && (

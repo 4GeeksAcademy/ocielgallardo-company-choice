@@ -4,8 +4,8 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { updateMyProfile } from "@/lib/services/authApi";
-import { HealthcoreApiError } from "@/lib/services/healthcoreClient";
 import type { AuthMeResponse } from "@/types/auth";
+import { friendlyApiErrorEs } from "@/lib/utils/friendlyApiError";
 
 interface ProfileFormProps {
   me: AuthMeResponse;
@@ -35,11 +35,9 @@ export function ProfileForm({ me, onSaved }: ProfileFormProps) {
       onSaved({ ...me, profile });
       setSuccess("Perfil actualizado.");
     } catch (err) {
-      if (err instanceof HealthcoreApiError) {
-        setError(err.message);
-      } else {
-        setError("No se pudo guardar el perfil. Inténtalo de nuevo.");
-      }
+      setError(
+        friendlyApiErrorEs(err, "No se pudo guardar el perfil. Inténtalo de nuevo.")
+      );
     } finally {
       setIsSubmitting(false);
     }

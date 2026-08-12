@@ -30,8 +30,9 @@ def login(payload: LoginRequest):
     try:
         token = authenticate_user(str(payload.username), payload.password)
         return TokenResponse(access_token=token)
-    except InvalidCredentialsError as exc:
-        raise HTTPException(status_code=401, detail=str(exc))
+    except InvalidCredentialsError:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
 
 @router.get("/me")
 def read_me(current_user: UserPublic = Depends(get_current_user)):
@@ -55,12 +56,11 @@ def forgot_password(payload: ForgotPasswordRequest):
 
 @router.post("/reset-password")
 def reset_password(payload: ResetPasswordRequest):
-    try:
-        result = reset_password_service(token=payload.token, new_password=payload.new_password)
-        return result
-    except HTTPException as exc:
-        # For invalid or expired tokens, rubric expects 400.
-        raise HTTPException(status_code=400, detail=str(exc.detail))
+    # Domain raises HTTPException with the correct status; let it propagate.
+    return reset_password_service(
+        token=payload.token,
+        new_password=payload.new_password,
+    )
 
 
 @router.post("/change-password")
@@ -68,12 +68,9 @@ def change_password(
     payload: ChangePasswordRequest,
     current_user: UserPublic = Depends(get_current_user),
 ):
-    try:
-        result = change_password_service(
-            user_id=current_user.id,
-            current_password=payload.current_password,
-            new_password=payload.new_password,
-        )
-        return result
-    except HTTPException as exc:
-        raise HTTPException(status_code=400, detail=str(exc.detail))
+    # Domain raises HTTPException with the correct status; let it propagate.
+    return change_password_service(
+        user_id=current_user.id,
+        current_password=payload.current_password,
+        new_password=payload.new_password,
+    )

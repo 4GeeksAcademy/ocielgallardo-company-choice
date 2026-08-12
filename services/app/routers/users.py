@@ -18,8 +18,8 @@ router = APIRouter(prefix="/users", tags=["users"])
 def register_user(payload: UserCreate):
     try:
         return create_user(payload)
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+    except ValueError:
+        raise HTTPException(status_code=409, detail="Email already registered")
 
 
 @router.get("", response_model=list[UserPublic])
@@ -53,8 +53,8 @@ def update_user_endpoint(
         return update_user(user_id, payload)
     except UserNotFoundError:
         raise HTTPException(status_code=404, detail="User not found")
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+    except ValueError:
+        raise HTTPException(status_code=409, detail="Email already registered")
 
 
 @router.delete("/{user_id}", status_code=200)

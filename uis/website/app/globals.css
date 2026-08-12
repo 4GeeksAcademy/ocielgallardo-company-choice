@@ -68,3 +68,7 @@ body {
 .hero-carousel-image--top {
   object-position: top;
 }
+
+.hero-carousel-fallback {
+  background: linear-gradient(135deg, #0f766e 0%, #134e4a 55%, #0b3b37 100%);
+}

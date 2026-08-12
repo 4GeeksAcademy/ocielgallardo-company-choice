@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { login } from "@/lib/services/authApi";
 import { HealthcoreApiError } from "@/lib/services/healthcoreClient";
+import { friendlyApiErrorEs } from "@/lib/utils/friendlyApiError";
 
 export function LoginForm() {
   const router = useRouter();
@@ -29,14 +30,12 @@ export function LoginForm() {
       await login({ email: email.trim(), password });
       router.replace("/");
     } catch (err) {
-      if (err instanceof HealthcoreApiError) {
-        setError(
-          err.status === 401
-            ? "Credenciales incorrectas."
-            : err.message
-        );
+      if (err instanceof HealthcoreApiError && err.status === 401) {
+        setError("Credenciales incorrectas.");
       } else {
-        setError("No se pudo iniciar sesión. Inténtalo de nuevo.");
+        setError(
+          friendlyApiErrorEs(err, "No se pudo iniciar sesión. Inténtalo de nuevo.")
+        );
       }
     } finally {
       setIsSubmitting(false);

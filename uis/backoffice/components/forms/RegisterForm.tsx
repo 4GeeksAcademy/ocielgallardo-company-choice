@@ -10,6 +10,7 @@ import {
   HealthcoreApiError,
   getFieldErrors,
 } from "@/lib/services/healthcoreClient";
+import { friendlyApiErrorEs } from "@/lib/utils/friendlyApiError";
 
 interface FormErrors {
   email?: string;
@@ -91,10 +92,15 @@ export function RegisterForm() {
         if (err.status === 409) {
           setFieldErrors((prev) => ({
             ...prev,
-            email: err.message || "Este email ya está registrado.",
+            email: "Este email ya está registrado.",
           }));
         } else if (!apiFields) {
-          setFormError(err.message);
+          setFormError(
+            friendlyApiErrorEs(
+              err,
+              "No se pudo completar el registro. Inténtalo de nuevo."
+            )
+          );
         }
       } else {
         setFormError("No se pudo completar el registro. Inténtalo de nuevo.");

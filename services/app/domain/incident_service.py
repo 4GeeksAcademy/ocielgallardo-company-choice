@@ -15,7 +15,11 @@ RESULTS_CSV = ROOT / "data" / "process" / "results.csv"
 
 
 def analyze_csv_bytes(content: bytes) -> dict:
-    """Run the incidents pipeline on uploaded CSV bytes and persist results."""
+    """Run the incidents pipeline on uploaded CSV bytes and persist results.
+
+    Propagates UnicodeDecodeError, KeyError, ValueError, csv.Error for callers
+    to map to HTTP 400. Propagates OSError for I/O failures.
+    """
     with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
         tmp.write(content)
         tmp_path = Path(tmp.name)

@@ -48,10 +48,12 @@ export function ResetPasswordForm({ token }: { token?: string | null }) {
       await resetPassword({ token: effectiveToken, newPassword });
       router.replace("/login?reset=success");
     } catch (err) {
-      if (err instanceof HealthcoreApiError) {
-        setFormError(err.message || "Token inválido o expirado.");
-      } else {
+      if (err instanceof HealthcoreApiError && err.status === 400) {
         setFormError("Token inválido o expirado.");
+      } else {
+        setFormError(
+          "No se pudo restablecer la contraseña. Solicita un nuevo enlace."
+        );
       }
     } finally {
       setIsSubmitting(false);

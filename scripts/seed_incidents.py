@@ -112,7 +112,18 @@ def run_seed(csv_path: str | None = None) -> int:
 
 def main() -> None:
     csv_arg = sys.argv[1] if len(sys.argv) > 1 else None
-    raise SystemExit(run_seed(csv_arg))
+    try:
+        code = run_seed(csv_arg)
+    except FileNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+    except (OSError, UnicodeDecodeError, KeyError, ValueError) as exc:
+        print(f"Failed to read or parse CSV: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+    except Exception as exc:
+        print(f"Seed failed: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+    raise SystemExit(code)
 
 
 if __name__ == "__main__":

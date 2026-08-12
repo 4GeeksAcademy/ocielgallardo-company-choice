@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { forgotPassword } from "@/lib/services/authApi";
-import { HealthcoreApiError } from "@/lib/services/healthcoreClient";
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
@@ -27,12 +26,9 @@ export function ForgotPasswordForm() {
     try {
       await forgotPassword(trimmed);
       setSent(true);
-    } catch (err) {
-      if (err instanceof HealthcoreApiError) {
-        setError(err.message || "No se pudo enviar el enlace. Inténtalo de nuevo.");
-      } else {
-        setError("No se pudo enviar el enlace. Inténtalo de nuevo.");
-      }
+    } catch {
+      // Anti-enumeration: never surface provider/API details.
+      setError("No se pudo enviar el enlace. Inténtalo de nuevo.");
     } finally {
       setIsSubmitting(false);
     }
@@ -67,9 +63,14 @@ export function ForgotPasswordForm() {
       />
 
       {error && (
-        <p className="text-sm text-red-600" role="alert">
-          {error}
-        </p>
+        <div className="space-y-1" role="alert">
+          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm text-slate-600">
+            <Link href="/login" className="font-medium text-blue-600 hover:text-blue-700">
+              Volver al inicio de sesión
+            </Link>
+          </p>
+        </div>
       )}
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
