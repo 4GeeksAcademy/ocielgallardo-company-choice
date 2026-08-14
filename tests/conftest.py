@@ -77,7 +77,7 @@ def sample_user(auth_tables):
     """
     return user_service.create_user(
         UserCreate(
-            email="tester@healthcore.test",
+            email="tester@example.com",
             password="password123",
             role=UserRole.USER,
             name="Test User",
