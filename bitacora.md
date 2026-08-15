@@ -1066,3 +1066,55 @@ Integrar un gestor de incidencias en el monorepo HealthCore (plataforma Hito 5+)
 ### Resultado
 
 Gestor centralizado operable: histórico cargado, registro en tiempo real desde el navegador, ciclo de vida, métricas y UX con estados de carga/vacío/error.
+
+## Actualizacion 2026-08-15 (AUTH-088 — batería de pruebas unitarias de autenticación)
+
+### Alcance
+
+Ticket AUTH-088 en rama `feature/error-handling-audit`: cobertura de pruebas unitarias sobre la lógica de negocio de autenticación (registro, login, JWT, `/auth/me`, forgot/reset/change password). Sin probar serialización HTTP ni tuberías de FastAPI. Extras API-042 y FE-019 diferidos.
+
+### Decisiones
+
+- Probar funciones de dominio / helpers (`create_user`, `authenticate_user`, `security`, `get_current_user`, `password_reset_service`), no rutas HTTP con TestClient como foco.
+- TinyDB aislada por test (`tests/conftest.py` + `monkeypatch`) — nunca tocar `data/process/auth/auth.json`.
+- Email de reset mockeado (`_send_password_reset_email`) para no llamar a Resend en CI/local.
+- Emails de fixture con `@example.com` (`.test` lo rechaza `email-validator`).
+- En Windows/Git Bash usar `uv run python -m pytest` (evitar `uv run pytest` → spawn fallido).
+- Caso asistido por IA: `expires_at` corrupto en tokens de reset → 400 controlado (`test_reset_password_fails_corrupt_expires_at`).
+
+### Cambios
+
+- Deps de desarrollo: `pytest`, `pytest-cov`, `httpx` (`[dependency-groups] dev` en `pyproject.toml`).
+- `tests/conftest.py` — fixtures `auth_tables`, `sample_user` + env de test (`SECRET_KEY`, etc.).
+- `tests/test_security.py` — hash/verify + JWT (happy / expirado / malformado / sin `sub`).
+- `tests/test_register.py` — create_user (happy / borde 8 chars / email duplicado / password corta).
+- `tests/test_login.py` — authenticate_user (happy / inactivo / credenciales inválidas).
+- `tests/test_password_reset.py` — forgot / reset / change (incl. anti-enumeración y token de un solo uso).
+- `tests/test_token.py` — `get_current_user` + decisión de perfil en `/me` (happy / sin perfil / 401).
+- `TESTING.md` — plan, cómo ejecutar, caso IA, resultados de cobertura.
+- `memory-bank/progress.md` — entrada AUTH-088.
+
+### Validacion
+
+```bash
+uv sync --group dev
+uv run python -m pytest tests/ -v
+# → 29 passed
+
+uv run python -m pytest tests/ \
+  --cov=services.app.core.security \
+  --cov=services.app.domain.user_service \
+  --cov=services.app.domain.password_reset_service \
+  --cov=services.app.core.deps \
+  --cov-report=term-missing
+# → TOTAL 72% (≥ 70% requerido)
+```
+
+### Pendiente (extras, no bloqueantes)
+
+- API-042: pytest para al menos dos grupos backoffice (suppliers / incidents), ≥ 60%.
+- FE-019: Jest para ≥ 3 utilidades del frontend (`healthcoreClient` helpers, etc.).
+
+### Resultado
+
+AUTH-088 cerrado: batería de 29 tests sobre lógica de auth, cobertura 72% en módulos medidos, documentación en `TESTING.md`.
