@@ -11,7 +11,16 @@
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
 - AUTH-02 complete on `feature/auth-frontend`: login/register, Bearer client, route guard, profile page, shell logout.
 - AUTH-03 complete on `feature/password-reset`: forgot/reset/change password + Resend email.
+- AUTH-088 complete: pytest auth suite (29 tests, 72% coverage on auth modules) + `TESTING.md`.
 - Error-handling resilience pass applied across `services/`, `uis/backoffice/`, and `uis/website/`.
+
+## Recently Completed (AUTH-088 — auth unit tests)
+- Branch work on `feature/error-handling-audit`: `tests/conftest.py` (isolated TinyDB + env), `test_security.py`, `test_register.py`, `test_login.py`, `test_password_reset.py`, `test_token.py`.
+- Dev deps: `pytest`, `pytest-cov`, `httpx` in `[dependency-groups] dev`.
+- Domain-logic focus (no HTTP serialization): register/login/JWT/me/forgot/reset/change; email send mocked.
+- AI-assisted case: corrupt reset-token `expires_at` → 400 (`test_reset_password_fails_corrupt_expires_at`).
+- Validation: `uv run python -m pytest tests/ -v` → 29 passed; auth-module `--cov` TOTAL **72%**.
+- Docs: root `TESTING.md` (plan, run commands, coverage table). Extras API-042 / FE-019 deferred.
 
 ## Recently Completed (error-handling resilience)
 - Backend: global 500 handler now logs exceptions; password-reset logs redact PII/provider bodies; analyze/export require auth and map CSV/parse failures to 400; auth reset/change no longer force all HTTPException → 400; seed scripts exit non-zero on critical failure.

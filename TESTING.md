@@ -21,18 +21,19 @@ Out of scope for this ticket (deferred):
 
 ## How to run
 
+From the repo root (recommended on Windows/Git Bash):
+
 ```bash
-# From repo root
-uv sync
-uv run pytest
-uv run pytest --cov=services.app.core.security --cov=services.app.domain.user_service --cov=services.app.domain.password_reset_service --cov=services.app.core.deps --cov-report=term-missing
+uv sync --group dev
+uv run python -m pytest tests/ -v
+uv run python -m pytest tests/ --cov=services.app.core.security --cov=services.app.domain.user_service --cov=services.app.domain.password_reset_service --cov=services.app.core.deps --cov-report=term-missing
 ```
 
-Dev dependencies (already added): `pytest`, `pytest-cov`, `httpx`.
+Dev dependencies: `pytest`, `pytest-cov`, `httpx`.
 
 Shared fixtures live in `tests/conftest.py` (temporary TinyDB + test `SECRET_KEY`).
 
-Target: **≥ 70% coverage** on the auth modules listed above.
+Target: **≥ 70% coverage** on the auth modules listed above. **Met: TOTAL 72%.**
 
 ## Safety rule for tests
 
@@ -96,7 +97,7 @@ Legend: **Happy** = valid input, expected success · **Edge** = boundary / unusu
 | Happy | Valid token + new password updates hash and deletes token | One-shot success |
 | Edge | New reset for same user invalidates previous unused token | Single active token |
 | Fail | Unknown / expired / already-used token → 400 | Prevents reuse |
-| Fail *(AI-suggested)* | Corrupt `expires_at` (or naive datetime without timezone) treated as invalid, not 500 | Defensive parsing |
+| Fail *(AI-suggested)* | Corrupt `expires_at` treated as invalid (400), not an unhandled crash | Defensive parsing |
 
 ### 7. Change password — `change_password`
 
@@ -111,26 +112,44 @@ Legend: **Happy** = valid input, expected success · **Edge** = boundary / unusu
 
 ## AI-assisted case discovery
 
-While reviewing `password_reset_service.reset_password`, an AI-assisted review flagged comparing `_now_utc()` (timezone-aware) with a stored `expires_at` that might be **naive** (no timezone). Plan: assert corrupt / naive expiry is rejected as invalid token (400), not an unhandled crash. Document any real bug found during implementation here:
+While reviewing `password_reset_service.reset_password`, an AI-assisted review flagged corrupt or unparsable `expires_at` values. Implemented as `test_reset_password_fails_corrupt_expires_at`: a non-ISO `expires_at` must raise HTTP 400 (`Invalid or expired token`), not bubble as an unhandled 500.
 
-- TODO: fill after first failing test run (if any).
+No production bug was required to fix: existing `fromisoformat` error handling already mapped corrupt expiry to 400. The suite locks that behavior in place.
 
-## File layout (planned)
+Also discovered during implementation: Pydantic/`email-validator` rejects `.test` domains (reserved). Fixtures use `@example.com` instead.
+
+## File layout
 
 ```
 tests/
-  conftest.py          # temp TinyDB + env fixtures
-  test_security.py     # hash + JWT
-  test_register.py     # create_user
-  test_login.py        # authenticate_user
-  test_token.py        # get_current_user / me helpers
-  test_password_reset.py  # forgot / reset / change
-TESTING.md             # this file
+  conftest.py              # temp TinyDB + env fixtures
+  test_security.py         # hash + JWT
+  test_register.py         # create_user
+  test_login.py            # authenticate_user
+  test_token.py            # get_current_user / me helpers
+  test_password_reset.py   # forgot / reset / change
+TESTING.md                 # this file
 ```
 
 ## Coverage results
 
-TODO: paste `uv run pytest --cov` summary after the suite exists.
+Command:
+
+```bash
+uv run python -m pytest tests/ --cov=services.app.core.security --cov=services.app.domain.user_service --cov=services.app.domain.password_reset_service --cov=services.app.core.deps --cov-report=term-missing
+```
+
+Suite status: **29 passed**.
+
+| Module | Cover |
+|--------|-------|
+| `services.app.core.deps` | 90% |
+| `services.app.core.security` | 96% |
+| `services.app.domain.password_reset_service` | 67% |
+| `services.app.domain.user_service` | 66% |
+| **TOTAL (auth modules above)** | **72%** |
+
+Gaps left uncovered on purpose (low value for AUTH-088): live Resend HTTP transport, SSL helper branches, and full user CRUD update/list paths outside the auth happy/edge/fail matrix.
 
 ## Deferred extras
 
