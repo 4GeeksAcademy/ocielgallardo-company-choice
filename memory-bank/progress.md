@@ -7,6 +7,20 @@
 - Manual browser playground for utility inspection is available.
 - Type-level model validation command is available in `packages/shared`.
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
+- Hito 5 inventory (SQLModel + Supabase) is implemented on branch `feature/inventory` (extends `feature/auth`).
+
+## Recently Completed (Hito 5 — inventory ORM + dual database)
+- Branch: `feature/inventory` (cut from `feature/auth`).
+- Context: `docs/inventory/CONTEXT-HealthCore.es.md` (MedicalSupply / SupplyDelivery / SupplyConsumption).
+- Dependencies: `sqlmodel`, `psycopg2-binary`.
+- Env: `SUPABASE_DB_*` in `.env` (see `.env.example`); optional full `DATABASE_URL` override. Password only in gitignored `.env`.
+- Dual DB in `services/app/core/database.py`: TinyDB (auth) + SQLModel engine/`get_db` (inventory); URI built with `quote_plus` from discrete vars.
+- ORM: `services/app/models/inventory.py`; Pydantic schemas: `services/app/schemas.py`.
+- Domain: `services/app/domain/inventory_service.py` — computed `current_stock`, outbound rejects negative stock with HTTP 400.
+- Router: `services/app/routers/inventory.py` under `/inventory` (all routes Bearer-authenticated).
+- Seed: `services/app/core/inventory_seed.py` (idempotent); tables + seed also applied on Supabase project `GallaGit's Project`.
+- Expected net stocks after seed: HCR-PPE-001=55, HCR-PPE-002=25, HCR-DIAG-001=42, HCR-DIAG-002=15, HCR-WND-001=20, HCR-MED-001=18.
+- Local smoke test (SQLite in-memory) verified stock calc + outbound 400. Live Supabase connection verified via `SUPABASE_DB_*` in `.env`.
 
 ## Recently Completed (AUTH-01 — authentication foundation)
 - Branch: `feature/auth`.

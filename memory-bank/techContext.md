@@ -24,10 +24,12 @@
   - `services/revenue-cycle`
   - `services/compliance`
 - Implemented backend FastAPI app:
-  - `services/app/` (`main`, `core`, `models`, `domain`, `routers`)
+  - `services/app/` (`main`, `core`, `models`, `schemas`, `domain`, `routers`)
   - `services/incidents_analysis/` (CLI/API shared incident CSV pipeline)
-  - Auth (in progress): JWT via `python-jose`, passwords via `passlib`/`bcrypt`, config from root `.env`
-  - Run: `python -m uvicorn services.app.main:app --reload` (prefer `uv run`)
+  - Auth: JWT via `python-jose`, passwords via `passlib`/`bcrypt`, TinyDB users/profiles, config from root `.env`
+  - Inventory (Hito 5): SQLModel + Supabase PostgreSQL via `SUPABASE_DB_*` (or optional `DATABASE_URL`); TinyDB remains for auth only
+  - Entities: `MedicalSupply`, `SupplyDelivery`, `SupplyConsumption` under `/inventory`
+  - Run: `uv run python -m uvicorn services.app.main:app --reload`
 
 ## Validation and Local Checks
 - Type validation command (documented):
