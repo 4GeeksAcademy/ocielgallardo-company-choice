@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -6,10 +8,26 @@ from services.app.routers.suppliers import router as suppliers_router
 from services.app.routers.users import router as users_router
 from services.app.routers.auth import router as auth_router
 from services.app.routers.profiles import router as profiles_router
+from services.app.routers.inventory import router as inventory_router
 
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    from services.app.core.database import init_inventory_db, is_inventory_db_configured
+    from services.app.core.inventory_seed import seed_inventory
 
-app = FastAPI(title="HealthCore API")
+    if is_inventory_db_configured():
+        init_inventory_db()
+        seed_inventory()
+    else:
+        print(
+            "WARNING: Supabase not configured — inventory routes require "
+            "DATABASE_URL or SUPABASE_DB_* variables in .env"
+        )
+    yield
+
+
+app = FastAPI(title="HealthCore API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,3 +47,4 @@ app.include_router(suppliers_router)
 app.include_router(users_router)
 app.include_router(auth_router)
 app.include_router(profiles_router)
+app.include_router(inventory_router)
