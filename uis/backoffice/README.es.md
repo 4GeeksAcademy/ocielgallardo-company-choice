@@ -12,14 +12,18 @@ Aplicación Next.js interna para empleados de HealthCore.
 ## Secciones actuales
 
 - `/` Dashboard
+- `/login` Inicio de sesión (JWT → `localStorage`)
+- `/register` Registro (`POST /users` + login automático)
 - `/patients` Módulo placeholder
 - `/appointments` Módulo placeholder
 - `/billing` Módulo placeholder
 - `/claims` Módulo placeholder
 - `/reports` Módulo placeholder
 - `/incidents` Análisis CSV de incidentes (subida, resumen, descarga)
+- `/suppliers` Directorio de proveedores (API protegida con Bearer)
 - `/applications` Pipeline de candidatos y formulario de alta
 - `/candidates/[id]` Detalle, edición, estado/etapa y notas
+- `/account/profile` Perfil (email + name/phone/address)
 
 ## Incidentes de pacientes (`/incidents`)
 
@@ -66,9 +70,30 @@ Cliente: `lib/services/healthcoreApi.ts`
 
 CORS en la API permite `localhost` / `127.0.0.1` en puertos **3000** y **3001**. Si Next usa otro puerto, añade ese origen en `services/app/main.py`.
 
-### Nota de auth (AUTH-01 en progreso)
+### Auth frontend (AUTH-02 — completo)
 
-La API HealthCore ya tiene login JWT (`POST /auth/login`) y rutas protegidas como `GET /auth/me` y `/profiles/me`. Los clientes de Incidents/Suppliers **aún no** envían `Authorization`. Cuando esas rutas exijan token, devolverán **401** hasta que el backoffice adjunte el Bearer (hueco temporal previsto en el hito).
+- `/login` y `/register`: JWT en `localStorage` (`healthcore_access_token`); redirect a `/`.
+- `healthcoreClient.ts`: Bearer en llamadas; **401** → clear + `/login`.
+- `AppChrome`: sin shell en auth; sin token en el resto → `/login`.
+- `/account/profile`: `GET /auth/me` + `PUT /profiles/me` (email solo lectura).
+- Shell: enlace Profile + **Cerrar sesión** (`clearSessionAndRedirectToLogin`).
+- Website público sin auth. Runtime `data/process/auth/auth.json` en `.gitignore`.
+
+### Archivos de auth
+
+| Ruta | Rol |
+| --- | --- |
+| `app/login/page.tsx` | Inicio de sesión |
+| `app/register/page.tsx` | Registro |
+| `app/account/profile/page.tsx` | Perfil |
+| `components/forms/LoginForm.tsx` | Login → token → `/` |
+| `components/forms/RegisterForm.tsx` | Registro + confirmación de contraseña |
+| `components/forms/ProfileForm.tsx` | Editar name/phone/address |
+| `components/layout/AppChrome.tsx` | Guard de rutas + shell |
+| `components/layout/BackofficeShell.tsx` | Nav + logout |
+| `lib/services/healthcoreClient.ts` | Token, Bearer, 401 |
+| `lib/services/authApi.ts` | login, register, me, updateMyProfile |
+| `types/auth.ts` | Tipos auth |
 
 ### Archivos relacionados
 
@@ -122,6 +147,7 @@ npm start
 
 - Candidatos: API Talent Tracker de 4Geeks (`/records`).
 - Incidentes: FastAPI local HealthCore (`services/app`).
+- Auth HealthCore: login/register en este backoffice; el website público no usa JWT.
 - `next.config.ts` permite imports externos a utilidades de Hito 2.
 
 > English version: [README.md](./README.md).

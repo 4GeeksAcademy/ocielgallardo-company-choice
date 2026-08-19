@@ -36,6 +36,7 @@ Auth notes (AUTH-01, branch `feature/auth`):
 - JWT signed with `python-jose`; `SECRET_KEY` and `ACCESS_TOKEN_EXPIRE_MINUTES` from repo-root `.env` (see `.env.example`).
 - User and Profile stored only in TinyDB (not PostgreSQL/Supabase).
 - All `/suppliers` routes and non-public `/users` routes require `Authorization: Bearer <token>` (401 without it).
+- Frontend consumer (AUTH-02 phases 1–2): backoffice stores the JWT in `localStorage` and sends Bearer via `uis/backoffice/lib/services/healthcoreClient.ts` (`/login`, `/register`).
 
 Run from repo root:
 
@@ -52,6 +53,6 @@ uv run python -m services.app.core.seed
 
 ## Status
 
-Incident analysis business logic lives under `incidents_analysis/` and is reused by API routes via `app/domain/incident_service`. AUTH-01 JWT protection is applied to users (except register) and all supplier routes; incidents remain public for now. Other domain folders (`gateway`, `clinical-operations`, `revenue-cycle`, `compliance`) remain placeholders.
+Incident analysis business logic lives under `incidents_analysis/` and is reused by API routes via `app/domain/incident_service`. AUTH-01 JWT protection is applied to users (except register) and all supplier routes; incidents remain public for now. Backoffice AUTH-02 phases 1–2 attach Bearer from `localStorage` after `/login` or `/register`. Other domain folders (`gateway`, `clinical-operations`, `revenue-cycle`, `compliance`) remain placeholders.
 
 > Spanish version: [README.es.md](./README.es.md).

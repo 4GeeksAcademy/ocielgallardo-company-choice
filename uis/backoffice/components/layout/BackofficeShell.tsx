@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { Button } from "@/components/ui/Button";
+import { clearSessionAndRedirectToLogin } from "@/lib/services/healthcoreClient";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard" },
@@ -10,6 +14,7 @@ const NAV_ITEMS = [
   { href: "/incidents", label: "Incidents" },
   { href: "/suppliers", label: "Suppliers" },
   { href: "/applications", label: "People & Talent" },
+  { href: "/account/profile", label: "Profile" },
 ] as const;
 
 interface BackofficeShellProps {
@@ -38,9 +43,19 @@ export function BackofficeShell({ children }: BackofficeShellProps) {
                 </h1>
               </div>
             </div>
-            <p className="hidden text-xs text-slate-500 sm:block">
-              Clinical Ops · Patient Access · Revenue Cycle
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="hidden text-xs text-slate-500 sm:block">
+                Clinical Ops · Patient Access · Revenue Cycle
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                className="shrink-0 text-xs"
+                onClick={() => clearSessionAndRedirectToLogin()}
+              >
+                Cerrar sesión
+              </Button>
+            </div>
           </div>
 
           <nav aria-label="Backoffice sections" className="flex flex-wrap gap-2">

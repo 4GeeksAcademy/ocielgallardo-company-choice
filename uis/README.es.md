@@ -31,12 +31,15 @@ Aplicación interna de Next.js para personal de HealthCore.
 - Integra utilidades TypeScript de Hito 2 desde `src/` raíz (sin duplicar lógica de negocio).
 - Secciones principales:
   - Dashboard
+  - Login / Register (AUTH-02: JWT en `localStorage`, Bearer en llamadas a HealthCore)
   - Patients
   - Appointments
   - Billing
   - Claims
   - Reports
+  - Incidents / Suppliers
   - People & Talent (`/applications`, `/candidates/[id]`)
+- El sitio público (`website`) permanece sin autenticación.
 
 Ejecución:
 
