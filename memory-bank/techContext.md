@@ -21,6 +21,12 @@
   - Pages `/login`, `/register`, `/account/profile`; successful auth redirects to `/`
   - Bearer on HealthCore API calls; 401 clears session and redirects to `/login`
   - `AppChrome` guards routes; `BackofficeShell` exposes Profile nav + logout (`clearSessionAndRedirectToLogin`)
+- Password reset / change (AUTH-03 complete on `feature/password-reset`):
+  - Public pages `/forgot-password`, `/reset-password`; authenticated `/account/change-password`
+  - API: `POST /auth/forgot-password`, `/auth/reset-password`, `/auth/change-password`
+  - Reset tokens in TinyDB `password_reset_tokens` (hashed, short TTL, single-use)
+  - Email via Resend (`RESEND_API_KEY`, `EMAIL_FROM=onboarding@resend.dev`, `FRONTEND_BASE_URL`; optional `EMAIL_SSL_VERIFY` for local TLS)
+  - Dependency: `certifi` for HTTPS CA bundle when SSL verify is enabled
 - Internal Hito 2 demo surface:
   - `uis/backoffice/components/dashboard/Hito2Playground.tsx`
 - Service architecture placeholders:

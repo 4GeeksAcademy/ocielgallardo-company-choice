@@ -14,6 +14,8 @@ Aplicación Next.js interna para empleados de HealthCore.
 - `/` Dashboard
 - `/login` Inicio de sesión (JWT → `localStorage`)
 - `/register` Registro (`POST /users` + login automático)
+- `/forgot-password` Solicitar email de restablecimiento
+- `/reset-password` Nueva contraseña desde el token del email (`?token=`)
 - `/patients` Módulo placeholder
 - `/appointments` Módulo placeholder
 - `/billing` Módulo placeholder
@@ -24,6 +26,7 @@ Aplicación Next.js interna para empleados de HealthCore.
 - `/applications` Pipeline de candidatos y formulario de alta
 - `/candidates/[id]` Detalle, edición, estado/etapa y notas
 - `/account/profile` Perfil (email + name/phone/address)
+- `/account/change-password` Cambio de contraseña con sesión
 
 ## Incidentes de pacientes (`/incidents`)
 
@@ -70,29 +73,40 @@ Cliente: `lib/services/healthcoreApi.ts`
 
 CORS en la API permite `localhost` / `127.0.0.1` en puertos **3000** y **3001**. Si Next usa otro puerto, añade ese origen en `services/app/main.py`.
 
-### Auth frontend (AUTH-02 — completo)
+### Auth frontend (AUTH-02 / AUTH-03 — completo)
 
 - `/login` y `/register`: JWT en `localStorage` (`healthcore_access_token`); redirect a `/`.
-- `healthcoreClient.ts`: Bearer en llamadas; **401** → clear + `/login`.
-- `AppChrome`: sin shell en auth; sin token en el resto → `/login`.
+- Login incluye “¿Olvidaste tu contraseña?” → `/forgot-password`.
+- `/forgot-password`: tras enviar, siempre muestra confirmación genérica (anti-enumeración). Llama `POST /auth/forgot-password` con `auth: false`.
+- `/reset-password?token=...`: nueva contraseña + confirmación → `POST /auth/reset-password`; éxito → `/login?reset=success`.
+- `/account/change-password`: actual + nueva + confirmación → `POST /auth/change-password` (Bearer).
+- `healthcoreClient.ts`: Bearer en llamadas; **401** → clear + `/login` (no aplica en páginas auth, incluidas forgot/reset).
+- `AppChrome`: sin shell en `/login`, `/register`, `/forgot-password`, `/reset-password`; sin token en el resto → `/login`.
 - `/account/profile`: `GET /auth/me` + `PUT /profiles/me` (email solo lectura).
-- Shell: enlace Profile + **Cerrar sesión** (`clearSessionAndRedirectToLogin`).
+- Shell: Profile + Change password + **Cerrar sesión** (`clearSessionAndRedirectToLogin`).
 - Website público sin auth. Runtime `data/process/auth/auth.json` en `.gitignore`.
+- El email lo envía la **API** (Resend). Configura el `.env` de la raíz (`RESEND_API_KEY`, `EMAIL_FROM`, `FRONTEND_BASE_URL`); nunca uses `NEXT_PUBLIC_*` para keys de correo.
 
 ### Archivos de auth
 
 | Ruta | Rol |
 | --- | --- |
-| `app/login/page.tsx` | Inicio de sesión |
+| `app/login/page.tsx` | Inicio de sesión (+ banner post-reset) |
 | `app/register/page.tsx` | Registro |
+| `app/forgot-password/page.tsx` | Olvidé mi contraseña |
+| `app/reset-password/page.tsx` | Restablecer (Suspense + token reader) |
 | `app/account/profile/page.tsx` | Perfil |
+| `app/account/change-password/page.tsx` | Cambiar contraseña |
 | `components/forms/LoginForm.tsx` | Login → token → `/` |
 | `components/forms/RegisterForm.tsx` | Registro + confirmación de contraseña |
+| `components/forms/ForgotPasswordForm.tsx` | Solicitar email de reset |
+| `components/forms/ResetPasswordForm.tsx` | Nueva contraseña con token |
+| `components/forms/ChangePasswordForm.tsx` | Cambio autenticado |
 | `components/forms/ProfileForm.tsx` | Editar name/phone/address |
 | `components/layout/AppChrome.tsx` | Guard de rutas + shell |
 | `components/layout/BackofficeShell.tsx` | Nav + logout |
 | `lib/services/healthcoreClient.ts` | Token, Bearer, 401 |
-| `lib/services/authApi.ts` | login, register, me, updateMyProfile |
+| `lib/services/authApi.ts` | login, register, me, profile, forgot/reset/change |
 | `types/auth.ts` | Tipos auth |
 
 ### Archivos relacionados
@@ -147,7 +161,7 @@ npm start
 
 - Candidatos: API Talent Tracker de 4Geeks (`/records`).
 - Incidentes: FastAPI local HealthCore (`services/app`).
-- Auth HealthCore: login/register en este backoffice; el website público no usa JWT.
+- Auth HealthCore: login/register/forgot/reset/change-password en este backoffice; el website público no usa JWT.
 - `next.config.ts` permite imports externos a utilidades de Hito 2.
 
 > English version: [README.md](./README.md).

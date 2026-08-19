@@ -937,3 +937,64 @@ Se eligió layout mínimo (`AppChrome` + páginas en `app/login` y `app/register
 ### Resultado
 
 AUTH-02 frontend cerrado: login/register, guard, profile, logout, Bearer + 401.
+
+## Actualizacion 2026-08-11 (AUTH-03 — recuperacion y cambio de contraseña)
+
+### Alcance
+
+Rama `feature/password-reset`: forgot/reset por email (Resend) + change-password autenticado. API + backoffice. Website sin tocar.
+
+### Decisiones
+
+- Token de reset: cadena aleatoria con **estado en servidor** (TinyDB `password_reset_tokens`: hash SHA-256, `expires_at`, borrado tras uso / al emitir uno nuevo). Cumple uso único mejor que JWT puro sin denylist.
+- Correo: **Resend** (no SendGrid). Remitente de prueba: `onboarding@resend.dev` (no `beth.t@example.com`; Resend responde 403 con dominio no verificado).
+- Enlace del email apunta al **frontend** (`FRONTEND_BASE_URL/reset-password?token=...`), no al API.
+- `POST /auth/forgot-password` siempre **200** (anti-enumeración); fallos de email se loguean en servidor.
+- Windows local: TLS a Resend fallaba (`CERTIFICATE_VERIFY_FAILED`); se añadió `certifi` + `EMAIL_SSL_VERIFY=false` solo para desarrollo local.
+
+### Backend
+
+- `services/app/core/database.py`: tabla `password_reset_tokens`.
+- `services/app/domain/password_reset_service.py`: crear/validar/invalidar token, envío Resend, change-password.
+- `services/app/routers/auth.py`:
+  - `POST /auth/forgot-password` `{ email }` → siempre 200
+  - `POST /auth/reset-password` `{ token, new_password }` → 400 si inválido/expirado/usado
+  - `POST /auth/change-password` `{ current_password, new_password }` (Bearer) → 400 si current incorrecta
+- Modelos en `models/user.py`: `ForgotPasswordRequest`, `ResetPasswordRequest`, `ChangePasswordRequest`.
+- Env (raíz `.env` / `.env.example`): `RESEND_API_KEY`, `EMAIL_FROM`, `FRONTEND_BASE_URL`, `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES`, `PASSWORD_RESET_EMAIL_PROVIDER`, `EMAIL_SSL_VERIFY`. API key **nunca** en código fuente (solo `os.getenv`).
+
+### Frontend (backoffice)
+
+- Rutas públicas: `/forgot-password`, `/reset-password` (añadidas a `AppChrome` AUTH_PATHS y a `redirectToLogin` en `healthcoreClient`).
+- `/account/change-password` (protegida) + nav **Change password**.
+- Login: enlace “¿Olvidaste tu contraseña?”; mensaje de éxito con `?reset=success` (`searchParams` async).
+- Forms: `ForgotPasswordForm`, `ResetPasswordForm` (+ `ResetPasswordTokenReader` + Suspense), `ChangePasswordForm`.
+- `authApi.ts`: `forgotPassword` / `resetPassword` con `auth: false`; `changePassword` con Bearer.
+
+### Docs tocadas
+
+- `bitacora.md` (esta entrada)
+- `memory-bank/progress.md`, `memory-bank/techContext.md`
+- `services/README(.es).md`
+- `uis/README(.es).md`
+- `uis/backoffice/README(.es).md`
+- `.env.example`
+
+### Validacion
+
+- Forgot email inexistente → 200; existente → 200 + email Resend (revisar Gmail/spam y dashboard Resend).
+- Reset token inválido → 400; tras éxito → redirect `/login?reset=success`; token no reutilizable.
+- Change-password sin Bearer → 401; current incorrecta → 400.
+- `npx tsc --noEmit` en backoffice OK.
+- `npm run build`: en este entorno falló por SSL al descargar Google Fonts (Inter); no por el código auth.
+
+### Como probar manualmente
+
+1. API en `:8000` con `.env` (Resend + `FRONTEND_BASE_URL` alineado al puerto de Next).
+2. Usuario en DB con el **mismo email** de la cuenta Resend (restricción onboarding).
+3. `/forgot-password` → mensaje genérico → abrir correo → `/reset-password?token=...` → login.
+4. Con sesión: `/account/change-password`.
+
+### Resultado
+
+AUTH-03 cerrado: recuperación por email real, reset de un solo uso, cambio de contraseña autenticado, secretos solo en env.

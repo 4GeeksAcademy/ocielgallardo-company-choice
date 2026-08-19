@@ -31,7 +31,7 @@ Internal Next.js application for HealthCore employees.
 - Integrates Hito 2 TypeScript business utilities directly from root `src/` (no duplicated business logic).
 - Primary sections:
   - Dashboard
-  - Login / Register (AUTH-02: JWT in `localStorage`, Bearer on HealthCore calls)
+  - Login / Register / Forgot / Reset / Change password (AUTH-02/03: JWT in `localStorage`, Bearer on HealthCore calls, Resend via API)
   - Patients
   - Appointments
   - Billing

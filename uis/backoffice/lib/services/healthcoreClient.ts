@@ -34,7 +34,12 @@ export function redirectToLogin(): void {
     return;
   }
   const path = window.location.pathname;
-  if (path === "/login" || path === "/register") {
+  if (
+    path === "/login" ||
+    path === "/register" ||
+    path === "/forgot-password" ||
+    path === "/reset-password"
+  ) {
     return;
   }
   window.location.assign("/login");

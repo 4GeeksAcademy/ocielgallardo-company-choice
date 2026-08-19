@@ -37,3 +37,15 @@ export interface AuthMeResponse {
   role: string;
   profile: ProfilePublic | null;
 }
+
+export interface ForgotPasswordResponse {
+  message: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+}
+
+export interface ChangePasswordResponse {
+  message: string;
+}
