@@ -37,7 +37,7 @@ Internal Next.js application for HealthCore employees.
   - Billing
   - Claims
   - Reports
-  - Incidents / Suppliers
+  - Incidents (manager: list / new / summary + CSV analyze) / Suppliers
   - People & Talent (`/applications`, `/candidates/[id]`)
 - Public `website` remains without authentication.
 

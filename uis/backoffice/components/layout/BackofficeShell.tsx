@@ -12,6 +12,8 @@ const NAV_ITEMS = [
   { href: "/claims", label: "Claims" },
   { href: "/reports", label: "Reports" },
   { href: "/incidents", label: "Incidents" },
+  { href: "/incidents/new", label: "New incident" },
+  { href: "/incidents/summary", label: "Incident summary" },
   { href: "/suppliers", label: "Suppliers" },
   { href: "/applications", label: "People & Talent" },
   { href: "/account/profile", label: "Profile" },

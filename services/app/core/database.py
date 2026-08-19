@@ -1,7 +1,4 @@
-"""TinyDB initialization for the HealthCore Supplier Directory.
-
-Stores the database file inside data/ so it persists across server restarts.
-"""
+"""TinyDB initialization for HealthCore suppliers, auth, and incidents."""
 from pathlib import Path
 
 from tinydb import TinyDB
@@ -22,3 +19,9 @@ auth_db = TinyDB(AUTH_DB_PATH)
 users_table = auth_db.table("users")
 profiles_table = auth_db.table("profiles")
 password_reset_tokens_table = auth_db.table("password_reset_tokens")
+
+INCIDENTS_DB_PATH = DATA_DIR / "process" / "incidents" / "incidents.json"
+INCIDENTS_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+incidents_db = TinyDB(INCIDENTS_DB_PATH)
+incidents_table = incidents_db.table("incidents")

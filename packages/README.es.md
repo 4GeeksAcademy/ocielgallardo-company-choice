@@ -6,3 +6,11 @@ Cada subcarpeta dentro de `packages/` debería representar **un paquete versiona
 
 - **Propósito principal**: fomentar reutilización y consistencia entre todos los desarrollos de la compañía.
 - **Recomendación**: documenta los paquetes que vayas añadiendo, su API pública y cómo se consumen desde `apps/`, `agents/` y `workflows/`.
+
+## Paquetes presentes
+
+| Ruta | Notas |
+| --- | --- |
+| `shared/` | Tooling TS + Python `healthcore_shared` (validación CSV de incidencias y constantes del gestor). Ver [shared/README.md](./shared/README.md). |
+
+> _English version: [README.md](./README.md)._

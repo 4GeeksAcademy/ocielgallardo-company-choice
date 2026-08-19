@@ -18,17 +18,21 @@ Esta carpeta define los límites de servicios backend dentro de la arquitectura 
 
 ## Implementado (Python, reutilizable por CLI / API)
 
-- `incidents_analysis/` — análisis CSV de incidentes de pacientes HealthCore (`models`, `csv_reader`, `validator`, `analyzer`, `exporter`). Lo consumen `scripts/analyze.py` y la capa de dominio de la API.
+- `incidents_analysis/` — análisis CSV de incidentes de pacientes HealthCore (`models`, `csv_reader`, `validator` reexporta `healthcore_shared`, `analyzer`, `exporter`). Lo consumen `scripts/analyze.py` y la capa de dominio de la API.
 - `app/` — aplicación FastAPI (`services/app/main.py`) en capas:
-  - `core/` — TinyDB (`database.py`), seed de proveedores (`seed.py`), helpers JWT/password (`security.py`), `deps.py` (`get_current_user`)
-  - `models/` — modelos Pydantic (`supplier`, `user`, `profile`)
-  - `domain/` — orquestación de negocio (`supplier_service`, `incident_service`, `user_service`, `profile_service`, `password_reset_service`)
+  - `core/` — TinyDB (`database.py`: suppliers, auth, **incidents**), seed de proveedores (`seed.py`), helpers JWT/password (`security.py`), `deps.py` (`get_current_user`)
+  - `models/` — modelos Pydantic (`supplier`, `user`, `profile`, `incident`)
+  - `domain/` — orquestación (`supplier_service`, `incident_service` analyze CSV, `incident_manager_service` CRUD/summary, `user_service`, `profile_service`, `password_reset_service`)
   - `routers/` — solo HTTP:
-    - `incidents.py` → `POST /api/incidents/analyze`, `GET /api/incidents/results/export`
+    - `incidents.py` → analyze/export **y** gestor:
+      - `POST /api/incidents/analyze`, `GET /api/incidents/results/export` (públicos)
+      - `POST /api/incidents`, `GET /api/incidents`, `GET /api/incidents/summary`, `GET /api/incidents/{id}`, `PATCH /api/incidents/{id}/status` (**requieren Bearer**)
     - `suppliers.py` → CRUD + filtros + rate/status del directorio de proveedores (**requiere Bearer**)
     - `users.py` → CRUD de credenciales (`POST` público; `GET/PUT/DELETE` requieren Bearer; PUT/DELETE dueño o admin)
     - `auth.py` → `POST /auth/login`, `GET /auth/me`, `POST /auth/forgot-password`, `POST /auth/reset-password`, `POST /auth/change-password`
     - `profiles.py` → `GET/PUT /profiles/me` (JWT)
+
+Validación/constantes compartidas: `packages/shared/healthcore_shared` (ver `packages/shared/README.md`). Seed histórico: `PYTHONPATH=packages/shared uv run python scripts/seed_incidents.py`.
 
 Notas de auth (AUTH-01 / AUTH-03):
 
@@ -46,18 +50,20 @@ Notas de auth (AUTH-01 / AUTH-03):
 Desde la raíz del repo:
 
 ```bash
-uv run python -m uvicorn services.app.main:app --reload
+PYTHONPATH=packages/shared uv run python -m uvicorn services.app.main:app --reload
 uv run python -m services.app.core.seed
+PYTHONPATH=packages/shared uv run python scripts/seed_incidents.py
 ```
 
 ### Rutas de datos en runtime usadas por `services/app`
 
-- `data/process/results.csv` — último resumen de incidentes exportado.
+- `data/process/results.csv` — último resumen de análisis CSV exportado.
 - `data/process/suppliers/suppliers.json` — archivo TinyDB del directorio de proveedores.
 - `data/process/auth/auth.json` — TinyDB de users, profiles y tokens de reset (en `.gitignore`).
+- `data/process/incidents/incidents.json` — TinyDB del gestor de incidencias (en `.gitignore`).
 
 ## Estado
 
-La lógica de análisis de incidentes vive en `incidents_analysis/` y se reutiliza vía `app/domain/incident_service`. AUTH-01 aplica JWT a users (salvo registro) y a todas las rutas de suppliers; incidents siguen públicas por ahora. AUTH-03 añade forgot/reset/change-password con Resend. El backoffice (AUTH-02/03) adjunta Bearer desde `localStorage` tras `/login` o `/register` y expone la UI de recuperación. Los demás dominios (`gateway`, `clinical-operations`, `revenue-cycle`, `compliance`) siguen como placeholders.
+La lógica de análisis CSV vive en `incidents_analysis/` (reglas vía `healthcore_shared`) y se reutiliza con `app/domain/incident_service`. El **gestor de incidencias** persiste en TinyDB y expone CRUD/summary/status autenticados (`incident_manager_service`). AUTH-01 aplica JWT a users (salvo registro), suppliers y rutas del gestor; analyze/export CSV siguen públicos. AUTH-03 añade forgot/reset/change-password con Resend. El backoffice (AUTH-02/03) adjunta Bearer desde `localStorage` tras `/login` o `/register` y expone la UI de recuperación. Los demás dominios (`gateway`, `clinical-operations`, `revenue-cycle`, `compliance`) siguen como placeholders.
 
 > English version: [README.md](./README.md).
