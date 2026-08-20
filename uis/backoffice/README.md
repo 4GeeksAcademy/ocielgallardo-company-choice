@@ -7,20 +7,29 @@ Internal Next.js application for HealthCore employees.
 - Provide a dedicated internal workspace separated from the public website.
 - Preserve and host the existing People & Talent candidate tracker.
 - Expose Hito 2 TypeScript business logic utilities through interactive dashboard demos.
-- Host patient incident CSV analysis against the local HealthCore FastAPI.
+- Host the centralized incident manager (register, list, summary) and CSV analysis against the local HealthCore FastAPI.
 
 ## Current sections
 
 - `/` Dashboard
+- `/login` Sign-in (JWT → `localStorage`)
+- `/register` Sign-up (`POST /users` + automatic login)
+- `/forgot-password` Request password-reset email
+- `/reset-password` Set new password from email token (`?token=`)
 - `/patients` Placeholder module
 - `/appointments` Placeholder module
 - `/billing` Placeholder module
 - `/claims` Placeholder module
 - `/reports` Placeholder module
-- `/incidents` Patient incident CSV analysis (upload, summary, CSV download)
+- `/incidents` Incident manager list (filters + status updates)
+- `/incidents/new` Register a new incident (PHI warning on description)
+- `/incidents/summary` Aggregated metrics by status/category/origin/branch
+- `/incidents/analyze` Patient incident CSV analysis (upload, summary, CSV download)
 - `/suppliers` Supplier directory (list, filters, create, rate update, status update)
 - `/applications` Candidate pipeline list and create form
 - `/candidates/[id]` Candidate detail, edit, stage/status controls, notes
+- `/account/profile` Account profile (email + name/phone/address)
+- `/account/change-password` Change password while signed in
 
 ## Supplier directory (`/suppliers`)
 
@@ -48,21 +57,29 @@ Uses the local HealthCore FastAPI supplier endpoints exposed by `services/app`.
 | `lib/services/suppliersApi.ts` | `GET /suppliers`, `POST /suppliers`, supplier PATCH actions |
 | `types/suppliers.ts` | Supplier types, options, labels, and helpers |
 
-## Patient incidents (`/incidents`)
+## Incident manager (`/incidents`)
 
-Uses the same backend pipeline as the CLI (`services/incidents_analysis/`), exposed by FastAPI.
+Centralized incident registration and tracking for HealthCore clinics. Contract: `docs/incident-manager/CONTEXT-HealthCore.md`. UI labels are in **English**.
+
+### Routes
+
+| Path | Role |
+| --- | --- |
+| `/incidents` | List + filters (`status`, `origin`, `branch`) + inline status transitions with rollback on failure |
+| `/incidents/new` | Create form; branch always required; branch highlighted when `origin === branch`; PHI warning before description |
+| `/incidents/summary` | Totals from `GET /api/incidents/summary` (isolated loading/error) |
+| `/incidents/analyze` | Legacy CSV analyzer UI (same pipeline as CLI) |
 
 ### What you need running
 
-Two processes:
-
 1. **HealthCore API** (repo root) — default `http://127.0.0.1:8000`
-2. **This backoffice** — usually `http://localhost:3000` (or `3001` if 3000 is taken)
+2. **This backoffice** — usually `http://localhost:3000` (or `3001`)
 
 ```bash
 # Terminal A — from repository root
-python -m pip install fastapi uvicorn python-multipart   # once
-python -m uvicorn services.app.main:app --reload
+PYTHONPATH=packages/shared uv run uvicorn services.app.main:app --reload
+# optional historical seed
+PYTHONPATH=packages/shared uv run python scripts/seed_incidents.py
 
 # Terminal B — this app
 cd uis/backoffice
@@ -70,13 +87,28 @@ npm install   # once
 npm run dev
 ```
 
-Open the UI URL printed by Next (for example `http://localhost:3001/incidents` if port 3000 is busy).
+Sign in first (manager endpoints require Bearer). Swagger: `http://127.0.0.1:8000/docs`
 
-Swagger for the API: `http://127.0.0.1:8000/docs`
+### Related files (manager)
+
+| Path | Role |
+| --- | --- |
+| `app/incidents/page.tsx` | List workspace |
+| `app/incidents/new/page.tsx` | Registration page |
+| `app/incidents/summary/page.tsx` | Summary page |
+| `components/incidents/IncidentListPanel.tsx` | Filters, table, status updates |
+| `components/incidents/IncidentCreateForm.tsx` | Create form + PHI notice |
+| `components/incidents/IncidentSummaryPanel.tsx` | Metric panels |
+| `lib/services/incidentsManagerApi.ts` | Manager API client + friendly errors |
+| `types/incidentManager.ts` | Manager types, options, labels |
+
+## Patient incident CSV analysis (`/incidents/analyze`)
+
+Uses the same backend pipeline as the CLI (`services/incidents_analysis/`), exposed by FastAPI. Validation rules live in `packages/shared/healthcore_shared` (re-exported by the analyzer package).
 
 ### How to analyze a CSV
 
-1. In the nav, open **Incidents**.
+1. Open **CSV analyzer** from the Incidents page (or `/incidents/analyze`).
 2. Drag/drop or select a `.csv` (sample: `data/raw/incidents-healthcore.csv` at repo root).
 3. Click **Analyze CSV**.
 4. Review totals, invalid-rule breakdown, category/status breakdowns, and satisfaction.
@@ -86,7 +118,7 @@ Expected with the official sample: **100** total / **94** valid / **6** invalid;
 
 ### API base URL
 
-Client: `lib/services/healthcoreApi.ts`
+Clients: `lib/services/healthcoreClient.ts`, `incidentsManagerApi.ts`, `healthcoreApi.ts`
 
 - Default: `http://127.0.0.1:8000`
 - Override: set `NEXT_PUBLIC_HEALTHCORE_API_URL` (restart `npm run dev` after changing it)
@@ -97,21 +129,53 @@ If you open the UI through a published Codespaces URL instead of localhost, repl
 
 CORS on the API allows `localhost` / `127.0.0.1` on ports **3000** and **3001**. If Next uses another port, add that origin in `services/app/main.py`.
 
-### Auth note (AUTH-01 in progress)
+### Auth frontend (AUTH-02 / AUTH-03 — complete)
 
-The HealthCore API now supports JWT login (`POST /auth/login`) and protected routes such as `GET /auth/me` and `/profiles/me`. Supplier and incident UI clients do **not** send `Authorization` headers yet. When those API routes become token-gated, Incidents/Suppliers calls will return **401** until the backoffice is updated to attach the Bearer token (expected temporary gap per the milestone).
+- `/login` and `/register`: JWT in `localStorage` (`healthcore_access_token`); redirect to `/`.
+- Login includes “Forgot password?” → `/forgot-password`.
+- `/forgot-password`: always shows a generic confirmation after submit (anti-enumeration). Calls `POST /auth/forgot-password` with `auth: false`.
+- `/reset-password?token=...`: new password + confirmation → `POST /auth/reset-password`; success redirects to `/login?reset=success`.
+- `/account/change-password`: current + new + confirmation → `POST /auth/change-password` (Bearer).
+- `healthcoreClient.ts`: Bearer on calls; **401** → clear + `/login` (skipped on auth pages including forgot/reset).
+- `AppChrome`: no shell on `/login`, `/register`, `/forgot-password`, `/reset-password`; no token elsewhere → `/login`.
+- `/account/profile`: `GET /auth/me` + `PUT /profiles/me` (email read-only).
+- Shell: Profile + Change password nav + **Cerrar sesión** (`clearSessionAndRedirectToLogin`).
+- Public website has no auth. Runtime `data/process/auth/auth.json` is gitignored.
+- Password emails are sent by the **API** (Resend). Configure root `.env` (`RESEND_API_KEY`, `EMAIL_FROM`, `FRONTEND_BASE_URL`); never put mail keys in `NEXT_PUBLIC_*`.
 
-### Related files
+### Auth-related files
 
 | Path | Role |
 | --- | --- |
-| `app/incidents/page.tsx` | Page: upload → analyze → summary → download |
+| `app/login/page.tsx` | Sign-in page (+ reset success banner) |
+| `app/register/page.tsx` | Sign-up page |
+| `app/forgot-password/page.tsx` | Forgot-password page |
+| `app/reset-password/page.tsx` | Reset-password page (Suspense + token reader) |
+| `app/account/profile/page.tsx` | Profile page |
+| `app/account/change-password/page.tsx` | Change-password page |
+| `components/forms/LoginForm.tsx` | Login → token → `/` |
+| `components/forms/RegisterForm.tsx` | Register + password confirmation |
+| `components/forms/ForgotPasswordForm.tsx` | Request reset email |
+| `components/forms/ResetPasswordForm.tsx` | Submit new password with token |
+| `components/forms/ChangePasswordForm.tsx` | Authenticated password change |
+| `components/forms/ProfileForm.tsx` | Edit name/phone/address |
+| `components/layout/AppChrome.tsx` | Route guard + shell |
+| `components/layout/BackofficeShell.tsx` | Nav + logout |
+| `lib/services/healthcoreClient.ts` | Token, Bearer, 401 |
+| `lib/services/authApi.ts` | login, register, me, profile, forgot/reset/change password |
+| `types/auth.ts` | Auth types |
+
+### Related files (CSV analyze)
+
+| Path | Role |
+| --- | --- |
+| `app/incidents/analyze/page.tsx` | Page: upload → analyze → summary → download |
 | `components/incidents/IncidentCsvUpload.tsx` | File picker + drag and drop |
 | `components/incidents/IncidentAnalysisSummary.tsx` | CONTEXT-aligned metrics UI |
 | `lib/services/healthcoreApi.ts` | `POST /api/incidents/analyze`, `GET .../results/export` |
 | `types/incidents.ts` | TypeScript shapes for the JSON summary |
 
-Business rules live in `services/incidents_analysis/` (not duplicated here). Tracker traffic still uses `lib/services/client.ts` (4Geeks API).
+Manager business rules live in `packages/shared/healthcore_shared` and `services/app/domain/incident_manager_service.py`. CSV analyze rules are shared (not duplicated in the UI). Tracker traffic still uses `lib/services/client.ts` (4Geeks API).
 
 ## Hito 2 integration
 
@@ -140,7 +204,7 @@ npm install
 npm run dev
 ```
 
-For incident analysis, also start the API (see [Patient incidents](#patient-incidents-incidents) above).
+For the incident manager or CSV analysis, also start the API (see [Incident manager](#incident-manager-incidents) above).
 
 ## Build
 
@@ -152,7 +216,8 @@ npm start
 ## Notes
 
 - Candidate API integration uses the 4Geeks Talent Tracker API (`/records`).
-- Incident analysis uses the local HealthCore FastAPI (`services/app`).
+- Incident manager and CSV analysis use the local HealthCore FastAPI (`services/app`).
+- HealthCore auth: login/register/forgot/reset/change-password live in this backoffice; the public website does not use JWT.
 - `next.config.ts` enables external directory imports to consume root Hito 2 utilities.
 
 > Spanish version: [README.es.md](./README.es.md).

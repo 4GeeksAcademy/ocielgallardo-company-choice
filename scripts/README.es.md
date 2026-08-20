@@ -39,7 +39,20 @@ python scripts/analyze.py data/raw/incidents-healthcore.csv
 - Módulos reutilizables: `services/incidents_analysis/`
 - Exportación (opcional): `data/process/results.csv`
 
-🛡 **Recordatorio de cumplimiento:** nunca imprimas ni exportes `patient_id`. Si el script muestra un identificador de paciente, la salida no es usable.
+🛡 **Recordatorio de cumplimiento:** nunca imprimas ni exportes `patient_id`. Si el script expone un identificador de paciente, la salida no es usable.
+
+### `seed_incidents.py` — carga el histórico de incidencias de cliente en TinyDB
+
+Valida `data/raw/incidents-healthcore.csv` con las reglas compartidas del analizador (`packages/shared/healthcore_shared`), mapea al modelo del gestor (transforms del CONTEXT) e inserta de forma idempotente por `source_incident_id`.
+
+```bash
+# desde la raíz del repo
+PYTHONPATH=packages/shared uv run python scripts/seed_incidents.py
+# o
+uv run seed-incidents
+```
+
+**Fuente de verdad:** `docs/incident-manager/CONTEXT-HealthCore.es.md`
 
 ## 💡 Consejos
 

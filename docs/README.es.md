@@ -14,11 +14,19 @@ docs/
 │   ├── ARCHITECTURE_PROPOSAL.md
 │   └── ARCHITECTURE_PROPOSAL.es.md
 │
-├── data-contract/
+├── data-contract/              ← análisis CSV de incidencias (hito previo)
 │   ├── CONTEXT-HealthCore.md
 │   ├── CONTEXT-HealthCore.es.md
 │   ├── functional-design-analyze.md
 │   └── functional-design-analyze.es.md
+│
+├── supplier-directory/         ← directorio de proveedores
+│   ├── CONTEXT-HealthCore.md
+│   └── CONTEXT-HealthCore.es.md
+│
+├── incident-manager/           ← gestor de incidencias (CONTEXT + ver scripts/seed_incidents.py, packages/shared)
+│   ├── CONTEXT-HealthCore.md
+│   └── CONTEXT-HealthCore.es.md
 │
 ├── api/                  (futuro)
 │
