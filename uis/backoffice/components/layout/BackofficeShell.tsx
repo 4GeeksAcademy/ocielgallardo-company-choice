@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: "/incidents/summary", label: "Incident summary" },
   { href: "/suppliers", label: "Suppliers" },
   { href: "/inventory/products", label: "Suministros" },
+  { href: "/inventory/orders/inbound", label: "Registrar entrega" },
   { href: "/applications", label: "People & Talent" },
   { href: "/account/profile", label: "Profile" },
   { href: "/account/change-password", label: "Change password" },
