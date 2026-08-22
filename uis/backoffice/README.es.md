@@ -26,10 +26,27 @@ Aplicación Next.js interna para empleados de HealthCore.
 - `/incidents/summary` Métricas agregadas por status/categoría/origen/sede
 - `/incidents/analyze` Análisis CSV de incidentes (subida, resumen, descarga)
 - `/suppliers` Directorio de proveedores (API protegida con Bearer)
+- `/inventory/products` Suministros médicos con stock actual (badges de nivel)
+- `/inventory/orders/inbound` Registrar entrega de proveedor
+- `/inventory/orders/outbound` Registrar consumo clínico (stock reactivo + aviso si excede)
+- `/inventory/orders` Historial de órdenes (solo lectura)
 - `/applications` Pipeline de candidatos y formulario de alta
 - `/candidates/[id]` Detalle, edición, estado/etapa y notas
 - `/account/profile` Perfil (email + name/phone/address)
 - `/account/change-password` Cambio de contraseña con sesión
+
+## Inventario (`/inventory`)
+
+Cuatro vistas autenticadas contra `GET/POST /inventory/*` (Bearer). Contrato: `docs/inventory/CONTEXT-HealthCore.es.md`. Cliente: `lib/services/inventoryApi.ts`.
+
+| Ruta | Rol |
+| --- | --- |
+| `/inventory/products` | Listado de suministros con `current_stock` e indicadores visuales (crítico &lt; 5, bajo &lt; 15) |
+| `/inventory/orders/inbound` | Formulario de entrega (`POST /inventory/orders/inbound`) |
+| `/inventory/orders/outbound` | Formulario de consumo; muestra stock del producto seleccionado; aviso en cliente si la cantidad supera el stock; `HTTP 400` inline en cantidad |
+| `/inventory/orders` | Historial de entregas y consumos (solo lectura) |
+
+Nav: Suministros, Registrar entrega, Registrar consumo, Historial de órdenes.
 
 ## Gestor de incidencias (`/incidents`)
 

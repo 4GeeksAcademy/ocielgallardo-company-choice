@@ -9,6 +9,29 @@
 - Manual browser playground for utility inspection is available.
 - Type-level model validation command is available in `packages/shared`.
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
+- Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
+
+## Recently Completed (Hito 5 — inventory backoffice UI)
+- Branch: `feature/inventory` (no merge).
+- Four authenticated views: `/inventory/products`, `/inventory/orders/inbound`, `/inventory/orders/outbound`, `/inventory/orders`.
+- Client: `uis/backoffice/lib/services/inventoryApi.ts` (Bearer via `healthcoreClient`; no direct `fetch` in components).
+- Outbound form shows selected supply `current_stock` reactively, warns when quantity exceeds stock, and surfaces API `400` inline on quantity.
+- Order history is read-only with inbound/outbound visual distinction, product name, quantity, date, and `user_uuid`.
+- Nav: Suministros, Registrar entrega, Registrar consumo, Historial de órdenes.
+- Validation: lints clean on new files. `npx tsc --noEmit` not run here (Node/npm not on PATH; `uis/backoffice/node_modules` absent). Manual API smoke not run in this session.
+
+## Recently Completed (Hito 5 — inventory ORM + dual database)
+- Branch: `feature/inventory` (cut from `feature/auth`).
+- Context: `docs/inventory/CONTEXT-HealthCore.es.md` (MedicalSupply / SupplyDelivery / SupplyConsumption).
+- Dependencies: `sqlmodel`, `psycopg2-binary`.
+- Env: `SUPABASE_DB_*` in `.env` (see `.env.example`); optional full `DATABASE_URL` override. Password only in gitignored `.env`.
+- Dual DB in `services/app/core/database.py`: TinyDB (auth) + SQLModel engine/`get_db` (inventory); URI built with `quote_plus` from discrete vars.
+- ORM: `services/app/models/inventory.py`; Pydantic schemas: `services/app/schemas.py`.
+- Domain: `services/app/domain/inventory_service.py` — computed `current_stock`, outbound rejects negative stock with HTTP 400.
+- Router: `services/app/routers/inventory.py` under `/inventory` (all routes Bearer-authenticated).
+- Seed: `services/app/core/inventory_seed.py` (idempotent); tables + seed also applied on Supabase project `GallaGit's Project`.
+- Expected net stocks after seed: HCR-PPE-001=55, HCR-PPE-002=25, HCR-DIAG-001=42, HCR-DIAG-002=15, HCR-WND-001=20, HCR-MED-001=18.
+- Local smoke test (SQLite in-memory) verified stock calc + outbound 400. Live Supabase connection verified via `SUPABASE_DB_*` in `.env`.
 - AUTH-02 complete on `feature/auth-frontend`: login/register, Bearer client, route guard, profile page, shell logout.
 - AUTH-03 complete on `feature/password-reset`: forgot/reset/change password + Resend email.
 

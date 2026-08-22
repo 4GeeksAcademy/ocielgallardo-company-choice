@@ -30,12 +30,21 @@
   - Dependency: `certifi` for HTTPS CA bundle when SSL verify is enabled
 - Internal Hito 2 demo surface:
   - `uis/backoffice/components/dashboard/Hito2Playground.tsx`
+- Inventory backoffice UI (Hito 5, `feature/inventory`, not merged):
+  - `/inventory/products`, `/inventory/orders/inbound`, `/inventory/orders/outbound`, `/inventory/orders`
+  - Client `uis/backoffice/lib/services/inventoryApi.ts`; types `uis/backoffice/types/inventory.ts`
 - Service architecture placeholders:
   - `services/gateway`
   - `services/clinical-operations`
   - `services/revenue-cycle`
   - `services/compliance`
 - Implemented backend FastAPI app:
+  - `services/app/` (`main`, `core`, `models`, `schemas`, `domain`, `routers`)
+  - `services/incidents_analysis/` (CLI/API shared incident CSV pipeline)
+  - Auth: JWT via `python-jose`, passwords via `passlib`/`bcrypt`, TinyDB users/profiles, config from root `.env`
+  - Inventory (Hito 5): SQLModel + Supabase PostgreSQL via `SUPABASE_DB_*` (or optional `DATABASE_URL`); TinyDB remains for auth only
+  - Entities: `MedicalSupply`, `SupplyDelivery`, `SupplyConsumption` under `/inventory`
+  - Run: `uv run python -m uvicorn services.app.main:app --reload`
   - `services/app/` (`main`, `core`, `models`, `domain`, `routers`)
   - `services/incidents_analysis/` (CLI/API shared incident CSV pipeline; validator re-exports `healthcore_shared`)
   - Incident manager: TinyDB `data/process/incidents/incidents.json`; CRUD + `/api/incidents/summary` + status lifecycle; seed via `scripts/seed_incidents.py`

@@ -20,9 +20,10 @@ This folder contains backend service boundaries for the monorepo architecture.
 
 - `incidents_analysis/` — HealthCore patient incident CSV analysis (`models`, `csv_reader`, `validator` re-exports `healthcore_shared`, `analyzer`, `exporter`). Consumed by `scripts/analyze.py` and by the API domain layer.
 - `app/` — FastAPI application (`services/app/main.py`) with layered layout:
-  - `core/` — TinyDB (`database.py`: suppliers, auth, **incidents**), supplier seed (`seed.py`), JWT/password helpers (`security.py`), `deps.py` (`get_current_user`)
-  - `models/` — Pydantic models (`supplier`, `user`, `profile`, `incident`)
-  - `domain/` — business orchestration (`supplier_service`, `incident_service` CSV analyze, `incident_manager_service` CRUD/summary, `user_service`, `profile_service`, `password_reset_service`)
+  - `core/` — TinyDB + SQLModel engine (`database.py`), seeds, JWT/password helpers (`security.py`), `deps.py` (`get_current_user`)
+  - `models/` — Pydantic (`supplier`, `user`, `profile`) and SQLModel inventory ORM (`inventory.py`)
+  - `schemas.py` — Pydantic request/response for inventory (separate from ORM)
+  - `domain/` — business orchestration (`supplier_service`, `incident_service`, `user_service`, `profile_service`, `inventory_service`)
   - `routers/` — HTTP only:
     - `incidents.py` → CSV analyze/export **and** manager CRUD:
       - `POST /api/incidents/analyze`, `GET /api/incidents/results/export` (public)
@@ -31,6 +32,7 @@ This folder contains backend service boundaries for the monorepo architecture.
 		- `users.py` → user credential CRUD (`POST` public; `GET/PUT/DELETE` require Bearer; PUT/DELETE self-or-admin)
 		- `auth.py` → `POST /auth/login`, `GET /auth/me`, `POST /auth/forgot-password`, `POST /auth/reset-password`, `POST /auth/change-password`
 		- `profiles.py` → `GET/PUT /profiles/me` (JWT)
+		- `inventory.py` → `/inventory/*` medical supplies + deliveries/consumptions (**Bearer required**)
 
 Shared validation/constants: `packages/shared/healthcore_shared` (see `packages/shared/README.md`). Seed historical incidents: `PYTHONPATH=packages/shared uv run python scripts/seed_incidents.py`.
 
@@ -47,11 +49,22 @@ Auth notes (AUTH-01 / AUTH-03):
   - Env: `RESEND_API_KEY`, `EMAIL_FROM` (use `onboarding@resend.dev` for Resend onboarding), `FRONTEND_BASE_URL`, `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES`, optional `EMAIL_SSL_VERIFY` (local Windows TLS workaround). Never commit real keys.
 - Frontend consumer (AUTH-02/03): backoffice stores the JWT in `localStorage` and sends Bearer via `uis/backoffice/lib/services/healthcoreClient.ts` (`/login`, `/register`, forgot/reset/change-password flows).
 
+Inventory notes (Hito 5, branch `feature/inventory`):
+
+- Dual DB: TinyDB (auth/users) + Supabase PostgreSQL via SQLModel.
+- Supabase connection (repo-root `.env`, see `.env.example`):
+  - Preferred: discrete vars `SUPABASE_DB_HOST`, `SUPABASE_DB_PORT`, `SUPABASE_DB_NAME`, `SUPABASE_DB_USER`, `SUPABASE_DB_PASSWORD` (Transaction / Shared pooler).
+  - Optional override: full `DATABASE_URL` (password must be percent-encoded if it contains special characters).
+  - `services/app/core/database.py` builds the URI with `quote_plus` when using discrete vars; never commit secrets to git.
+- Entities: `MedicalSupply`, `SupplyDelivery`, `SupplyConsumption`. Stock is computed, never stored.
+- Context: `docs/inventory/CONTEXT-HealthCore.es.md`
+
 Run from repo root:
 
 ```bash
 PYTHONPATH=packages/shared uv run python -m uvicorn services.app.main:app --reload
 uv run python -m services.app.core.seed
+uv run python -m services.app.core.inventory_seed
 PYTHONPATH=packages/shared uv run python scripts/seed_incidents.py
 ```
 
@@ -64,6 +77,7 @@ PYTHONPATH=packages/shared uv run python scripts/seed_incidents.py
 
 ## Status
 
+Incident analysis business logic lives under `incidents_analysis/` and is reused by API routes via `app/domain/incident_service`. AUTH-01 JWT protection is applied to users (except register) and all supplier routes; inventory routes require Bearer. Incidents remain public for now. Other domain folders (`gateway`, `clinical-operations`, `revenue-cycle`, `compliance`) remain placeholders.
 Incident CSV analysis lives under `incidents_analysis/` (validator rules shared via `healthcore_shared`) and is reused by `app/domain/incident_service`. The **incident manager** persists rows in TinyDB and exposes authenticated CRUD/summary/status endpoints (`incident_manager_service`). AUTH-01 JWT protection applies to users (except register), suppliers, and manager incident routes; CSV analyze/export remain public. AUTH-03 adds forgot/reset/change-password with Resend. Backoffice AUTH-02/03 attach Bearer from `localStorage` after `/login` or `/register` and expose password recovery UI. Other domain folders (`gateway`, `clinical-operations`, `revenue-cycle`, `compliance`) remain placeholders.
 
 > Spanish version: [README.es.md](./README.es.md).

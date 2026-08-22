@@ -26,10 +26,27 @@ Internal Next.js application for HealthCore employees.
 - `/incidents/summary` Aggregated metrics by status/category/origin/branch
 - `/incidents/analyze` Patient incident CSV analysis (upload, summary, CSV download)
 - `/suppliers` Supplier directory (list, filters, create, rate update, status update)
+- `/inventory/products` Medical supplies with current stock (level badges)
+- `/inventory/orders/inbound` Register a vendor delivery
+- `/inventory/orders/outbound` Register clinical consumption (reactive stock + over-stock warning)
+- `/inventory/orders` Order history (read-only)
 - `/applications` Candidate pipeline list and create form
 - `/candidates/[id]` Candidate detail, edit, stage/status controls, notes
 - `/account/profile` Account profile (email + name/phone/address)
 - `/account/change-password` Change password while signed in
+
+## Inventory (`/inventory`)
+
+Four authenticated views against `GET/POST /inventory/*` (Bearer). Contract: `docs/inventory/CONTEXT-HealthCore.en.md`. Client: `lib/services/inventoryApi.ts`.
+
+| Path | Role |
+| --- | --- |
+| `/inventory/products` | Supply list with `current_stock` and visual levels (critical &lt; 5, low &lt; 15) |
+| `/inventory/orders/inbound` | Delivery form (`POST /inventory/orders/inbound`) |
+| `/inventory/orders/outbound` | Consumption form; shows selected product stock; client warning if quantity exceeds stock; `HTTP 400` inline on quantity |
+| `/inventory/orders` | Delivery and consumption history (read-only) |
+
+Nav: Suministros, Registrar entrega, Registrar consumo, Historial de órdenes.
 
 ## Supplier directory (`/suppliers`)
 
