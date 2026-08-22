@@ -9,17 +9,15 @@ Priya Nair's team needs a trustworthy summary of clinic incident CSVs. This pack
 ## Why this service exists
 
 ```text
-CLI path                         API path                      Seed path
---------                         --------                      ---------
-analyze.py                       POST /api/incidents/analyze   seed_incidents.py
-     |                                    |                            |
-     +----------->  this package  <-------+                            |
-                  (csv_reader + analyzer)                              |
-                         |                                             |
-                         +---- validator re-exports healthcore_shared -+
+CLI path                         API path
+--------                         --------
+analyze.py                       POST /api/incidents/analyze
+     |                                    |
+     +----------->  this package  <-------+
+                  (one source of truth)
 ```
 
-No business rules in the script. No duplicated validators in the router. Shared CSV rules live in `packages/shared/healthcore_shared`. The incident **manager** (CRUD TinyDB) is a separate domain; it reuses the same shared validation for seeding.
+No business rules in the script. No duplicated validators in the router. One place to change when CONTEXT rules evolve.
 
 ## 🗂 Module map
 
@@ -27,7 +25,7 @@ No business rules in the script. No duplicated validators in the router. Shared 
 | --- | --- |
 | `models.py` | Shared data shapes (`Incident`) — dataclass |
 | `csv_reader.py` | Open and read the UTF-8 comma-separated CSV (header required) |
-| `validator.py` | Re-exports CONTEXT invalidity rules from `packages/shared/healthcore_shared` (no duplicated logic) |
+| `validator.py` | Apply CONTEXT invalidity rules; count by rule; never expose `patient_id` |
 | `analyzer.py` | Aggregate metrics from **valid** records (and invalid breakdown from invalid ones) |
 | `exporter.py` | Write metrics CSV (`metric`, `value`, optional `percentage`) — no PHI |
 | `__init__.py` | Package marker / public exports |
@@ -65,7 +63,5 @@ Expected against the official sample: **100** rows, **94** valid, **6** invalid;
 **CLI pipeline implemented** (Paso 3 closed): `models` → `csv_reader` → `validator` → `analyzer` → `exporter`, orchestrated by `scripts/analyze.py`.
 
 **API reuse implemented:** `services/app/domain/incident_service.py` and `services/app/routers/incidents.py` call these same modules (no duplicated rules).
-
-**Shared package:** CSV invalidity constants/functions live in `healthcore_shared.csv_validation`; this package’s `validator.py` re-exports them. Manager seed mapping lives in `healthcore_shared.seed_mapping` (see `docs/incident-manager/`).
 
 > Spanish twin of the contract: [CONTEXT-HealthCore.es.md](../../docs/data-contract/CONTEXT-HealthCore.es.md).

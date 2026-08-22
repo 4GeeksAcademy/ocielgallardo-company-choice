@@ -14,15 +14,12 @@ Keep a clear line: `data/raw/` = original inputs; `data/process/` = things we ge
 
 | File | Produced by | What it is |
 | --- | --- | --- |
-| `results.csv` | `scripts/analyze.py` → `services.incidents_analysis.exporter` (or API analyze) | Metric summary (`metric`, `value`, `percentage`). No `patient_id`. Regenerated on export. |
-| `suppliers/suppliers.json` | Supplier API / seed | TinyDB supplier directory (gitignored). |
-| `auth/auth.json` | Auth API | TinyDB users, profiles, password-reset tokens (gitignored). |
-| `incidents/incidents.json` | Incident manager API / `scripts/seed_incidents.py` | TinyDB centralized incidents (gitignored). |
+| `results.csv` | `scripts/analyze.py` → `services.incidents_analysis.exporter` | Metric summary (`metric`, `value`, `percentage`). No `patient_id`. Regenerated when the user answers `y` to the export prompt. |
 
 ## Tips
 
 - Prefer regenerating `results.csv` over hand-editing it.
 - Do not store PHI/PII exports here.
-- Generated CSVs and TinyDB runtime files are listed in `.gitignore` when they are reproducible or local-only.
+- Generated CSVs like `results.csv` are listed in `.gitignore` when they are reproducible from `data/raw/`.
 
 > Spanish version: [README.es.md](./README.es.md).

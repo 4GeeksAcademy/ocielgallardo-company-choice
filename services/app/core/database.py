@@ -3,7 +3,6 @@ plus SQLModel engine/session for Supabase inventory.
 """
 from collections.abc import Generator
 from functools import lru_cache
-"""TinyDB initialization for HealthCore suppliers, auth, and incidents."""
 from pathlib import Path
 import os
 from urllib.parse import quote_plus
@@ -81,10 +80,3 @@ def get_db() -> Generator[Session, None, None]:
     """Yield a per-request SQLModel session (no global session)."""
     with Session(get_engine()) as session:
         yield session
-password_reset_tokens_table = auth_db.table("password_reset_tokens")
-
-INCIDENTS_DB_PATH = DATA_DIR / "process" / "incidents" / "incidents.json"
-INCIDENTS_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-incidents_db = TinyDB(INCIDENTS_DB_PATH)
-incidents_table = incidents_db.table("incidents")

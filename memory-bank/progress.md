@@ -2,8 +2,6 @@
 
 ## Current Status Snapshot
 - Business context source established in `CONTEXT.md`.
-- Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`).
-- Centralized incident manager implemented (shared validation, seed, API, backoffice UI).
 - Web deliverables for Milestone 1 are implemented.
 - Core TypeScript domain/utilities for Milestone 2 are implemented.
 - Manual browser playground for utility inspection is available.
@@ -32,54 +30,6 @@
 - Seed: `services/app/core/inventory_seed.py` (idempotent); tables + seed also applied on Supabase project `GallaGit's Project`.
 - Expected net stocks after seed: HCR-PPE-001=55, HCR-PPE-002=25, HCR-DIAG-001=42, HCR-DIAG-002=15, HCR-WND-001=20, HCR-MED-001=18.
 - Local smoke test (SQLite in-memory) verified stock calc + outbound 400. Live Supabase connection verified via `SUPABASE_DB_*` in `.env`.
-- AUTH-02 complete on `feature/auth-frontend`: login/register, Bearer client, route guard, profile page, shell logout.
-- AUTH-03 complete on `feature/password-reset`: forgot/reset/change password + Resend email.
-
-## Recently Completed (incident manager — docs pass)
-- Documented milestone in `bitacora.md` and READMEs: `services`, `uis/backoffice`, `packages/shared`, `scripts`, `data/process`, `incidents_analysis`, `uis`, `docs`.
-
-## Recently Completed (incident manager — centralized incidents)
-- Shared Python package `packages/shared/healthcore_shared`: CSV validation, manager enums/transitions, seed mapping, create/status field validation.
-- `services/incidents_analysis/validator.py` re-exports shared CSV rules (no duplication).
-- TinyDB `data/process/incidents/incidents.json`; domain `incident_manager_service.py`; models in `services/app/models/incident.py`.
-- API under `/api/incidents`: POST create, GET list/filters, GET summary, GET by id, PATCH status (+ retained analyze/export). Auth required on manager routes. Validation 400 with `{field,message}`; generic 500 handler.
-- Seed: `scripts/seed_incidents.py` — 94 valid inserts, 6 invalids reported; second run inserts 0 (idempotent). Summary matches CONTEXT post-transform totals.
-- Backoffice (English): `/incidents` list+status, `/incidents/new` form with PHI warning, `/incidents/summary`, CSV analyzer moved to `/incidents/analyze`. Nav links added.
-- Validation: seed×2 + curl smoke (summary/list/create/bad transition/good transition/400/404); `uis/backoffice` `tsc --noEmit` OK.
-
-## Recently Completed (docs — incident-manager folder)
-- Added `docs/incident-manager/` with placeholder `CONTEXT-HealthCore.md` and `CONTEXT-HealthCore.es.md` (content pending paste).
-- Updated `docs/README.md` and `docs/README.es.md` tree to include `supplier-directory/` and `incident-manager/`.
-
-## Recently Completed (AUTH-03 — password recovery and change)
-- Branch: `feature/password-reset`.
-- Backend: `POST /auth/forgot-password` (always 200), `POST /auth/reset-password` (400 invalid/expired/used), `POST /auth/change-password` (Bearer; 400 wrong current).
-- TinyDB table `password_reset_tokens` (hash + expires_at; prior tokens removed on new request; deleted after successful reset).
-- Resend via env: `RESEND_API_KEY`, `EMAIL_FROM=onboarding@resend.dev`, `FRONTEND_BASE_URL`, `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES`, optional `EMAIL_SSL_VERIFY` (local Windows SSL workaround). Email failures logged server-side without leaking enumeration. Uses `certifi` for TLS when verify is enabled.
-- Backoffice: `/forgot-password`, `/reset-password?token=…`, `/account/change-password`; login link “¿Olvidaste tu contraseña?”; nav “Change password”; public AUTH paths include forgot/reset.
-- Docs: `bitacora.md`, services/uis/backoffice README(.es), `.env.example`, this memory-bank.
-- Website untouched. Validation: API smoke + real Resend delivery; `tsc --noEmit` OK; full `next build` blocked in this environment by Google Fonts SSL (unrelated to auth).
-
-## Recently Completed (AUTH-02 phases 4–5 — profile + logout)
-- `/account/profile`: `GET /auth/me` + editable name/phone/address via `PUT /profiles/me` (`ProfileForm`, `fetchCurrentUser`, `updateMyProfile`).
-- Nav link Profile; shell button **Cerrar sesión** → `clearSessionAndRedirectToLogin()`.
-- Website untouched. `data/process/auth/auth.json` remains gitignored.
-
-## Recently Completed (AUTH-02 phase 3 — route guard + register confirm)
-- `AppChrome` protects all backoffice routes except `/login` and `/register` (`useSyncExternalStore` for token); missing token → `/login`, token on auth pages → `/`.
-- Register form requires password confirmation.
-- Website untouched.
-
-## Recently Completed (AUTH-02 phases 1–2 — frontend auth views)
-- Branch: `feature/auth-frontend`.
-- Shared HealthCore client: `uis/backoffice/lib/services/healthcoreClient.ts` (token get/set/clear, Bearer header, 401 → clear + redirect `/login`).
-- Auth API helpers: `uis/backoffice/lib/services/authApi.ts` (`login`, `register`, `registerAndLogin`).
-- Types: `uis/backoffice/types/auth.ts`.
-- Pages: `/login`, `/register` with forms under `components/forms/`; redirect to `/` on success.
-- `AppChrome` skips `BackofficeShell` on auth pages.
-- `suppliersApi` and `healthcoreApi` send Bearer via the shared client.
-- Website (`uis/website`) untouched — no auth checks.
-- Validation: `cd uis/backoffice && npm run build` (routes `/login`, `/register` generated).
 
 ## Recently Completed (AUTH-01 — authentication foundation)
 - Branch: `feature/auth`.
@@ -96,7 +46,7 @@
   - `/profiles` — `GET/PUT /profiles/me` (protected).
   - `/suppliers` — all six routes require Bearer (meets AUTH-01 “≥5 existing routes” requirement).
 - User and Profile remain in TinyDB only (no Supabase/SQL user tables).
-- Known gap (non-blocking): Swagger Authorize OAuth2 form vs JSON login mismatch; use curl/`Authorization: Bearer` for manual checks. Backoffice Bearer wiring delivered in AUTH-02 phases 1–2.
+- Known gap (non-blocking): Swagger Authorize OAuth2 form vs JSON login mismatch; use curl/`Authorization: Bearer` for manual checks. Backoffice does not send tokens yet (expected 401 on suppliers until frontend phase).
 
 ## Recently Completed (Documentation Context Setup)
 - Created Memory Bank baseline:

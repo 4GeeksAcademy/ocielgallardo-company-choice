@@ -15,19 +15,11 @@ docs/
 │   ├── ARCHITECTURE_PROPOSAL.md
 │   └── ARCHITECTURE_PROPOSAL.es.md
 │
-├── data-contract/              ← CSV incident analysis (prior milestone)
+├── data-contract/
 │   ├── CONTEXT-HealthCore.md
 │   ├── CONTEXT-HealthCore.es.md
 │   ├── functional-design-analyze.md
 │   └── functional-design-analyze.es.md
-│
-├── supplier-directory/         ← supplier directory milestone
-│   ├── CONTEXT-HealthCore.md
-│   └── CONTEXT-HealthCore.es.md
-│
-├── incident-manager/           ← centralized incident manager (CONTEXT + see scripts/seed_incidents.py, packages/shared)
-│   ├── CONTEXT-HealthCore.md
-│   └── CONTEXT-HealthCore.es.md
 │
 ├── api/                  (futuro)
 │

@@ -14,13 +14,10 @@ Línea clara: `data/raw/` = entradas originales; `data/process/` = lo que genera
 
 | Archivo | Lo produce | Qué es |
 | --- | --- | --- |
-| `results.csv` | `scripts/analyze.py` → `services.incidents_analysis.exporter` (o analyze API) | Resumen de métricas (`metric`, `value`, `percentage`). Sin `patient_id`. |
-| `suppliers/suppliers.json` | API / seed de proveedores | TinyDB del directorio (en `.gitignore`). |
-| `auth/auth.json` | API de auth | TinyDB users, profiles, tokens de reset (en `.gitignore`). |
-| `incidents/incidents.json` | Gestor de incidencias / `scripts/seed_incidents.py` | TinyDB del gestor centralizado (en `.gitignore`). |
+| `results.csv` | `scripts/analyze.py` → `services.incidents_analysis.exporter` | Resumen de métricas (`metric`, `value`, `percentage`). Sin `patient_id`. Se regenera si el usuario responde `y` al prompt de exportación. |
 
 ## Consejos
 
 - Prefiere regenerar `results.csv` en lugar de editarlo a mano.
 - No guardes aquí exportaciones con PHI/PII.
-- CSVs generados y TinyDB de runtime van en `.gitignore` cuando son reproducibles o solo locales.
+- CSVs generados como `results.csv` van en `.gitignore` cuando son reproducibles desde `data/raw/`.

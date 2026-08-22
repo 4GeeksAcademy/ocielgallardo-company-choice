@@ -9,7 +9,6 @@ description = "HealthCore monorepo Python tooling"
 requires-python = ">=3.12"
 dependencies = [
   "bcrypt==4.0.1",
-  "certifi>=2026.7.22",
   "email-validator>=2.3.0",
   "fastapi>=0.141.1",
   "passlib[bcrypt]>=1.7.4",
@@ -26,13 +25,6 @@ dependencies = [
 [project.scripts]
 seed = "services.app.core.seed:run_seed"
 seed-inventory = "services.app.core.inventory_seed:run_inventory_seed"
-seed-incidents = "scripts.seed_incidents:main"
-
-[tool.hatch.build]
-dev-mode-dirs = [".", "packages/shared"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["services"]
-
-[tool.hatch.build.targets.wheel.force-include]
-"packages/shared/healthcore_shared" = "healthcore_shared"

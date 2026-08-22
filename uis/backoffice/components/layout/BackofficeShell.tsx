@@ -1,8 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { Button } from "@/components/ui/Button";
-import { clearSessionAndRedirectToLogin } from "@/lib/services/healthcoreClient";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard" },
@@ -12,16 +8,12 @@ const NAV_ITEMS = [
   { href: "/claims", label: "Claims" },
   { href: "/reports", label: "Reports" },
   { href: "/incidents", label: "Incidents" },
-  { href: "/incidents/new", label: "New incident" },
-  { href: "/incidents/summary", label: "Incident summary" },
   { href: "/suppliers", label: "Suppliers" },
   { href: "/inventory/products", label: "Suministros" },
   { href: "/inventory/orders/inbound", label: "Registrar entrega" },
   { href: "/inventory/orders/outbound", label: "Registrar consumo" },
   { href: "/inventory/orders", label: "Historial de órdenes" },
   { href: "/applications", label: "People & Talent" },
-  { href: "/account/profile", label: "Profile" },
-  { href: "/account/change-password", label: "Change password" },
 ] as const;
 
 interface BackofficeShellProps {
@@ -50,19 +42,9 @@ export function BackofficeShell({ children }: BackofficeShellProps) {
                 </h1>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <p className="hidden text-xs text-slate-500 sm:block">
-                Clinical Ops · Patient Access · Revenue Cycle
-              </p>
-              <Button
-                type="button"
-                variant="secondary"
-                className="shrink-0 text-xs"
-                onClick={() => clearSessionAndRedirectToLogin()}
-              >
-                Cerrar sesión
-              </Button>
-            </div>
+            <p className="hidden text-xs text-slate-500 sm:block">
+              Clinical Ops · Patient Access · Revenue Cycle
+            </p>
           </div>
 
           <nav aria-label="Backoffice sections" className="flex flex-wrap gap-2">
