@@ -17,6 +17,8 @@ const NAV_ITEMS = [
   { href: "/suppliers", label: "Suppliers" },
   { href: "/inventory/products", label: "Suministros" },
   { href: "/inventory/orders/inbound", label: "Registrar entrega" },
+  { href: "/inventory/orders/outbound", label: "Registrar consumo" },
+  { href: "/inventory/orders", label: "Historial de órdenes" },
   { href: "/applications", label: "People & Talent" },
   { href: "/account/profile", label: "Profile" },
   { href: "/account/change-password", label: "Change password" },

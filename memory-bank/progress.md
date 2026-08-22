@@ -9,7 +9,16 @@
 - Manual browser playground for utility inspection is available.
 - Type-level model validation command is available in `packages/shared`.
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
-- Hito 5 inventory (SQLModel + Supabase) is implemented on branch `feature/inventory` (extends `feature/auth`).
+- Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
+
+## Recently Completed (Hito 5 — inventory backoffice UI)
+- Branch: `feature/inventory` (no merge).
+- Four authenticated views: `/inventory/products`, `/inventory/orders/inbound`, `/inventory/orders/outbound`, `/inventory/orders`.
+- Client: `uis/backoffice/lib/services/inventoryApi.ts` (Bearer via `healthcoreClient`; no direct `fetch` in components).
+- Outbound form shows selected supply `current_stock` reactively, warns when quantity exceeds stock, and surfaces API `400` inline on quantity.
+- Order history is read-only with inbound/outbound visual distinction, product name, quantity, date, and `user_uuid`.
+- Nav: Suministros, Registrar entrega, Registrar consumo, Historial de órdenes.
+- Validation: lints clean on new files. `npx tsc --noEmit` not run here (Node/npm not on PATH; `uis/backoffice/node_modules` absent). Manual API smoke not run in this session.
 
 ## Recently Completed (Hito 5 — inventory ORM + dual database)
 - Branch: `feature/inventory` (cut from `feature/auth`).

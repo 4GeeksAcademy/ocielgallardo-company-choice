@@ -30,6 +30,9 @@
   - Dependency: `certifi` for HTTPS CA bundle when SSL verify is enabled
 - Internal Hito 2 demo surface:
   - `uis/backoffice/components/dashboard/Hito2Playground.tsx`
+- Inventory backoffice UI (Hito 5, `feature/inventory`, not merged):
+  - `/inventory/products`, `/inventory/orders/inbound`, `/inventory/orders/outbound`, `/inventory/orders`
+  - Client `uis/backoffice/lib/services/inventoryApi.ts`; types `uis/backoffice/types/inventory.ts`
 - Service architecture placeholders:
   - `services/gateway`
   - `services/clinical-operations`

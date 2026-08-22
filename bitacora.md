@@ -1066,3 +1066,39 @@ Integrar un gestor de incidencias en el monorepo HealthCore (plataforma Hito 5+)
 ### Resultado
 
 Gestor centralizado operable: histórico cargado, registro en tiempo real desde el navegador, ciclo de vida, métricas y UX con estados de carga/vacío/error.
+
+## Actualizacion 2026-08-22 (Hito 5 — UI backoffice de inventario)
+
+Completar las cuatro vistas autenticadas de inventario en `uis/backoffice` sobre la API ya entregada. Rama `feature/inventory`. Sin merge.
+
+### Frontend implementado
+
+- `/inventory/products` — listado con `current_stock` e indicadores visuales (crítico < 5, bajo < 15).
+- `/inventory/orders/inbound` — formulario de entrega (ya existía).
+- `/inventory/orders/outbound` — formulario de consumo: stock reactivo, aviso en cliente si la cantidad supera el stock, `HTTP 400` inline en cantidad.
+- `/inventory/orders` — historial de solo lectura (tipo entrada/salida, producto, cantidad, fecha, `user_uuid`).
+- Cliente: `lib/services/inventoryApi.ts` (Bearer; sin `fetch` en componentes).
+- Nav: Suministros, Registrar entrega, Registrar consumo, Historial de órdenes.
+
+### Docs
+
+- `memory-bank/progress.md`, `memory-bank/techContext.md`
+- `uis/backoffice/README.md`, `uis/backoffice/README.es.md`
+- `bitacora.md` (esta entrada)
+
+### Validacion
+
+- Lints limpios en los archivos nuevos.
+- `npx tsc --noEmit` no ejecutado en este entorno (Node/npm no están en PATH; `uis/backoffice/node_modules` ausente).
+- Smoke manual de API no ejecutado en esta sesión.
+
+### Como probar manualmente
+
+1. API HealthCore en `:8000` con Supabase configurado.
+2. `cd uis/backoffice && npm install && npm run dev`
+3. Login → Suministros / Registrar entrega / Registrar consumo / Historial de órdenes.
+4. En consumo: seleccionar producto (stock visible), cantidad mayor al stock (aviso), enviar (400 inline si la API rechaza).
+
+### Resultado
+
+Las cuatro vistas del hito de interfaz de inventario quedan en `feature/inventory`, autenticadas y cableadas a la API. Pendiente merge.
