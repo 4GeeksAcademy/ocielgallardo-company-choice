@@ -10,6 +10,17 @@
 - Type-level model validation command is available in `packages/shared`.
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
 - Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
+- Hito Docker (`#infra-40`) on branch `feature/docker-implementation`: Compose stack verified locally (`docker compose up`).
+
+## Recently Completed (Hito Docker — #infra-40)
+- Branch: `feature/docker-implementation`.
+- `uis/Dockerfile` (Node 20 Alpine, separate website/backoffice deps) + `uis/start.sh` (website `:3000`, backoffice `:3001`, `npm run dev`) + `uis/.dockerignore`.
+- `services/Dockerfile` (Python 3.12 + `uv` + uvicorn `--reload`, `PYTHONPATH=/app/packages/shared`) + `services/.dockerignore`.
+- Root `docker-compose.yml`: services `uis` + `backend` on named network `healthcore_dev_network`; bind mounts; env from root `.env` only (no secrets in YAML).
+- Port map per brief: website `3000`, backoffice `3001`, API `8000`. Browser `NEXT_PUBLIC_*` uses `http://localhost:8000`; container DNS hostname for API is `backend`.
+- `.env.example` documents UI public URLs + Docker notes. Local `.env` remains gitignored.
+- Validation (this machine): `docker compose up --build -d` → both UIs `200`, `/docs` `200`, `wget http://backend:8000/docs` from `uis` OK, `import healthcore_shared` OK.
+- TODO delivery: push branch + open PR to `main` with `docker compose ps` screenshot.
 
 ## Recently Completed (Hito 5 — inventory backoffice UI)
 - Branch: `feature/inventory` (no merge).

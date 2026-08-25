@@ -7,21 +7,24 @@ services:
     env_file:
       - .env
     environment:
-      NEXT_PUBLIC_HEALTHCORE_API_URL: ${NEXT_PUBLIC_HEALTHCORE_API_URL}
+      # Browser-facing URLs (host ports). Do not use Docker DNS names in NEXT_PUBLIC_*.
+      NEXT_PUBLIC_HEALTHCORE_API_URL: ${NEXT_PUBLIC_HEALTHCORE_API_URL:-http://localhost:8000}
       NEXT_PUBLIC_TRACKER_API_URL: ${NEXT_PUBLIC_TRACKER_API_URL}
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
     command: >
       sh -c "
-      cd /app/uis/backoffice && npm install &&
       cd /app/uis/website && npm install &&
-      (cd /app/uis/backoffice && HOSTNAME=0.0.0.0 PORT=3000 npm run dev) &
-      (cd /app/uis/website && HOSTNAME=0.0.0.0 PORT=3001 npm run dev) &
+      cd /app/uis/backoffice && npm install &&
+      (cd /app/uis/website && HOSTNAME=0.0.0.0 PORT=3000 npm run dev) &
+      (cd /app/uis/backoffice && HOSTNAME=0.0.0.0 PORT=3001 npm run dev) &
       wait
       "
     volumes:
       - ./uis:/app/uis
       - ./src:/app/src
-      - uis_backoffice_node_modules:/app/uis/backoffice/node_modules
       - uis_website_node_modules:/app/uis/website/node_modules
+      - uis_backoffice_node_modules:/app/uis/backoffice/node_modules
     ports:
       - "3000:3000"
       - "3001:3001"
@@ -35,22 +38,31 @@ services:
       context: ./services
       dockerfile: Dockerfile
     container_name: healthcore-backend
+    working_dir: /app
     env_file:
       - .env
     environment:
-      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
-      RESEND_API_KEY: ${RESEND_API_KEY}
-      EMAIL_FROM: ${EMAIL_FROM}
+      PYTHONPATH: /app/packages/shared
+      # Reachable from other containers on healthcore_net as hostname "backend"
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3001}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
       SECRET_KEY: ${SECRET_KEY}
-      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
-      DATABASE_URL: ${DATABASE_URL}
-      SUPABASE_DB_HOST: ${SUPABASE_DB_HOST}
-      SUPABASE_DB_PORT: ${SUPABASE_DB_PORT}
-      SUPABASE_DB_NAME: ${SUPABASE_DB_NAME}
-      SUPABASE_DB_USER: ${SUPABASE_DB_USER}
-      SUPABASE_DB_PASSWORD: ${SUPABASE_DB_PASSWORD}
-      SUPABASE_DB_SSLMODE: ${SUPABASE_DB_SSLMODE}
-    command: uvicorn services.app.main:app --host 0.0.0.0 --port 8000 --reload
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      DATABASE_URL: ${DATABASE_URL:-}
+      SUPABASE_DB_HOST: ${SUPABASE_DB_HOST:-}
+      SUPABASE_DB_PORT: ${SUPABASE_DB_PORT:-}
+      SUPABASE_DB_NAME: ${SUPABASE_DB_NAME:-}
+      SUPABASE_DB_USER: ${SUPABASE_DB_USER:-}
+      SUPABASE_DB_PASSWORD: ${SUPABASE_DB_PASSWORD:-}
+      SUPABASE_DB_SSLMODE: ${SUPABASE_DB_SSLMODE:-}
+      EMAIL_SSL_VERIFY: ${EMAIL_SSL_VERIFY:-true}
+      PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: ${PASSWORD_RESET_TOKEN_EXPIRE_MINUTES:-30}
+    command: >
+      uvicorn services.app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
     volumes:
       - ./:/app
     ports:
@@ -63,5 +75,5 @@ networks:
     name: healthcore_dev_network
 
 volumes:
-  uis_backoffice_node_modules:
   uis_website_node_modules:
+  uis_backoffice_node_modules:

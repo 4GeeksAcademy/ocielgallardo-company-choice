@@ -2,6 +2,8 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+# packages/shared is mounted at /app/packages/shared via compose bind mount
+ENV PYTHONPATH=/app/packages/shared
 
 WORKDIR /app
 
