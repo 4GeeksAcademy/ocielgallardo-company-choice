@@ -5,7 +5,8 @@
 **Environment:** local `next dev` (website `:3000`, backoffice `:3001`)  
 **Evidence:** `audit/before/*.html`
 
-> Phase 1 = measure & root-cause. Phase 2 fixes are applied in code; post-fix scores belong in `REPORT.md` + `audit/after/` after you re-run Lighthouse.
+> Phase 1 = measure & root-cause. Phase 2 code fixes are applied.  
+> **Checkpoint 2026-08-25 night:** first `audit/after/` HTML saved, but mobile runs hit `PROTOCOL_TIMEOUT` — official after deltas deferred (see `REPORT.md` §4). Resume clean re-measure tomorrow.
 
 ---
 

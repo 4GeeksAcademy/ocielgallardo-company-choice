@@ -1,12 +1,7 @@
-# After measurements
+# Mediciones after
 
-Drop Lighthouse HTML exports / screenshots here after re-running audits on the same URLs as `../before/`.
+Primera pasada (2026-08-25 noche) guardada aquí como evidencia de intento.
 
-Suggested names:
+**Importante:** `Website-mobile-test.html` y `Backoffice-mobile-test.html` tienen `PROTOCOL_TIMEOUT` — no usarlas como puntuación oficial. Ver `REPORT.md` §4.
 
-- `Website-mobile-test.html`
-- `Website-Desktop-test.html`
-- `Backoffice-mobile-test.html`
-- `Backoffice-Desktop-test.html`
-- `Backoffice-insite-mobile-test.html`
-- `Backoffice-insite-desktop-test.html`
+Mañana: re-auditar en Incógnito y sustituir estos archivos (idealmente también PNG).
