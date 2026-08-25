@@ -1,5 +1,22 @@
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Hito2Playground } from "@/components/dashboard/Hito2Playground";
+
+const Hito2Playground = dynamic(
+  () =>
+    import("@/components/dashboard/Hito2Playground").then((mod) => ({
+      default: mod.Hito2Playground,
+    })),
+  {
+    loading: () => (
+      <section
+        className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500 shadow-sm sm:p-6"
+        aria-busy="true"
+      >
+        Loading Hito 2 playground…
+      </section>
+    ),
+  },
+);
 
 const MODULES = [
   {

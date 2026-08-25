@@ -10,6 +10,14 @@
 - Type-level model validation command is available in `packages/shared`.
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
 - Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
+- Frontend performance audit milestone: **Phase 2 fixes applied**; baseline in `AUDIT.md` / `audit/before/`; `REPORT.md` awaits after scores in `audit/after/`.
+
+## Recently Completed (Performance audit — Phase 2 fixes)
+- Branch: `feature/performance-audit` (from `main`).
+- Re-baselined from Lighthouse HTML (website `/`, backoffice `/login` + authenticated `/`).
+- Website: `next/image` on hero (priority first slide) + logo; mobile menu `tabIndex={-1}` when closed (`aria-hidden-focus`).
+- Backoffice: `AuthPageShell` (`<main>`) on login/register/forgot/reset; `Hito2Playground` via `next/dynamic` on dashboard.
+- Docs: `AUDIT.md` refreshed; `REPORT.md` started with fix list and TBD after table.
 
 ## Recently Completed (Hito 5 — inventory backoffice UI)
 - Branch: `feature/inventory` (no merge).

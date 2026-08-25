@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 const HERO_IMAGES = [
@@ -21,17 +22,19 @@ export function HeroCarousel() {
   }, []);
 
   return (
-    <div aria-hidden className="hero-carousel">
+    <div aria-hidden="true" className="hero-carousel">
       <div
         className="hero-carousel-track"
         style={{ transform: `translateX(-${index * 100}%)` }}
       >
-        {HERO_IMAGES.map((src) => (
-          <div key={src} className="hero-carousel-slide">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+        {HERO_IMAGES.map((src, slideIndex) => (
+          <div key={src} className="hero-carousel-slide relative">
+            <Image
               src={src}
               alt=""
+              fill
+              sizes="100vw"
+              priority={slideIndex === 0}
               className={
                 src.includes("hero-002")
                   ? "hero-carousel-image hero-carousel-image--top"
