@@ -3,29 +3,29 @@ import { Hito2Playground } from "@/components/dashboard/Hito2Playground";
 
 const MODULES = [
   {
-    href: "/patients",
-    title: "Patients",
-    description: "Patient record navigation and validation workflows.",
+    href: "/incidents",
+    title: "Incidents",
+    description: "Register, filter, and update incident status across clinics.",
   },
   {
-    href: "/appointments",
-    title: "Appointments",
-    description: "Schedule visibility and no-show risk exploration.",
+    href: "/incidents/summary",
+    title: "Incident summary",
+    description: "Aggregated metrics by status, category, origin, and branch.",
   },
   {
-    href: "/billing",
-    title: "Billing",
-    description: "Revenue-cycle quality checks and invoice controls.",
+    href: "/suppliers",
+    title: "Suppliers",
+    description: "Supplier directory with filters, rates, and status controls.",
   },
   {
-    href: "/claims",
-    title: "Claims",
-    description: "Claim rejection analysis and prevention pathways.",
+    href: "/inventory/products",
+    title: "Suministros",
+    description: "Medical supplies list with current stock and level badges.",
   },
   {
-    href: "/reports",
-    title: "Reports",
-    description: "Operational and executive metrics by domain.",
+    href: "/inventory/orders",
+    title: "Historial de órdenes",
+    description: "Inbound deliveries and outbound consumption history.",
   },
   {
     href: "/applications",
@@ -45,9 +45,9 @@ export default function HomePage() {
           Backoffice Dashboard
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-slate-600 sm:text-base">
-          Unified internal console for operational teams. This first release keeps
-          the existing People & Talent tracker and exposes Hito 2 business logic
-          demos from the shared TypeScript domain utilities.
+          Internal console for incidents, suppliers, inventory, and People &amp;
+          Talent. Hito 2 domain utilities remain available below for interactive
+          demos.
         </p>
       </section>
 

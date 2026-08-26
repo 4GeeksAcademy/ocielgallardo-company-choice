@@ -6,11 +6,6 @@ import { clearSessionAndRedirectToLogin } from "@/lib/services/healthcoreClient"
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard" },
-  { href: "/patients", label: "Patients" },
-  { href: "/appointments", label: "Appointments" },
-  { href: "/billing", label: "Billing" },
-  { href: "/claims", label: "Claims" },
-  { href: "/reports", label: "Reports" },
   { href: "/incidents", label: "Incidents" },
   { href: "/incidents/new", label: "New incident" },
   { href: "/incidents/summary", label: "Incident summary" },

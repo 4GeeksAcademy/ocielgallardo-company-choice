@@ -10,6 +10,12 @@
 - Type-level model validation command is available in `packages/shared`.
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
 - Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
+- Backoffice UI cleaned: empty Patients/Appointments/Billing/Claims/Reports placeholders removed; dashboard and nav reflect implemented modules only.
+
+## Recently Completed (backoffice — remove empty placeholders)
+- Deleted routes `/patients`, `/appointments`, `/billing`, `/claims`, `/reports` and unused `SectionPlaceholder`.
+- `BackofficeShell` nav and dashboard `MODULES` now link to Incidents, Suppliers, Inventory, and People & Talent.
+- Updated `uis/backoffice/README(.es).md` section lists.
 
 ## Recently Completed (Hito 5 — inventory backoffice UI)
 - Branch: `feature/inventory` (no merge).
