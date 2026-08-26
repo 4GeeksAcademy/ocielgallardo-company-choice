@@ -202,13 +202,13 @@ export function OutboundOrderForm() {
   return (
     <div className="space-y-4">
       {isLoadingSupplies && (
-        <p className="text-sm text-slate-600">Cargando suministros…</p>
+        <p className="text-sm text-slate-600 dark:text-slate-300">Cargando suministros…</p>
       )}
 
       {loadError && (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800"
         >
           <p>{loadError}</p>
           <Button
@@ -234,7 +234,7 @@ export function OutboundOrderForm() {
       {submitError && (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800"
         >
           {submitError}
         </div>
@@ -252,19 +252,19 @@ export function OutboundOrderForm() {
             required
           />
           {errors.supply_id && (
-            <p className="text-sm text-red-600" role="alert">
+            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
               {errors.supply_id}
             </p>
           )}
         </div>
 
         {selectedSupply && (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Stock disponible
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <p className="text-sm text-slate-700">
+              <p className="text-sm text-slate-700 dark:text-slate-200">
                 {selectedSupply.name} ({selectedSupply.sku})
               </p>
               <StockLevelBadge currentStock={selectedSupply.current_stock} />
@@ -308,7 +308,7 @@ export function OutboundOrderForm() {
             required
           />
           {errors.consumption_type && (
-            <p className="text-sm text-red-600" role="alert">
+            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
               {errors.consumption_type}
             </p>
           )}
@@ -327,7 +327,7 @@ export function OutboundOrderForm() {
             required
           />
           {errors.clinic_id && (
-            <p className="text-sm text-red-600" role="alert">
+            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
               {errors.clinic_id}
             </p>
           )}
@@ -342,7 +342,7 @@ export function OutboundOrderForm() {
           </Button>
           <Link
             href="/inventory/products"
-            className="text-sm font-medium text-blue-700 hover:underline"
+            className="text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline"
           >
             Volver a suministros
           </Link>

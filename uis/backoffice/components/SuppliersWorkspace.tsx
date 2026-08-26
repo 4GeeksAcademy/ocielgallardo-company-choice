@@ -119,8 +119,8 @@ export function SuppliersWorkspace() {
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">Supplier Directory</h2>
-            <p className="text-sm text-slate-600">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">Supplier Directory</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
               Centralized vendor directory for procurement and compliance teams.
             </p>
           </div>
@@ -130,8 +130,8 @@ export function SuppliersWorkspace() {
         </div>
 
         {showCreateForm && (
-          <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-            <h3 className="mb-4 text-base font-semibold text-slate-900">Register supplier</h3>
+          <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 sm:p-5">
+            <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-slate-50">Register supplier</h3>
             <SupplierForm
               isSubmitting={isSubmittingForm}
               onSubmit={handleCreateSupplier}
@@ -140,7 +140,7 @@ export function SuppliersWorkspace() {
           </section>
         )}
 
-        <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+        <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 sm:p-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
               label="Filter by country"
@@ -167,24 +167,24 @@ export function SuppliersWorkspace() {
         </section>
 
         {actionError && (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+          <p className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-400" role="alert">
             {actionError}
           </p>
         )}
 
         {actionFeedback && (
-          <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700" aria-live="polite">
+          <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400" aria-live="polite">
             {actionFeedback}
           </p>
         )}
 
         {isLoading ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-600 dark:text-slate-300">
             Loading suppliers...
           </div>
         ) : isError ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 p-6">
+            <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
             <Button className="mt-4" variant="secondary" onClick={() => void reload()}>
               Retry
             </Button>
@@ -205,52 +205,52 @@ export function SuppliersWorkspace() {
               return (
                 <article
                   key={supplier.id}
-                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-semibold text-slate-900">{supplier.name}</h3>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-50">{supplier.name}</h3>
                         <SupplierStatusBadge status={supplier.status} />
                       </div>
-                      <p className="mt-1 text-sm text-slate-600">
+                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                         {supplier.country} · {supplier.currency} · {supplier.categories
                           .map((category) => SUPPLIER_CATEGORY_LABELS[category])
                           .join(", ")}
                       </p>
                     </div>
-                    <div className="text-sm text-slate-600">
+                    <div className="text-sm text-slate-600 dark:text-slate-300">
                       <p>Supplier ID: {supplier.id}</p>
                       <p>Last rate update: {formatDate(supplier.updated_at)}</p>
                     </div>
                   </div>
 
-                  <dl className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-3">
+                  <dl className="mt-4 grid gap-3 text-sm text-slate-700 dark:text-slate-200 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
-                      <dt className="font-medium text-slate-900">Monthly rate</dt>
+                      <dt className="font-medium text-slate-900 dark:text-slate-50">Monthly rate</dt>
                       <dd>{formatMoney(supplier.monthly_rate, supplier.currency)}</dd>
                     </div>
                     <div>
-                      <dt className="font-medium text-slate-900">Compliance agreement</dt>
+                      <dt className="font-medium text-slate-900 dark:text-slate-50">Compliance agreement</dt>
                       <dd>{supplier.compliance_agreement ?? "Not set"}</dd>
                     </div>
                     <div>
-                      <dt className="font-medium text-slate-900">Contract renewal</dt>
+                      <dt className="font-medium text-slate-900 dark:text-slate-50">Contract renewal</dt>
                       <dd>{supplier.contract_renewal_date ?? "Not set"}</dd>
                     </div>
                     <div>
-                      <dt className="font-medium text-slate-900">Contact email</dt>
+                      <dt className="font-medium text-slate-900 dark:text-slate-50">Contact email</dt>
                       <dd>{supplier.contact_email ?? "Not set"}</dd>
                     </div>
                     <div className="sm:col-span-2 lg:col-span-2">
-                      <dt className="font-medium text-slate-900">Notes</dt>
+                      <dt className="font-medium text-slate-900 dark:text-slate-50">Notes</dt>
                       <dd>{supplier.notes ?? "No notes"}</dd>
                     </div>
                   </dl>
 
-                  <div className="mt-5 grid gap-4 border-t border-slate-100 pt-4 lg:grid-cols-2">
+                  <div className="mt-5 grid gap-4 border-t border-slate-100 dark:border-slate-700 pt-4 lg:grid-cols-2">
                     <div className="space-y-3">
-                      <h4 className="text-sm font-semibold text-slate-900">Update monthly rate</h4>
+                      <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Update monthly rate</h4>
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                         <Input
                           label="New rate"
@@ -275,7 +275,7 @@ export function SuppliersWorkspace() {
                     </div>
 
                     <div className="space-y-3">
-                      <h4 className="text-sm font-semibold text-slate-900">Update status</h4>
+                      <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Update status</h4>
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                         <Select
                           label="Status"
