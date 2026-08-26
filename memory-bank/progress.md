@@ -11,6 +11,12 @@
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
 - Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
 - Backoffice UI cleaned: empty Patients/Appointments/Billing/Claims/Reports placeholders removed; dashboard and nav reflect implemented modules only.
+- Backoffice shell is mobile-first: desktop fixed sidebar with collapsible groups; mobile Dashboard + Office bottom bar; account via avatar menu.
+
+## Recently Completed (backoffice — mobile-first navigation shell)
+- Shared `navConfig.ts` for work groups and account links.
+- `DesktopSidebar`, `MobileBottomBar`, `OfficeMenu`, `AccountMenu`; `BackofficeShell` layout with `md:pl-60` content column.
+- Profile / Change password removed from work nav; avatar + Cerrar sesión in top bar.
 
 ## Recently Completed (backoffice — remove empty placeholders)
 - Deleted routes `/patients`, `/appointments`, `/billing`, `/claims`, `/reports` and unused `SectionPlaceholder`.
