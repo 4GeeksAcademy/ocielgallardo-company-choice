@@ -85,20 +85,20 @@ export function IncidentCsvUpload({
         }}
         className={`rounded-xl border-2 border-dashed px-4 py-8 text-center transition ${
           disabled
-            ? "cursor-not-allowed border-slate-200 bg-slate-100 opacity-70"
+            ? "cursor-not-allowed border-slate-200 dark:border-slate-700 bg-slate-100 opacity-70"
             : isDragging
               ? "cursor-pointer border-blue-400 bg-blue-50"
-              : "cursor-pointer border-slate-300 bg-white hover:border-blue-300 hover:bg-slate-50"
+              : "cursor-pointer border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:border-blue-300 hover:bg-slate-50 dark:hover:bg-slate-800"
         }`}
       >
-        <p className="text-sm font-medium text-slate-800">
+        <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
           Drag and drop a CSV file here, or click to browse
         </p>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
           Field name sent to the API: <code>file</code> (multipart/form-data)
         </p>
         {selectedName ? (
-          <p className="mt-3 text-sm text-blue-700">Selected: {selectedName}</p>
+          <p className="mt-3 text-sm text-blue-700 dark:text-blue-300">Selected: {selectedName}</p>
         ) : null}
         <input
           ref={inputRef}
@@ -113,7 +113,7 @@ export function IncidentCsvUpload({
         />
       </div>
       {localError ? (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
           {localError}
         </p>
       ) : null}

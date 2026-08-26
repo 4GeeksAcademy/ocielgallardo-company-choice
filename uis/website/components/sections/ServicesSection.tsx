@@ -4,7 +4,7 @@ export function ServicesSection() {
   return (
     <section id="services" className="mt-12">
       <div className="mb-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand-fg)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-(--brand-fg)">
           Services
         </p>
         <h2 className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-50 sm:text-3xl">

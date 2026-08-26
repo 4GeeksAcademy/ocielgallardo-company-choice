@@ -152,7 +152,7 @@ export function CandidateDetailWorkspace({
         <div className="flex items-center justify-between gap-3">
           <Link
             href="/applications"
-            className="text-sm font-medium text-blue-600 hover:underline"
+            className="text-sm font-medium text-blue-600 dark:text-blue-300 hover:underline"
           >
             ← Volver al pipeline
           </Link>
@@ -160,7 +160,7 @@ export function CandidateDetailWorkspace({
 
         {isRecordError && recordError && (
           <div
-            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-400"
             role="alert"
           >
             {recordError}
@@ -174,7 +174,7 @@ export function CandidateDetailWorkspace({
             className={`rounded-lg border px-4 py-3 text-sm ${
               actionFeedback.type === "success"
                 ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : "border-red-200 bg-red-50 text-red-800"
+                : "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-800"
             }`}
           >
             {actionFeedback.message}
@@ -182,7 +182,7 @@ export function CandidateDetailWorkspace({
         )}
 
         {isLoading ? (
-          <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6">
+          <div className="space-y-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6">
             <div className="h-8 w-2/3 animate-pulse rounded bg-slate-100" />
             <div className="h-4 w-1/2 animate-pulse rounded bg-slate-100" />
             <div className="grid gap-3 sm:grid-cols-2">
@@ -197,8 +197,8 @@ export function CandidateDetailWorkspace({
         ) : !isRecordError ? (
           <>
             {isEditing && application && (
-              <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-                <h3 className="mb-4 text-base font-semibold text-slate-900">
+              <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 sm:p-5">
+                <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-slate-50">
                   Editar candidatura
                 </h3>
                 <ApplicationForm

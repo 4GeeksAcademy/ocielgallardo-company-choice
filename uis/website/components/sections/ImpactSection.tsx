@@ -4,7 +4,7 @@ export function ImpactSection() {
   return (
     <section id="impact" className="mt-12 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand-fg)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-(--brand-fg)">
           Operational footprint
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3">

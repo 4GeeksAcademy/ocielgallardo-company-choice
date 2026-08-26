@@ -47,7 +47,7 @@ export function ThemeToggle({ className = "" }: ThemeToggleProps) {
   return (
     <button
       type="button"
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 hover:text-[var(--brand-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-600)] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-[var(--brand-fg)] ${className}`}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 hover:text-(--brand-fg) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--brand-600) dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-(--brand-fg) ${className}`}
       aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       title={theme === "dark" ? "Light mode" : "Dark mode"}
       onClick={() => setThemeState(toggleTheme())}

@@ -20,7 +20,7 @@ function ListSkeleton() {
       {Array.from({ length: 6 }).map((_, index) => (
         <div
           key={index}
-          className="h-[76px] animate-pulse rounded-xl border border-slate-200 bg-slate-100"
+          className="h-[76px] animate-pulse rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100"
         />
       ))}
     </div>
@@ -38,10 +38,10 @@ export function ApplicationList({
   onRetry,
 }: ApplicationListProps) {
   return (
-    <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+    <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 sm:p-5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-slate-600">
-          <span className="font-semibold text-slate-900">
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          <span className="font-semibold text-slate-900 dark:text-slate-50">
             {applications.length}
           </span>{" "}
           de {totalCount} candidaturas
@@ -52,14 +52,14 @@ export function ApplicationList({
         <ListSkeleton />
       ) : error ? (
         <div
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-6 text-center"
+          className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-6 text-center"
           role="alert"
         >
-          <p className="text-sm text-red-700">{error}</p>
+          <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
           {onRetry && (
             <Button
               variant="ghost"
-              className="mt-3 text-red-700"
+              className="mt-3 text-red-700 dark:text-red-400"
               onClick={onRetry}
             >
               Reintentar

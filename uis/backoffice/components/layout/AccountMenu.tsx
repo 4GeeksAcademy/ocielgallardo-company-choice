@@ -63,7 +63,7 @@ export function AccountMenu() {
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 transition hover:border-blue-200 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-blue-400 dark:hover:bg-slate-700 dark:focus-visible:ring-offset-slate-900"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 transition hover:border-blue-200 dark:hover:border-blue-500 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-blue-400 dark:hover:bg-slate-700 dark:focus-visible:ring-offset-slate-900"
         aria-label="Account menu"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -78,7 +78,7 @@ export function AccountMenu() {
           id={menuId}
           role="menu"
           aria-label="Account"
-          className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-600 dark:bg-slate-900"
+          className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white py-1 shadow-lg dark:border-slate-600 dark:bg-slate-900"
         >
           {ACCOUNT_MENU_ITEMS.map((item) => {
             const active = isPathActive(pathname, item.href);
@@ -91,7 +91,7 @@ export function AccountMenu() {
                 className={`block px-3 py-2 text-sm transition ${
                   active
                     ? "bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
-                    : "text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                    : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                 }`}
                 onClick={() => setOpen(false)}
               >

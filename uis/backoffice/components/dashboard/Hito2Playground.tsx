@@ -160,15 +160,15 @@ export function Hito2Playground() {
   );
 
   return (
-    <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <section className="space-y-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-sm sm:p-6">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+        <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300">
           Hito 2 Integration
         </p>
-        <h2 className="mt-1 text-xl font-bold text-slate-900">
+        <h2 className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-50">
           Business Logic Playground (Shared TypeScript Utilities)
         </h2>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           This block executes utilities imported directly from the root src folder.
           No business logic was duplicated in the Backoffice app.
         </p>
@@ -182,27 +182,27 @@ export function Hito2Playground() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <article className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <h3 className="text-sm font-semibold text-slate-900">Search Patients</h3>
-          <label className="mt-3 block text-xs font-medium text-slate-600" htmlFor="patient-id-search">
+        <article className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Search Patients</h3>
+          <label className="mt-3 block text-xs font-medium text-slate-600 dark:text-slate-300" htmlFor="patient-id-search">
             Patient ID
           </label>
           <input
             id="patient-id-search"
-            className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+            className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-50"
             value={patientQuery}
             onChange={(event) => setPatientQuery(event.target.value)}
             placeholder="pat-1002"
           />
-          <p className="mt-3 text-xs text-slate-600">
-            linearSearchByField result: <span className="font-semibold text-slate-900">{patientByLinearSearch?.fullName ?? "Not found"}</span>
+          <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">
+            linearSearchByField result: <span className="font-semibold text-slate-900 dark:text-slate-50">{patientByLinearSearch?.fullName ?? "Not found"}</span>
           </p>
         </article>
 
-        <article className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <h3 className="text-sm font-semibold text-slate-900">Filter Appointments</h3>
-          <p className="mt-2 text-xs text-slate-600">Top 2 appointments sorted by no-show probability:</p>
-          <ul className="mt-3 space-y-2 text-sm text-slate-700">
+        <article className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Filter Appointments</h3>
+          <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">Top 2 appointments sorted by no-show probability:</p>
+          <ul className="mt-3 space-y-2 text-sm text-slate-700 dark:text-slate-200">
             {riskyAppointments.map((appointment) => (
               <li key={appointment.appointmentId}>
                 - {appointment.appointmentId} · {(appointment.noShowProbability * 100).toFixed(0)}% risk · {appointment.status}
@@ -212,15 +212,15 @@ export function Hito2Playground() {
         </article>
       </div>
 
-      <article className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <h3 className="text-sm font-semibold text-slate-900">Validate Invoice</h3>
-        <p className="mt-2 text-xs text-slate-600">
-          Invoice checked: <span className="font-semibold text-slate-900">{invoices[0].invoiceId}</span>
+      <article className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Validate Invoice</h3>
+        <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">
+          Invoice checked: <span className="font-semibold text-slate-900 dark:text-slate-50">{invoices[0].invoiceId}</span>
         </p>
         {invoiceValidation.length === 0 ? (
-          <p className="mt-2 text-sm font-medium text-emerald-700">No validation errors.</p>
+          <p className="mt-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">No validation errors.</p>
         ) : (
-          <ul className="mt-2 space-y-1 text-sm text-red-700">
+          <ul className="mt-2 space-y-1 text-sm text-red-700 dark:text-red-400">
             {invoiceValidation.map((error) => (
               <li key={error}>- {error}</li>
             ))}
@@ -238,9 +238,9 @@ interface MetricCardProps {
 
 function MetricCard({ label, value }: MetricCardProps) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-2 text-lg font-bold text-slate-900">{value}</p>
+    <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-50">{value}</p>
     </div>
   );
 }

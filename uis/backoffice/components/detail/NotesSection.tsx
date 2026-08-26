@@ -50,8 +50,8 @@ export function NotesSection({
   return (
     <section className="space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-slate-900">Notas internas</h3>
-        <p className="text-sm text-slate-600">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Notas internas</h3>
+        <p className="text-sm text-slate-600 dark:text-slate-300">
           Observaciones del equipo de People &amp; Talent de HealthCore sobre esta
           candidatura.
         </p>
@@ -60,7 +60,7 @@ export function NotesSection({
       <NoteForm onSubmit={onAddNote} isSubmitting={isSubmitting} />
 
       {deleteError && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
           {deleteError}
         </p>
       )}
@@ -76,14 +76,14 @@ export function NotesSection({
         </div>
       ) : error ? (
         <div
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-6 text-center"
+          className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-6 text-center"
           role="alert"
         >
-          <p className="text-sm text-red-700">{error}</p>
+          <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
           {onRetry && (
             <Button
               variant="ghost"
-              className="mt-3 text-red-700"
+              className="mt-3 text-red-700 dark:text-red-400"
               onClick={onRetry}
             >
               Reintentar
@@ -91,7 +91,7 @@ export function NotesSection({
           )}
         </div>
       ) : notes.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+        <p className="rounded-lg border border-dashed border-slate-200 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
           Aún no hay notas para esta candidatura.
         </p>
       ) : (
@@ -99,18 +99,18 @@ export function NotesSection({
           {notes.map((note) => (
             <li
               key={note.id}
-              className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
+              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-slate-800">{note.content}</p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="text-sm text-slate-800 dark:text-slate-100">{note.content}</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     {formatDate(note.created_at)}
                   </p>
                 </div>
                 <Button
                   variant="ghost"
-                  className="shrink-0 px-2 py-1 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                  className="shrink-0 px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 hover:text-red-700"
                   disabled={deletingId === note.id}
                   onClick={() => handleDelete(note.id)}
                 >

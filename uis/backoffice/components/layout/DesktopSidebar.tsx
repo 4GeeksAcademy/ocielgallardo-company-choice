@@ -44,7 +44,7 @@ function NavGroupSection({ group }: { group: NavGroup }) {
         className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-medium transition ${
           groupActive
             ? "text-blue-700 dark:text-blue-300"
-            : "text-slate-800 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            : "text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
         }`}
         aria-expanded={expanded}
         onClick={() => setExpanded((value) => !value)}
@@ -82,7 +82,7 @@ export function DesktopSidebar() {
 
   return (
     <aside
-      className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 md:flex"
+      className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-slate-200 bg-white shadow-[4px_0_16px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:bg-slate-900 dark:shadow-[4px_0_16px_rgba(0,0,0,0.35)] md:flex"
       aria-label="Backoffice navigation"
     >
       <div className="flex h-20 shrink-0 items-center gap-3 border-b border-slate-200 px-5 dark:border-slate-700">
@@ -93,10 +93,10 @@ export function DesktopSidebar() {
           HC
         </span>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+          <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300 dark:text-blue-400">
             HealthCore
           </p>
-          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Backoffice</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-50 dark:text-slate-100">Backoffice</p>
         </div>
       </div>
 

@@ -7,10 +7,10 @@ export default function IncidentsPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 sm:text-3xl">
           Incident Manager
         </h1>
-        <p className="max-w-3xl text-sm text-slate-600 sm:text-base">
+        <p className="max-w-3xl text-sm text-slate-600 dark:text-slate-300 sm:text-base">
           Browse, filter, and update HealthCore incidents across clinics. Register
           new reports from the form, or open the summary for executive metrics.
         </p>
@@ -23,13 +23,13 @@ export default function IncidentsPage() {
           </Link>
           <Link
             href="/incidents/summary"
-            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 hover:border-blue-200 hover:text-blue-700"
+            className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-200 hover:border-blue-200 dark:hover:border-blue-500 hover:text-blue-700 dark:hover:text-blue-300"
           >
             Summary
           </Link>
           <Link
             href="/incidents/analyze"
-            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 hover:border-blue-200 hover:text-blue-700"
+            className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-200 hover:border-blue-200 dark:hover:border-blue-500 hover:text-blue-700 dark:hover:text-blue-300"
           >
             CSV analyzer
           </Link>

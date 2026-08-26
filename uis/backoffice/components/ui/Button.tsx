@@ -10,7 +10,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   primary:
     "bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800",
   secondary:
-    "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 focus-visible:ring-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700",
+    "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 focus-visible:ring-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700",
   ghost:
     "text-slate-600 hover:bg-slate-100 focus-visible:ring-blue-600 dark:text-slate-300 dark:hover:bg-slate-800",
   danger:

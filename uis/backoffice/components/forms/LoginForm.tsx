@@ -65,7 +65,7 @@ export function LoginForm() {
       />
 
       {error && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
           {error}
         </p>
       )}
@@ -74,14 +74,14 @@ export function LoginForm() {
         {isSubmitting ? "Entrando…" : "Iniciar sesión"}
       </Button>
 
-      <p className="text-center text-sm text-slate-600">
+      <p className="text-center text-sm text-slate-600 dark:text-slate-300">
         ¿No tienes cuenta?{" "}
-        <Link href="/register" className="font-medium text-blue-600 hover:text-blue-700">
+        <Link href="/register" className="font-medium text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-300">
           Regístrate
         </Link>
       </p>
-      <p className="text-center text-sm text-slate-600">
-        <Link href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-700">
+      <p className="text-center text-sm text-slate-600 dark:text-slate-300">
+        <Link href="/forgot-password" className="font-medium text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-300">
           ¿Olvidaste tu contraseña?
         </Link>
       </p>

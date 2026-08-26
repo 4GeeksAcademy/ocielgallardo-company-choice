@@ -25,7 +25,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className="min-h-full bg-slate-50 font-sans text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
+      <body className="min-h-full bg-slate-50 dark:bg-slate-800 font-sans text-slate-900 dark:text-slate-50 antialiased dark:bg-slate-950 dark:text-slate-100">
         <AppChrome>{children}</AppChrome>
       </body>
     </html>

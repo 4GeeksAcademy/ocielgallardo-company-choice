@@ -31,16 +31,16 @@ export const STAGE_LABELS: Record<ApplicationStage, string> = {
 };
 
 export const STATUS_BADGE_CLASSES: Record<ApplicationStatus, string> = {
-  received: "bg-slate-100 text-slate-700 ring-slate-200",
-  in_progress: "bg-blue-50 text-blue-700 ring-blue-200",
-  selected: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  discarded: "bg-red-50 text-red-700 ring-red-200",
+  received: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 ring-slate-200 dark:ring-slate-600",
+  in_progress: "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 ring-blue-200 dark:ring-blue-800",
+  selected: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-800",
+  discarded: "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 ring-red-200 dark:ring-red-800",
 };
 
 export const STAGE_BADGE_CLASSES: Record<ApplicationStage, string> = {
-  pending: "bg-amber-50 text-amber-800 ring-amber-200",
-  review: "bg-cyan-50 text-cyan-800 ring-cyan-200",
-  personal_interview: "bg-violet-50 text-violet-800 ring-violet-200",
-  technical_interview: "bg-indigo-50 text-indigo-800 ring-indigo-200",
-  offer_presented: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  pending: "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 ring-amber-200 dark:ring-amber-800",
+  review: "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-800 dark:text-cyan-300 ring-cyan-200 dark:ring-cyan-800",
+  personal_interview: "bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-300 ring-violet-200 dark:ring-violet-800",
+  technical_interview: "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-300 ring-indigo-200 dark:ring-indigo-800",
+  offer_presented: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800",
 };

@@ -40,12 +40,12 @@ export default function ProfilePage() {
   }, []);
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Cargando perfil…</p>;
+    return <p className="text-sm text-slate-500 dark:text-slate-400">Cargando perfil…</p>;
   }
 
   if (error || !me) {
     return (
-      <p className="text-sm text-red-600" role="alert">
+      <p className="text-sm text-red-600 dark:text-red-400" role="alert">
         {error ?? "Perfil no disponible."}
       </p>
     );
@@ -54,12 +54,12 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto max-w-lg space-y-4">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Mi perfil</h1>
-        <p className="text-sm text-slate-600">
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">Mi perfil</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-300">
           Email de la cuenta y datos de contacto.
         </p>
       </div>
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-sm">
         <ProfileForm me={me} onSaved={setMe} />
       </div>
     </div>

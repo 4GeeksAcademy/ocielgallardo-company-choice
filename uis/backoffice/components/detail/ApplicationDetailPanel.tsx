@@ -48,10 +48,10 @@ export function ApplicationDetailPanel({
 
   if (!application) {
     return (
-      <div className="flex h-full min-h-[320px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
+      <div className="flex h-full min-h-[320px] items-center justify-center rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center">
         <div>
-          <p className="font-medium text-slate-800">Selecciona una candidatura</p>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="font-medium text-slate-800 dark:text-slate-100">Selecciona una candidatura</p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
             Elige un candidato del listado para ver su detalle y gestionar su pipeline.
           </p>
         </div>
@@ -80,14 +80,14 @@ export function ApplicationDetailPanel({
   };
 
   return (
-    <article className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+    <article className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+      <div className="border-b border-slate-200 dark:border-slate-700 px-4 py-4 sm:px-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
               {application.full_name}
             </h2>
-            <p className="text-sm text-slate-600">{application.position}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">{application.position}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <StatusStageBadge type="status" value={application.status} />
               <StatusStageBadge type="stage" value={application.stage} />
@@ -118,34 +118,34 @@ export function ApplicationDetailPanel({
       <div className="flex-1 space-y-6 overflow-y-auto px-4 py-4 sm:px-5">
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-slate-500">Email</dt>
-            <dd className="font-medium text-slate-900">{application.email}</dd>
+            <dt className="text-slate-500 dark:text-slate-400">Email</dt>
+            <dd className="font-medium text-slate-900 dark:text-slate-50">{application.email}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Teléfono</dt>
-            <dd className="font-medium text-slate-900">{application.phone}</dd>
+            <dt className="text-slate-500 dark:text-slate-400">Teléfono</dt>
+            <dd className="font-medium text-slate-900 dark:text-slate-50">{application.phone}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Experiencia</dt>
-            <dd className="font-medium text-slate-900">
+            <dt className="text-slate-500 dark:text-slate-400">Experiencia</dt>
+            <dd className="font-medium text-slate-900 dark:text-slate-50">
               {application.experience_years} años
             </dd>
           </div>
           <div>
-            <dt className="text-slate-500">Fecha de candidatura</dt>
-            <dd className="font-medium text-slate-900">
+            <dt className="text-slate-500 dark:text-slate-400">Fecha de candidatura</dt>
+            <dd className="font-medium text-slate-900 dark:text-slate-50">
               {formatDate(application.applied_at)}
             </dd>
           </div>
           {application.linkedin_url && (
             <div className="sm:col-span-2">
-              <dt className="text-slate-500">LinkedIn</dt>
+              <dt className="text-slate-500 dark:text-slate-400">LinkedIn</dt>
               <dd>
                 <a
                   href={application.linkedin_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-medium text-blue-600 hover:underline"
+                  className="font-medium text-blue-600 dark:text-blue-300 hover:underline"
                 >
                   Ver perfil
                 </a>
@@ -153,26 +153,26 @@ export function ApplicationDetailPanel({
             </div>
           )}
           <div className="sm:col-span-2">
-            <dt className="text-slate-500">CV</dt>
+            <dt className="text-slate-500 dark:text-slate-400">CV</dt>
             <dd>
               {application.cv_url ? (
                 <a
                   href={application.cv_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-medium text-blue-600 hover:underline"
+                  className="font-medium text-blue-600 dark:text-blue-300 hover:underline"
                 >
                   Descargar o ver currículum
                 </a>
               ) : (
-                <span className="text-slate-500">No disponible</span>
+                <span className="text-slate-500 dark:text-slate-400">No disponible</span>
               )}
             </dd>
           </div>
         </dl>
 
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-slate-900">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
             Actualizar pipeline
           </h3>
           <StatusStageControls
@@ -183,7 +183,7 @@ export function ApplicationDetailPanel({
             onStageChange={handleStageChange}
           />
           {feedback && (
-            <p className="text-sm text-slate-600" aria-live="polite">
+            <p className="text-sm text-slate-600 dark:text-slate-300" aria-live="polite">
               {feedback}
             </p>
           )}

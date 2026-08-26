@@ -32,10 +32,10 @@ export function SiteHeader() {
             className="h-10 w-10 shrink-0 object-contain sm:h-12 sm:w-12"
           />
           <span className="hidden min-w-0 sm:block">
-            <span className="block text-sm font-semibold leading-tight text-[var(--brand-fg)]">
+            <span className="block text-sm font-semibold leading-tight text-(--brand-fg)">
               HealthCore
             </span>
-            <span className="mt-0.5 block text-xs leading-snug text-[var(--brand-fg)]">
+            <span className="mt-0.5 block text-xs leading-snug text-(--brand-fg)">
               Smart, secure, and human healthcare
             </span>
           </span>
@@ -57,7 +57,7 @@ export function SiteHeader() {
             </a>
             <Link
               href="/application"
-              className="rounded-lg bg-[var(--brand-600)] px-2 py-2 font-semibold text-white transition hover:bg-[var(--brand-700)] sm:px-3"
+              className="rounded-lg bg-(--brand-600) px-2 py-2 font-semibold text-white transition hover:bg-(--brand-700) sm:px-3"
             >
               Apply now
             </Link>
@@ -68,7 +68,7 @@ export function SiteHeader() {
           <div className="sm:hidden">
             <button
               type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-[var(--brand-fg)] hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-(--brand-fg) hover:bg-slate-100 dark:hover:bg-slate-800"
               aria-expanded={menuOpen}
               aria-controls={menuId}
               aria-label={menuOpen ? "Close menu" : "Open menu"}
@@ -121,7 +121,7 @@ export function SiteHeader() {
                 <li>
                   <a
                     href="#services"
-                    className="block rounded-md px-3 py-2 font-medium text-[var(--brand-fg)] hover:bg-slate-50 dark:hover:bg-slate-800"
+                    className="block rounded-md px-3 py-2 font-medium text-(--brand-fg) hover:bg-slate-50 dark:hover:bg-slate-800"
                     onClick={closeMenu}
                   >
                     Services
@@ -130,7 +130,7 @@ export function SiteHeader() {
                 <li>
                   <a
                     href="#impact"
-                    className="block rounded-md px-3 py-2 font-medium text-[var(--brand-fg)] hover:bg-slate-50 dark:hover:bg-slate-800"
+                    className="block rounded-md px-3 py-2 font-medium text-(--brand-fg) hover:bg-slate-50 dark:hover:bg-slate-800"
                     onClick={closeMenu}
                   >
                     Impact
@@ -139,7 +139,7 @@ export function SiteHeader() {
                 <li>
                   <Link
                     href="/application"
-                    className="block rounded-md px-3 py-2 font-bold text-[var(--brand-fg)] hover:bg-slate-50 dark:hover:bg-slate-800"
+                    className="block rounded-md px-3 py-2 font-bold text-(--brand-fg) hover:bg-slate-50 dark:hover:bg-slate-800"
                     onClick={closeMenu}
                   >
                     Apply now

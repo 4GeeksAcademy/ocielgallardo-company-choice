@@ -157,7 +157,7 @@ export function PatientApplicationForm() {
       <div className="flex items-center gap-3">
         <button
           type="submit"
-          className="rounded-lg bg-[var(--brand-600)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
+          className="rounded-lg bg-(--brand-600) px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-(--brand-700)"
         >
           Submit application
         </button>

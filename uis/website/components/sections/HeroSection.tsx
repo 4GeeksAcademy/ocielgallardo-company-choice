@@ -7,7 +7,7 @@ export function HeroSection() {
     <section className="hero-grid relative overflow-hidden rounded-2xl border border-slate-200 bg-white px-5 py-10 shadow-sm dark:border-slate-700 dark:bg-slate-900/90 sm:px-8 sm:py-14">
       <HeroCarousel />
       <div className="relative z-10">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-fg)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-(--brand-fg)">
           HealthCore Public Website
         </p>
         <h1 className="mt-3 max-w-3xl font-serif text-3xl font-extrabold leading-tight text-slate-950 dark:text-white sm:text-5xl">
@@ -19,7 +19,7 @@ export function HeroSection() {
         <div className="mt-7 flex flex-col gap-3 sm:flex-row">
           <Link
             href="/application"
-            className="rounded-lg bg-[var(--brand-600)] px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
+            className="rounded-lg bg-(--brand-600) px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-(--brand-700)"
           >
             Start application
           </Link>

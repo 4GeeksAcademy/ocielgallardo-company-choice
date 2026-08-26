@@ -48,10 +48,10 @@ export function MedicalSuppliesList() {
     <section className="space-y-4">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
             Suministros médicos
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
             Stock actual por suministro. Los niveles de color son solo de
             interfaz (crítico &lt; 5, bajo &lt; 15).
           </p>
@@ -68,13 +68,13 @@ export function MedicalSuppliesList() {
       </header>
 
       {status === "loading" && (
-        <p className="text-sm text-slate-600">Cargando suministros…</p>
+        <p className="text-sm text-slate-600 dark:text-slate-300">Cargando suministros…</p>
       )}
 
       {status === "error" && error && (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800"
         >
           <p>{error}</p>
           <Button
@@ -98,9 +98,9 @@ export function MedicalSuppliesList() {
       )}
 
       {status === "success" && supplies.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <thead className="bg-slate-50 dark:bg-slate-800 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
               <tr>
                 <th scope="col" className="px-4 py-3">
                   Nombre
@@ -128,19 +128,19 @@ export function MedicalSuppliesList() {
             <tbody className="divide-y divide-slate-100">
               {supplies.map((supply) => (
                 <tr key={supply.id} className="hover:bg-slate-50/80">
-                  <td className="px-4 py-3 font-medium text-slate-900">
+                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-50">
                     {supply.name}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-700">
+                  <td className="px-4 py-3 font-mono text-xs text-slate-700 dark:text-slate-200">
                     {supply.sku}
                   </td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
                     {categoryLabel(supply.category)}
                   </td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
                     {unitLabel(supply.unit)}
                   </td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
                     {countryLabel(supply.country)}
                   </td>
                   <td className="px-4 py-3">
@@ -150,13 +150,13 @@ export function MedicalSuppliesList() {
                     <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:gap-x-3">
                       <Link
                         href={`/inventory/orders/inbound?supply_id=${supply.id}`}
-                        className="text-xs font-medium text-blue-700 hover:underline"
+                        className="text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline"
                       >
                         Registrar entrega
                       </Link>
                       <Link
                         href={`/inventory/orders/outbound?supply_id=${supply.id}`}
-                        className="text-xs font-medium text-blue-700 hover:underline"
+                        className="text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline"
                       >
                         Registrar consumo
                       </Link>
