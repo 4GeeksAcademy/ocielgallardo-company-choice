@@ -10,15 +10,27 @@
 - Type-level model validation command is available in `packages/shared`.
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
 - Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
-- Frontend performance audit milestone: **code fixes + before evidence done**; first after HTML saved but **invalid/incomplete** (`PROTOCOL_TIMEOUT` on mobile). Clean re-measure + REPORT deltas pending tomorrow.
+- Backoffice UI cleaned: empty Patients/Appointments/Billing/Claims/Reports placeholders removed; dashboard and nav reflect implemented modules only.
+- Backoffice shell is mobile-first: desktop fixed sidebar with collapsible groups; mobile Dashboard + Office bottom bar; account via avatar menu.
+- Frontend performance audit milestone: **code fixes + before evidence done**; first after HTML saved but **invalid/incomplete** (`PROTOCOL_TIMEOUT` on mobile). Clean re-measure + REPORT deltas pending.
 
 ## Recently Completed (Performance audit — Phase 2 fixes)
-- Branch: `feature/performance-audit` (from `main`).
+- Branch: `feature/performance-audit` (from `main`, merged with depuracion/dark mode).
 - Re-baselined from Lighthouse HTML (website `/`, backoffice `/login` + authenticated `/`).
 - Website: `next/image` on hero (priority first slide) + logo; mobile menu `tabIndex={-1}` when closed (`aria-hidden-focus`).
 - Backoffice: `AuthPageShell` (`<main>`) on login/register/forgot/reset; `Hito2Playground` via `next/dynamic` on dashboard.
 - Docs: `AUDIT.md` + Spanish `REPORT.md` checkpoint; `audit/before/` HTML+PNG; `audit/after/` first HTML pass (not yet official).
-- TODO tomorrow: Incognito re-run (no timeouts), optional `next build`/`start`, fill REPORT after table, PR.
+- TODO: Incognito re-run (no timeouts), optional `next build`/`start`, fill REPORT after table, PR.
+
+## Recently Completed (backoffice — mobile-first navigation shell)
+- Shared `navConfig.ts` for work groups and account links.
+- `DesktopSidebar`, `MobileBottomBar`, `OfficeMenu`, `AccountMenu`; `BackofficeShell` layout with `md:pl-60` content column.
+- Profile / Change password removed from work nav; avatar + Cerrar sesión in top bar.
+
+## Recently Completed (backoffice — remove empty placeholders)
+- Deleted routes `/patients`, `/appointments`, `/billing`, `/claims`, `/reports` and unused `SectionPlaceholder`.
+- `BackofficeShell` nav and dashboard `MODULES` now link to Incidents, Suppliers, Inventory, and People & Talent.
+- Updated `uis/backoffice/README(.es).md` section lists.
 
 ## Recently Completed (Hito 5 — inventory backoffice UI)
 - Branch: `feature/inventory` (no merge).

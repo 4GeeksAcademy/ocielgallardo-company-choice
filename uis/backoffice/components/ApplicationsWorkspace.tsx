@@ -77,10 +77,10 @@ export function ApplicationsWorkspace() {
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
               Pipeline de candidaturas
             </h2>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
               Herramienta interna de Personas y Fuerza Laboral (Diane Foster) para
               cubrir perfiles clínicos en las 12 sedes de HealthCore.
             </p>
@@ -91,8 +91,8 @@ export function ApplicationsWorkspace() {
         </div>
 
         {formMode === "create" && (
-          <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-            <h3 className="mb-4 text-base font-semibold text-slate-900">
+          <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 sm:p-5">
+            <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-slate-50">
               Registrar candidatura
             </h3>
             <ApplicationForm
@@ -106,7 +106,7 @@ export function ApplicationsWorkspace() {
           </section>
         )}
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 sm:p-5">
           <ApplicationFilters
             status={statusFilter}
             stage={stageFilter}

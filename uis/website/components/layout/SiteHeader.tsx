@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -23,7 +24,7 @@ export function SiteHeader() {
   const linkTabIndex = menuOpen ? undefined : -1;
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/90 backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/90">
       <div className="relative mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-5 sm:py-4 lg:px-5">
         <Link href="/" className="flex max-w-[min(100%,18rem)] items-center gap-2 sm:gap-3">
           <Image
@@ -34,101 +35,125 @@ export function SiteHeader() {
             className="h-10 w-10 shrink-0 object-contain sm:h-12 sm:w-12"
           />
           <span className="hidden min-w-0 sm:block">
-            <span className="block text-sm font-semibold leading-tight text-[var(--brand-600)]">
+            <span className="block text-sm font-semibold leading-tight text-(--brand-fg)">
               HealthCore
             </span>
-            <span className="mt-0.5 block text-xs leading-snug text-[var(--brand-600)]">
+            <span className="mt-0.5 block text-xs leading-snug text-(--brand-fg)">
               Smart, secure, and human healthcare
             </span>
           </span>
         </Link>
 
-        <nav className="hidden shrink-0 items-center gap-1 text-sm sm:flex sm:gap-2">
-          <a href="#services" className="rounded-md px-2 py-2 font-medium text-slate-700 hover:bg-slate-100 sm:px-3">
-            Services
-          </a>
-          <a href="#impact" className="rounded-md px-2 py-2 font-medium text-slate-700 hover:bg-slate-100 sm:px-3">
-            Impact
-          </a>
-          <Link
-            href="/application"
-            className="rounded-md bg-[var(--brand-600)] px-2 py-2 font-semibold text-white transition hover:bg-[var(--brand-700)] sm:px-3"
-          >
-            Apply now
-          </Link>
-        </nav>
+        <div className="flex items-center gap-2">
+          <nav className="hidden shrink-0 items-center gap-1 text-sm sm:flex sm:gap-2">
+            <a
+              href="#services"
+              className="rounded-md px-2 py-2 font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 sm:px-3"
+            >
+              Services
+            </a>
+            <a
+              href="#impact"
+              className="rounded-md px-2 py-2 font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 sm:px-3"
+            >
+              Impact
+            </a>
+            <Link
+              href="/application"
+              className="rounded-lg bg-(--brand-600) px-2 py-2 font-semibold text-white transition hover:bg-(--brand-700) sm:px-3"
+            >
+              Apply now
+            </Link>
+          </nav>
 
-        <div className="sm:hidden">
-          <button
-            type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-[var(--brand-600)] hover:bg-slate-100"
-            aria-expanded={menuOpen}
-            aria-controls={menuId}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            {menuOpen ? (
-              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            ) : (
-              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
-              </svg>
-            )}
-          </button>
+          <ThemeToggle />
 
-          {menuOpen ? (
+          <div className="sm:hidden">
             <button
               type="button"
-              aria-label="Close menu overlay"
-              className="fixed inset-0 z-30 bg-black/40 transition-opacity duration-150"
-              onClick={closeMenu}
-            />
-          ) : null}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-(--brand-fg) hover:bg-slate-100 dark:hover:bg-slate-800"
+              aria-expanded={menuOpen}
+              aria-controls={menuId}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              {menuOpen ? (
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              ) : (
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
+                </svg>
+              )}
+            </button>
 
-          <nav
-            id={menuId}
-            aria-hidden={!menuOpen}
-            className={`absolute right-4 top-full z-40 mt-2 w-48 origin-top-right rounded-xl border border-slate-200 bg-white p-2 shadow-md transition duration-150 ease-out ${
-              menuOpen
-                ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
-                : "pointer-events-none -translate-y-1 scale-95 opacity-0"
-            }`}
-          >
-            <ul className="flex flex-col gap-1 text-sm">
-              <li>
-                <a
-                  href="#services"
-                  tabIndex={linkTabIndex}
-                  className="block rounded-md px-3 py-2 font-medium text-[var(--brand-600)] hover:bg-slate-50"
-                  onClick={closeMenu}
-                >
-                  Services
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#impact"
-                  tabIndex={linkTabIndex}
-                  className="block rounded-md px-3 py-2 font-medium text-[var(--brand-600)] hover:bg-slate-50"
-                  onClick={closeMenu}
-                >
-                  Impact
-                </a>
-              </li>
-              <li>
-                <Link
-                  href="/application"
-                  tabIndex={linkTabIndex}
-                  className="block rounded-md px-3 py-2 font-bold text-[var(--brand-600)] hover:bg-slate-50"
-                  onClick={closeMenu}
-                >
-                  Apply now
-                </Link>
-              </li>
-            </ul>
-          </nav>
+            {menuOpen ? (
+              <button
+                type="button"
+                aria-label="Close menu overlay"
+                className="fixed inset-0 z-30 bg-black/40 transition-opacity duration-150"
+                onClick={closeMenu}
+              />
+            ) : null}
+
+            <nav
+              id={menuId}
+              aria-hidden={!menuOpen}
+              className={`absolute right-4 top-full z-40 mt-2 w-48 origin-top-right rounded-xl border border-slate-200 bg-white p-2 shadow-md transition duration-150 ease-out dark:border-slate-600 dark:bg-slate-900 ${
+                menuOpen
+                  ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+                  : "pointer-events-none -translate-y-1 scale-95 opacity-0"
+              }`}
+            >
+              <ul className="flex flex-col gap-1 text-sm">
+                <li>
+                  <a
+                    href="#services"
+                    tabIndex={linkTabIndex}
+                    className="block rounded-md px-3 py-2 font-medium text-(--brand-fg) hover:bg-slate-50 dark:hover:bg-slate-800"
+                    onClick={closeMenu}
+                  >
+                    Services
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#impact"
+                    tabIndex={linkTabIndex}
+                    className="block rounded-md px-3 py-2 font-medium text-(--brand-fg) hover:bg-slate-50 dark:hover:bg-slate-800"
+                    onClick={closeMenu}
+                  >
+                    Impact
+                  </a>
+                </li>
+                <li>
+                  <Link
+                    href="/application"
+                    tabIndex={linkTabIndex}
+                    className="block rounded-md px-3 py-2 font-bold text-(--brand-fg) hover:bg-slate-50 dark:hover:bg-slate-800"
+                    onClick={closeMenu}
+                  >
+                    Apply now
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+          </div>
         </div>
       </div>
     </header>

@@ -131,7 +131,7 @@ export function IncidentCreateForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       <div
-        className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+        className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-950"
         role="note"
       >
         <p className="font-semibold">Patient data warning (required)</p>
@@ -157,7 +157,7 @@ export function IncidentCreateForm() {
       <div className="space-y-1.5">
         <label
           htmlFor="description"
-          className="block text-sm font-medium text-slate-700"
+          className="block text-sm font-medium text-slate-700 dark:text-slate-200"
         >
           Description
         </label>
@@ -178,16 +178,16 @@ export function IncidentCreateForm() {
             }))
           }
           className={`w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 ${
-            errors.description ? "border-red-500" : "border-slate-200"
+            errors.description ? "border-red-500" : "border-slate-200 dark:border-slate-700"
           }`}
           required
         />
-        <p id="description-hint" className="text-xs text-slate-500">
+        <p id="description-hint" className="text-xs text-slate-500 dark:text-slate-400">
           Free text — highest risk for accidental patient identifiers. Keep it
           operational and anonymous.
         </p>
         {errors.description ? (
-          <p id="description-error" className="text-sm text-red-600" role="alert">
+          <p id="description-error" className="text-sm text-red-600 dark:text-red-400" role="alert">
             {errors.description}
           </p>
         ) : null}
@@ -210,7 +210,7 @@ export function IncidentCreateForm() {
         ]}
       />
       {errors.category ? (
-        <p className="-mt-3 text-sm text-red-600" role="alert">
+        <p className="-mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
           {errors.category}
         </p>
       ) : null}
@@ -232,7 +232,7 @@ export function IncidentCreateForm() {
         ]}
       />
       {errors.origin ? (
-        <p className="-mt-3 text-sm text-red-600" role="alert">
+        <p className="-mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
           {errors.origin}
         </p>
       ) : null}
@@ -265,13 +265,13 @@ export function IncidentCreateForm() {
             Origin is Branch — confirm you are reporting from the correct clinic.
           </p>
         ) : (
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             Always required. Use Central when the incident is not tied to a
             specific clinic.
           </p>
         )}
         {errors.branch ? (
-          <p className="mt-1 text-sm text-red-600" role="alert">
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
             {errors.branch}
           </p>
         ) : null}
@@ -291,18 +291,18 @@ export function IncidentCreateForm() {
         options={INCIDENT_STATUS_OPTIONS}
       />
       {errors.status ? (
-        <p className="-mt-3 text-sm text-red-600" role="alert">
+        <p className="-mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
           {errors.status}
         </p>
       ) : null}
 
       {formError ? (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
           {formError}
         </p>
       ) : null}
       {successMessage ? (
-        <p className="text-sm text-emerald-700" role="status">
+        <p className="text-sm text-emerald-700 dark:text-emerald-400" role="status">
           {successMessage}
         </p>
       ) : null}

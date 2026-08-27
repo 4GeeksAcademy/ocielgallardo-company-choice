@@ -168,7 +168,7 @@ export function ApplicationForm({
 
       {formStatus && (
         <p
-          className={`text-sm ${formStatus.includes("No se") ? "text-red-600" : "text-emerald-700"}`}
+          className={`text-sm ${formStatus.includes("No se") ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}`}
           aria-live="polite"
         >
           {formStatus}

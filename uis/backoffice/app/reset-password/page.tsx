@@ -10,7 +10,7 @@ export default function ResetPasswordPage() {
     >
       <Suspense
         fallback={
-          <p className="text-center text-sm text-slate-500">Cargando…</p>
+          <p className="text-center text-sm text-slate-500 dark:text-slate-400">Cargando…</p>
         }
       >
         <ResetPasswordTokenReader />

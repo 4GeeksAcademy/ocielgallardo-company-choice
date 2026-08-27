@@ -9,6 +9,12 @@ Aplicación Next.js interna para empleados de HealthCore.
 - Exponer utilidades de negocio de Hito 2 en el dashboard.
 - Analizar y gestionar incidencias contra la API FastAPI local de HealthCore (registro, listado, resumen + análisis CSV).
 
+## Shell de navegación
+
+- **Desktop (`md+`)**: sidebar fijo a la izquierda con grupos colapsables (Incidents, Suppliers, Inventory, People & Talent).
+- **Mobile**: barra inferior con Dashboard + Office; Office abre un panel hacia arriba con los mismos módulos.
+- **Cuenta**: icono avatar en la barra superior (Profile, Change password) junto a Cerrar sesión.
+
 ## Secciones actuales
 
 - `/` Dashboard
@@ -16,11 +22,6 @@ Aplicación Next.js interna para empleados de HealthCore.
 - `/register` Registro (`POST /users` + login automático)
 - `/forgot-password` Solicitar email de restablecimiento
 - `/reset-password` Nueva contraseña desde el token del email (`?token=`)
-- `/patients` Módulo placeholder
-- `/appointments` Módulo placeholder
-- `/billing` Módulo placeholder
-- `/claims` Módulo placeholder
-- `/reports` Módulo placeholder
 - `/incidents` Gestor: listado (filtros + cambio de estado)
 - `/incidents/new` Registrar incidencia (aviso PHI en description)
 - `/incidents/summary` Métricas agregadas por status/categoría/origen/sede

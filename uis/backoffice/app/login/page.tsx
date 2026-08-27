@@ -17,7 +17,7 @@ export default async function LoginPage({
     >
       {resetSuccess && (
         <div
-          className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800"
+          className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950/40 dark:text-green-300"
           role="status"
         >
           Contraseña actualizada. Ya puedes iniciar sesión.

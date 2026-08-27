@@ -64,27 +64,27 @@ export default function IncidentsAnalyzePage() {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+        <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300">
           Incident Manager
         </p>
-        <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 sm:text-3xl">
           Patient Incident Analysis
         </h1>
-        <p className="max-w-3xl text-sm text-slate-600 sm:text-base">
+        <p className="max-w-3xl text-sm text-slate-600 dark:text-slate-300 sm:text-base">
           Upload a HealthCore incidents CSV, run the same validation and metrics
           pipeline as the CLI, and review totals, category/status breakdowns,
           satisfaction index, and invalid-record rules from CONTEXT.
         </p>
         <Link
           href="/incidents"
-          className="inline-block text-sm font-medium text-blue-700 hover:underline"
+          className="inline-block text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline"
         >
           ← Back to incident list
         </Link>
       </header>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           Upload CSV
         </h2>
         <div className="mt-3">
@@ -114,7 +114,7 @@ export default function IncidentsAnalyzePage() {
           </Button>
         </div>
         {error ? (
-          <p className="mt-3 text-sm text-red-600" role="alert">
+          <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
             {error}
           </p>
         ) : null}

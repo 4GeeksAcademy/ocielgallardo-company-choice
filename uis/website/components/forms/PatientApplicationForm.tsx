@@ -104,19 +104,19 @@ export function PatientApplicationForm() {
           id="phone"
         />
 
-        <label className="block text-sm font-medium text-slate-700" htmlFor="country">
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="country">
           Country
           <select
             id="country"
             value={data.country}
             onChange={(event) => update("country", event.target.value as FormData["country"])}
-            className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
           >
             <option value="">Select country</option>
             <option value="US">US</option>
             <option value="United Kingdom">United Kingdom</option>
           </select>
-          {errors.country ? <span className="mt-1 block text-xs text-red-700">{errors.country}</span> : null}
+          {errors.country ? <span className="mt-1 block text-xs text-red-600">{errors.country}</span> : null}
         </label>
       </div>
 
@@ -128,40 +128,40 @@ export function PatientApplicationForm() {
         id="preferredClinic"
       />
 
-      <label className="block text-sm font-medium text-slate-700" htmlFor="reason">
+      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="reason">
         Reason for appointment
         <textarea
           id="reason"
           value={data.reason}
           onChange={(event) => update("reason", event.target.value)}
           rows={4}
-          className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
         />
-        {errors.reason ? <span className="mt-1 block text-xs text-red-700">{errors.reason}</span> : null}
+        {errors.reason ? <span className="mt-1 block text-xs text-red-600">{errors.reason}</span> : null}
       </label>
 
-      <label className="flex items-start gap-2 text-sm text-slate-700" htmlFor="consent">
+      <label className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200" htmlFor="consent">
         <input
           id="consent"
           type="checkbox"
           checked={data.consent}
           onChange={(event) => update("consent", event.target.checked)}
-          className="mt-1 h-4 w-4 rounded border-slate-300"
+          className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
         />
         <span>
           I consent to HealthCore processing this request under HIPAA/UK GDPR obligations.
         </span>
       </label>
-      {errors.consent ? <p className="text-xs text-red-700">{errors.consent}</p> : null}
+      {errors.consent ? <p className="text-xs text-red-600">{errors.consent}</p> : null}
 
       <div className="flex items-center gap-3">
         <button
           type="submit"
-          className="rounded-md bg-[var(--brand-600)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
+          className="rounded-lg bg-(--brand-600) px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-(--brand-700)"
         >
           Submit application
         </button>
-        <span className="text-xs text-slate-500" aria-live="polite">
+        <span className="text-xs text-slate-600 dark:text-slate-400" aria-live="polite">
           {status === "success"
             ? "Application submitted successfully (demo mode)."
             : hasErrors
@@ -191,16 +191,16 @@ function InputField({
   type = "text",
 }: InputFieldProps) {
   return (
-    <label className="block text-sm font-medium text-slate-700" htmlFor={id}>
+    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor={id}>
       {label}
       <input
         id={id}
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
       />
-      {error ? <span className="mt-1 block text-xs text-red-700">{error}</span> : null}
+      {error ? <span className="mt-1 block text-xs text-red-600">{error}</span> : null}
     </label>
   );
 }

@@ -1,32 +1,66 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* HealthCore design tokens — aligned with .agents/rules/design.md */
 :root {
-  --bg: #f4f7fb;
-  --ink: #0b1b2b;
+  --bg: #f8fafc; /* slate-50 */
+  --ink: #1e293b; /* slate-800 */
   --panel: #ffffff;
-  --brand-600: #035a87;
-  --brand-700: #02496d;
-  --accent-500: #0a9396;
+  --primary-600: #2563eb;
+  --primary-700: #1d4ed8;
+  --primary-900: #1e3a8a;
+  /* Aliases used by components */
+  --brand-600: var(--primary-600);
+  --brand-700: var(--primary-700);
+  --brand-900: var(--primary-900);
+  --brand-fg: var(--primary-600);
+  --info: #06b6d4; /* cyan-500 */
+  --hero-overlay: rgba(248, 250, 252, 0.82);
+  --hero-grid: rgba(30, 58, 138, 0.08);
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #020617; /* slate-950 */
+  --ink: #f1f5f9;
+  --panel: #0f172a;
+  /* Buttons: primary-700 keeps white text AA */
+  --primary-600: #1d4ed8;
+  --primary-700: #1e3a8a;
+  --primary-900: #172554;
+  --brand-600: var(--primary-600);
+  --brand-700: var(--primary-700);
+  --brand-900: var(--primary-900);
+  /* Text/links on dark surfaces */
+  --brand-fg: #93c5fd; /* blue-300 */
+  --info: #22d3ee;
+  --hero-overlay: rgba(2, 6, 23, 0.78);
+  --hero-grid: rgba(147, 197, 253, 0.1);
 }
 
 @theme inline {
   --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-merriweather), ui-serif, Georgia, serif;
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-900: var(--primary-900);
 }
 
 body {
   color: var(--ink);
-  background:
-    radial-gradient(circle at 8% 10%, rgba(10, 147, 150, 0.22), transparent 34%),
-    radial-gradient(circle at 92% 0%, rgba(3, 90, 135, 0.25), transparent 38%),
-    linear-gradient(180deg, #eef4fa 0%, var(--bg) 100%);
+  background: var(--bg);
   font-family: var(--font-sans);
+}
+
+html.dark body {
+  background: var(--bg);
 }
 
 .hero-grid {
   background-image:
-    linear-gradient(rgba(11, 27, 43, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(11, 27, 43, 0.1) 1px, transparent 1px);
+    linear-gradient(var(--hero-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hero-grid) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
@@ -42,7 +76,15 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.72);
+  background:
+    linear-gradient(135deg, rgba(30, 58, 138, 0.55), rgba(29, 78, 216, 0.35)),
+    var(--hero-overlay);
+}
+
+html.dark .hero-carousel::after {
+  background:
+    linear-gradient(135deg, rgba(30, 58, 138, 0.7), rgba(37, 99, 235, 0.35)),
+    var(--hero-overlay);
 }
 
 .hero-carousel-track {
@@ -62,7 +104,6 @@ body {
   object-fit: cover;
 }
 
-/* Solo hero-002: ancla el recorte arriba para no cortar caras en PC */
 .hero-carousel-image--top {
   object-position: top;
 }
