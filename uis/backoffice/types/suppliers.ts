@@ -84,8 +84,8 @@ export const SUPPLIER_CATEGORY_LABELS: Record<SupplierCategory, string> =
   ) as Record<SupplierCategory, string>;
 
 export const SUPPLIER_STATUS_BADGE_CLASSES: Record<SupplierStatus, string> = {
-  active: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  suspended: "bg-amber-50 text-amber-700 ring-amber-600/20",
+  active: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 ring-emerald-600/20",
+  suspended: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 ring-amber-600/20",
 };
 
 export const SUPPLIER_STATUS_LABELS: Record<SupplierStatus, string> = {

@@ -858,3 +858,247 @@ Base de autenticacion operativa (~75–80% del hito). El backoffice aun no envia
 ### Resultado
 
 AUTH-01 cerrado en backend respecto a proteccion de rutas. El backoffice de suppliers devolvera 401 hasta que envie el JWT.
+
+## Actualizacion 2026-08-09 (AUTH-02 fases 1–2 — login/register frontend)
+
+### Alcance
+
+Backoffice (`uis/backoffice`) en rama `feature/auth-frontend`: ciclo de vida del token + vistas `/login` y `/register`. Sin guard de rutas ni profile/logout aún.
+
+### Decision de estructura
+
+Se eligió layout mínimo (`AppChrome` + páginas en `app/login` y `app/register`) en lugar de route groups `(auth)`/`(app)`, para no mover páginas existentes. Token y fetch viven en `lib/services/` (mismo patrón que suppliers/incidents), no en una carpeta `lib/auth/` nueva.
+
+### Cambios
+
+- `lib/services/healthcoreClient.ts`: `localStorage` (`healthcore_access_token`), Bearer en llamadas, 401 → clear + redirect `/login`.
+- `lib/services/authApi.ts`: login (`username`=email), register, registerAndLogin.
+- `app/login`, `app/register` + formularios; redirect a `/` tras éxito.
+- `AppChrome`: login/register sin `BackofficeShell`.
+- `suppliersApi` / `healthcoreApi` usan el cliente compartido (Bearer).
+- `uis/website` sin cambios.
+
+### Docs actualizadas
+
+- `uis/backoffice/README(.es).md`, `uis/README(.es).md`
+- `services/README(.es).md`
+- `memory-bank/progress.md`, `memory-bank/techContext.md`
+- esta bitácora
+
+### Validacion
+
+- `cd uis/backoffice && npm run build` — OK (rutas `/login`, `/register` generadas).
+
+### Como probar manualmente
+
+1. API HealthCore en `:8000` + `npm run dev` en `uis/backoffice`.
+2. `/register` → cuenta nueva → debe redirigir a `/` y guardar token en `localStorage`.
+3. Con sesión, `/suppliers` debe cargar (Bearer enviado).
+4. Forzar 401 (borrar/alterar token) en una llamada protegida → clear + redirect `/login`.
+
+### Pendiente AUTH-02
+
+- Protección de rutas (AuthGuard).
+- `/account/profile`.
+- Logout en shell.
+
+## Actualizacion 2026-08-09 (AUTH-02 fase 3 — guard de rutas)
+
+### Cambios
+
+- `AppChrome`: guard por presencia de token (`useSyncExternalStore` + redirects); sin `setState` en el effect (arregla lint React).
+- Sin token en rutas internas → `/login`; con token en `/login` o `/register` → `/`.
+- `RegisterForm`: campo confirmar contraseña + validación de coincidencia.
+- Docs: `progress.md`, `techContext.md`, `uis/backoffice/README(.es).md`.
+
+### Validacion
+
+- Lint limpio en `AppChrome` / `RegisterForm`.
+- `cd uis/backoffice && npm run build`.
+
+### Pendiente AUTH-02
+
+- `/account/profile`.
+- Logout en shell.
+
+## Actualizacion 2026-08-10 (AUTH-02 fases 4–5 — profile + logout)
+
+### Cambios
+
+- `/account/profile`: `GET /auth/me`, formulario editable → `PUT /profiles/me`.
+- Nav Profile; botón **Cerrar sesión** en `BackofficeShell` → clear token + `/login`.
+- Docs: progress, techContext, backoffice README(.es); AUTH-02 cerrado (fases 1–5).
+- `data/process/auth/auth.json` ya estaba en `.gitignore` (sin cambio).
+
+### Validacion
+
+- `cd uis/backoffice && npm run build`.
+
+### Resultado
+
+AUTH-02 frontend cerrado: login/register, guard, profile, logout, Bearer + 401.
+
+## Actualizacion 2026-08-11 (AUTH-03 — recuperacion y cambio de contraseña)
+
+### Alcance
+
+Rama `feature/password-reset`: forgot/reset por email (Resend) + change-password autenticado. API + backoffice. Website sin tocar.
+
+### Decisiones
+
+- Token de reset: cadena aleatoria con **estado en servidor** (TinyDB `password_reset_tokens`: hash SHA-256, `expires_at`, borrado tras uso / al emitir uno nuevo). Cumple uso único mejor que JWT puro sin denylist.
+- Correo: **Resend** (no SendGrid). Remitente de prueba: `onboarding@resend.dev` (no `beth.t@example.com`; Resend responde 403 con dominio no verificado).
+- Enlace del email apunta al **frontend** (`FRONTEND_BASE_URL/reset-password?token=...`), no al API.
+- `POST /auth/forgot-password` siempre **200** (anti-enumeración); fallos de email se loguean en servidor.
+- Windows local: TLS a Resend fallaba (`CERTIFICATE_VERIFY_FAILED`); se añadió `certifi` + `EMAIL_SSL_VERIFY=false` solo para desarrollo local.
+
+### Backend
+
+- `services/app/core/database.py`: tabla `password_reset_tokens`.
+- `services/app/domain/password_reset_service.py`: crear/validar/invalidar token, envío Resend, change-password.
+- `services/app/routers/auth.py`:
+  - `POST /auth/forgot-password` `{ email }` → siempre 200
+  - `POST /auth/reset-password` `{ token, new_password }` → 400 si inválido/expirado/usado
+  - `POST /auth/change-password` `{ current_password, new_password }` (Bearer) → 400 si current incorrecta
+- Modelos en `models/user.py`: `ForgotPasswordRequest`, `ResetPasswordRequest`, `ChangePasswordRequest`.
+- Env (raíz `.env` / `.env.example`): `RESEND_API_KEY`, `EMAIL_FROM`, `FRONTEND_BASE_URL`, `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES`, `PASSWORD_RESET_EMAIL_PROVIDER`, `EMAIL_SSL_VERIFY`. API key **nunca** en código fuente (solo `os.getenv`).
+
+### Frontend (backoffice)
+
+- Rutas públicas: `/forgot-password`, `/reset-password` (añadidas a `AppChrome` AUTH_PATHS y a `redirectToLogin` en `healthcoreClient`).
+- `/account/change-password` (protegida) + nav **Change password**.
+- Login: enlace “¿Olvidaste tu contraseña?”; mensaje de éxito con `?reset=success` (`searchParams` async).
+- Forms: `ForgotPasswordForm`, `ResetPasswordForm` (+ `ResetPasswordTokenReader` + Suspense), `ChangePasswordForm`.
+- `authApi.ts`: `forgotPassword` / `resetPassword` con `auth: false`; `changePassword` con Bearer.
+
+### Docs tocadas
+
+- `bitacora.md` (esta entrada)
+- `memory-bank/progress.md`, `memory-bank/techContext.md`
+- `services/README(.es).md`
+- `uis/README(.es).md`
+- `uis/backoffice/README(.es).md`
+- `.env.example`
+
+### Validacion
+
+- Forgot email inexistente → 200; existente → 200 + email Resend (revisar Gmail/spam y dashboard Resend).
+- Reset token inválido → 400; tras éxito → redirect `/login?reset=success`; token no reutilizable.
+- Change-password sin Bearer → 401; current incorrecta → 400.
+- `npx tsc --noEmit` en backoffice OK.
+- `npm run build`: en este entorno falló por SSL al descargar Google Fonts (Inter); no por el código auth.
+
+### Como probar manualmente
+
+1. API en `:8000` con `.env` (Resend + `FRONTEND_BASE_URL` alineado al puerto de Next).
+2. Usuario en DB con el **mismo email** de la cuenta Resend (restricción onboarding).
+3. `/forgot-password` → mensaje genérico → abrir correo → `/reset-password?token=...` → login.
+4. Con sesión: `/account/change-password`.
+
+### Resultado
+
+AUTH-03 cerrado: recuperación por email real, reset de un solo uso, cambio de contraseña autenticado, secretos solo en env.
+
+## Actualizacion 2026-08-11 (Gestor de Incidencias Centralizado)
+
+### Alcance
+
+Integrar un gestor de incidencias en el monorepo HealthCore (plataforma Hito 5+): modelo TinyDB, seed del CSV histórico, API CRUD/summary con ciclo de vida, y UI en backoffice (registro, listado, resumen). Contrato: `docs/incident-manager/CONTEXT-HealthCore(.es).md`.
+
+### Decisiones
+
+- Validación CSV del analizador + enums/maps del gestor en `packages/shared/healthcore_shared` (una sola fuente; script y API la reutilizan).
+- `services/incidents_analysis/validator.py` solo reexporta reglas compartidas (sin duplicar).
+- Seed **no** inserta filas CSV crudas: valida → mapea status/categoría/`clinic_id`→`branch` → inserta con `origin: customer`. Idempotencia por `source_incident_id`.
+- Rutas del gestor bajo `/api/incidents` conviven con `/analyze` y `/results/export`. `GET /summary` registrado **antes** de `/{id}`.
+- Manager routes requieren Bearer (como suppliers). Analyze/export siguen públicos.
+- UI en **inglés** (CONTEXT). Analizador CSV movido a `/incidents/analyze`; listado en `/incidents`.
+- Aviso PHI obligatorio antes de `description` en el formulario.
+- Errores: 400 con `{field, message}`; 500 genérico sin stack trace.
+
+### Shared + seed
+
+- Paquete: `packages/shared/healthcore_shared/` (`csv_validation`, `manager_constants`, `seed_mapping`, `manager_validation`).
+- `scripts/seed_incidents.py` (+ entry `uv run seed-incidents`). CSV canónico: `data/raw/incidents-healthcore.csv`.
+- Runtime TinyDB: `data/process/incidents/incidents.json` (gitignored).
+- `pyproject.toml`: `dev-mode-dirs` + force-include de `healthcore_shared`; preferir `PYTHONPATH=packages/shared` al arrancar API/seed.
+
+### Backend (`services/app`)
+
+- Modelo Pydantic `models/incident.py`; dominio `domain/incident_manager_service.py`.
+- Endpoints: `POST /api/incidents`, `GET /api/incidents` (filtros), `GET /api/incidents/summary`, `GET /api/incidents/{id}`, `PATCH /api/incidents/{id}/status`.
+- Transiciones: `open→in_progress|discarded`, `in_progress→resolved|discarded`; `resolved`/`discarded` finales.
+- Handlers globales en `main.py` para validación 400 y excepciones no controladas 500.
+
+### Frontend (`uis/backoffice`)
+
+- `/incidents` — listado + filtros + cambio de estado (rollback si falla).
+- `/incidents/new` — formulario + PHI warning + highlight de branch si `origin=branch`.
+- `/incidents/summary` — métricas aisladas (error no rompe el resto).
+- `/incidents/analyze` — UI CSV previa.
+- Cliente: `lib/services/incidentsManagerApi.ts`; tipos en `types/incidentManager.ts`.
+- Nav: Incidents, New incident, Incident summary.
+
+### Docs tocadas
+
+- `bitacora.md` (esta entrada)
+- `memory-bank/progress.md`, `memory-bank/techContext.md`
+- `scripts/README(.es).md`, `docs/README(.es).md` (carpeta `incident-manager/`)
+- `services/README(.es).md`, `services/incidents_analysis/README.md`
+- `packages/README(.es).md`, `packages/shared/README.md`
+- `uis/README(.es).md`, `uis/backoffice/README(.es).md`
+- `data/process/README(.es).md`
+
+### Validacion
+
+- Seed ×2: 94 inserts / 0 en segunda pasada; 6 inválidos reportados.
+- Summary post-seed coincide CONTEXT: status open 28 / resolved 52 / discarded 14; category patient_experience 61 / billing_error 20 / other 13; branches (p. ej. manchester_central 15).
+- Smoke API (Bearer): summary, list, create, transición ilegal 400, transición OK, validación 400, 404.
+- `cd uis/backoffice && npx tsc --noEmit` OK.
+
+### Como probar manualmente
+
+1. `PYTHONPATH=packages/shared uv run python scripts/seed_incidents.py`
+2. `PYTHONPATH=packages/shared uv run uvicorn services.app.main:app --reload`
+3. `cd uis/backoffice && npm run dev` → login → Incidents / New incident / Summary.
+4. Swagger: `http://127.0.0.1:8000/docs`
+
+### Resultado
+
+Gestor centralizado operable: histórico cargado, registro en tiempo real desde el navegador, ciclo de vida, métricas y UX con estados de carga/vacío/error.
+
+## Actualizacion 2026-08-22 (Hito 5 — UI backoffice de inventario)
+
+Completar las cuatro vistas autenticadas de inventario en `uis/backoffice` sobre la API ya entregada. Rama `feature/inventory`. Sin merge.
+
+### Frontend implementado
+
+- `/inventory/products` — listado con `current_stock` e indicadores visuales (crítico < 5, bajo < 15).
+- `/inventory/orders/inbound` — formulario de entrega (ya existía).
+- `/inventory/orders/outbound` — formulario de consumo: stock reactivo, aviso en cliente si la cantidad supera el stock, `HTTP 400` inline en cantidad.
+- `/inventory/orders` — historial de solo lectura (tipo entrada/salida, producto, cantidad, fecha, `user_uuid`).
+- Cliente: `lib/services/inventoryApi.ts` (Bearer; sin `fetch` en componentes).
+- Nav: Suministros, Registrar entrega, Registrar consumo, Historial de órdenes.
+
+### Docs
+
+- `memory-bank/progress.md`, `memory-bank/techContext.md`
+- `uis/backoffice/README.md`, `uis/backoffice/README.es.md`
+- `bitacora.md` (esta entrada)
+
+### Validacion
+
+- Lints limpios en los archivos nuevos.
+- `npx tsc --noEmit` no ejecutado en este entorno (Node/npm no están en PATH; `uis/backoffice/node_modules` ausente).
+- Smoke manual de API no ejecutado en esta sesión.
+
+### Como probar manualmente
+
+1. API HealthCore en `:8000` con Supabase configurado.
+2. `cd uis/backoffice && npm install && npm run dev`
+3. Login → Suministros / Registrar entrega / Registrar consumo / Historial de órdenes.
+4. En consumo: seleccionar producto (stock visible), cantidad mayor al stock (aviso), enviar (400 inline si la API rechaza).
+
+### Resultado
+
+Las cuatro vistas del hito de interfaz de inventario quedan en `feature/inventory`, autenticadas y cableadas a la API. Pendiente merge.

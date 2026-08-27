@@ -46,12 +46,12 @@ function MetricRow({
   percentage?: number;
 }) {
   return (
-    <li className="flex items-center justify-between gap-3 border-b border-slate-100 py-2 text-sm last:border-b-0">
-      <span className="text-slate-700">{label}</span>
-      <span className="font-medium tabular-nums text-slate-900">
+    <li className="flex items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-700 py-2 text-sm last:border-b-0">
+      <span className="text-slate-700 dark:text-slate-200">{label}</span>
+      <span className="font-medium tabular-nums text-slate-900 dark:text-slate-50">
         {count}
         {percentage !== undefined ? (
-          <span className="ml-2 text-slate-500">({percentage}%)</span>
+          <span className="ml-2 text-slate-500 dark:text-slate-400">({percentage}%)</span>
         ) : null}
       </span>
     </li>
@@ -65,38 +65,38 @@ export function IncidentAnalysisSummaryView({
 
   return (
     <div className="space-y-5">
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           General metrics
         </h2>
         <dl className="mt-3 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-lg bg-slate-50 px-3 py-2">
-            <dt className="text-xs text-slate-500">Total records</dt>
-            <dd className="text-2xl font-semibold tabular-nums text-slate-900">
+          <div className="rounded-lg bg-slate-50 dark:bg-slate-800 px-3 py-2">
+            <dt className="text-xs text-slate-500 dark:text-slate-400">Total records</dt>
+            <dd className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-50">
               {summary.total}
             </dd>
           </div>
           <div className="rounded-lg bg-emerald-50 px-3 py-2">
-            <dt className="text-xs text-emerald-700">Valid</dt>
+            <dt className="text-xs text-emerald-700 dark:text-emerald-400">Valid</dt>
             <dd className="text-2xl font-semibold tabular-nums text-emerald-900">
               {summary.valid}
             </dd>
           </div>
           <div
             className={`rounded-lg px-3 py-2 ${
-              hasInvalid ? "bg-amber-50" : "bg-slate-50"
+              hasInvalid ? "bg-amber-50 dark:bg-amber-950/40" : "bg-slate-50 dark:bg-slate-800"
             }`}
           >
             <dt
               className={`text-xs ${
-                hasInvalid ? "text-amber-700" : "text-slate-500"
+                hasInvalid ? "text-amber-700" : "text-slate-500 dark:text-slate-400"
               }`}
             >
               Invalid / incomplete
             </dt>
             <dd
               className={`text-2xl font-semibold tabular-nums ${
-                hasInvalid ? "text-amber-900" : "text-slate-900"
+                hasInvalid ? "text-amber-900" : "text-slate-900 dark:text-slate-50"
               }`}
             >
               {summary.invalid}
@@ -107,17 +107,17 @@ export function IncidentAnalysisSummaryView({
 
       {hasInvalid ? (
         <section
-          className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm sm:p-5"
+          className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-4 shadow-sm sm:p-5"
           aria-live="polite"
         >
           <h2 className="text-sm font-semibold text-amber-900">
             Invalid records breakdown
           </h2>
-          <p className="mt-1 text-sm text-amber-800">
+          <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
             This file contains {summary.invalid} invalid record
             {summary.invalid === 1 ? "" : "s"}. Counts by CONTEXT rule:
           </p>
-          <ul className="mt-3 rounded-lg border border-amber-200 bg-white px-3">
+          <ul className="mt-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-900 px-3">
             {INVALID_RULES.map(({ key, label }) => (
               <MetricRow
                 key={key}
@@ -134,8 +134,8 @@ export function IncidentAnalysisSummaryView({
       )}
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Breakdown by category (valid)
           </h2>
           <ul className="mt-2">
@@ -150,8 +150,8 @@ export function IncidentAnalysisSummaryView({
           </ul>
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Breakdown by status (valid)
           </h2>
           <ul className="mt-2">
@@ -167,11 +167,11 @@ export function IncidentAnalysisSummaryView({
         </section>
       </div>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           Satisfaction index (closed cases)
         </h2>
-        <p className="mt-2 text-sm text-slate-700">
+        <p className="mt-2 text-sm text-slate-700 dark:text-slate-200">
           Scored cases:{" "}
           <span className="font-medium tabular-nums">
             {summary.satisfaction.scored_cases}
@@ -181,7 +181,7 @@ export function IncidentAnalysisSummaryView({
             {summary.by_status.CLOSED?.count ?? 0}
           </span>
         </p>
-        <p className="mt-1 text-sm text-slate-700">
+        <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">
           Average score:{" "}
           <span className="font-medium tabular-nums">
             {summary.satisfaction.average === null

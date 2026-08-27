@@ -1,7 +1,11 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from services.app.routers.incidents import router as incidents_router
 from services.app.routers.suppliers import router as suppliers_router
@@ -28,6 +32,7 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="HealthCore API", lifespan=lifespan)
+app = FastAPI(title="HealthCore API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,6 +46,39 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(
+    _request: Request, exc: RequestValidationError
+):
+    """Return 400 with clear field messages instead of raw 422 traces."""
+    errors: list[dict[str, str]] = []
+    for item in exc.errors():
+        loc = item.get("loc") or ()
+        field = str(loc[-1]) if loc else "body"
+        if field in {"body", "query", "path"} and len(loc) > 1:
+            field = str(loc[-1])
+        msg = str(item.get("msg") or "Invalid value")
+        if msg.startswith("Value error, "):
+            msg = msg[len("Value error, ") :]
+        errors.append({"field": field, "message": msg})
+    return JSONResponse(status_code=400, content={"detail": errors})
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Never expose stack traces to API clients."""
+    if isinstance(exc, (HTTPException, StarletteHTTPException, RequestValidationError)):
+        # Let FastAPI/Starlette dedicated handlers run
+        raise exc
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "An unexpected error occurred. Please try again later.",
+        },
+    )
+
 
 app.include_router(incidents_router)
 app.include_router(suppliers_router)

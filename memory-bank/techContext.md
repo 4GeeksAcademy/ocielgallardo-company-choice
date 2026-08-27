@@ -4,6 +4,7 @@
 - Frontend apps: Next.js + React for public and internal UIs.
 - Domain and utilities: TypeScript (typed models and utility modules).
 - Package tooling: npm scripts via `packages/shared/package.json`.
+- Shared Python package: `packages/shared/healthcore_shared` (CSV validation + incident-manager constants/maps). Import via `PYTHONPATH=packages/shared` or hatch `dev-mode-dirs`.
 
 ## Verified Technical Areas
 - TypeScript domain package in `src/`:
@@ -16,6 +17,17 @@
 - UI applications:
   - `uis/website` (public Next.js website)
   - `uis/backoffice` (internal Next.js workspace)
+- Backoffice auth client (AUTH-02 complete):
+  - Token key `healthcore_access_token` in `localStorage` via `uis/backoffice/lib/services/healthcoreClient.ts`
+  - Pages `/login`, `/register`, `/account/profile`; successful auth redirects to `/`
+  - Bearer on HealthCore API calls; 401 clears session and redirects to `/login`
+  - `AppChrome` guards routes; `BackofficeShell` exposes Profile nav + logout (`clearSessionAndRedirectToLogin`)
+- Password reset / change (AUTH-03 complete on `feature/password-reset`):
+  - Public pages `/forgot-password`, `/reset-password`; authenticated `/account/change-password`
+  - API: `POST /auth/forgot-password`, `/auth/reset-password`, `/auth/change-password`
+  - Reset tokens in TinyDB `password_reset_tokens` (hashed, short TTL, single-use)
+  - Email via Resend (`RESEND_API_KEY`, `EMAIL_FROM=onboarding@resend.dev`, `FRONTEND_BASE_URL`; optional `EMAIL_SSL_VERIFY` for local TLS)
+  - Dependency: `certifi` for HTTPS CA bundle when SSL verify is enabled
 - Internal Hito 2 demo surface:
   - `uis/backoffice/components/dashboard/Hito2Playground.tsx`
 - Inventory backoffice UI (Hito 5, `feature/inventory`, not merged):
@@ -33,6 +45,11 @@
   - Inventory (Hito 5): SQLModel + Supabase PostgreSQL via `SUPABASE_DB_*` (or optional `DATABASE_URL`); TinyDB remains for auth only
   - Entities: `MedicalSupply`, `SupplyDelivery`, `SupplyConsumption` under `/inventory`
   - Run: `uv run python -m uvicorn services.app.main:app --reload`
+  - `services/app/` (`main`, `core`, `models`, `domain`, `routers`)
+  - `services/incidents_analysis/` (CLI/API shared incident CSV pipeline; validator re-exports `healthcore_shared`)
+  - Incident manager: TinyDB `data/process/incidents/incidents.json`; CRUD + `/api/incidents/summary` + status lifecycle; seed via `scripts/seed_incidents.py`
+  - Auth (AUTH-01 complete): JWT via `python-jose`, passwords via `passlib`/`bcrypt`, config from root `.env`
+  - Run: `PYTHONPATH=packages/shared uv run uvicorn services.app.main:app --reload`
 
 ## Validation and Local Checks
 - Type validation command (documented):
