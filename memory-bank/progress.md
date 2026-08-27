@@ -9,9 +9,14 @@
 - Manual browser playground for utility inspection is available.
 - Type-level model validation command is available in `packages/shared`.
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
-- Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
+- Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are complete on branch `feature/inventory` (synced with `main`; `main` not modified from this branch).
 - Backoffice UI cleaned: empty Patients/Appointments/Billing/Claims/Reports placeholders removed; dashboard and nav reflect implemented modules only.
 - Backoffice shell is mobile-first: desktop fixed sidebar with collapsible groups; mobile Dashboard + Office bottom bar; account via avatar menu.
+
+## Recently Completed (feature/inventory — sync with main)
+- Merged `origin/main` into `feature/inventory` to undo the accidental main-revert tip and restore auth, incident manager, and the redesigned shell.
+- Conflict resolution favored `main` for layout/auth/incidents/docs; inventory module retained. Tree matches `main` for delivery of both inventory milestones.
+- `main` left untouched (still at prior tip). No PR to `main` from this sync.
 
 ## Recently Completed (backoffice — mobile-first navigation shell)
 - Shared `navConfig.ts` for work groups and account links.
