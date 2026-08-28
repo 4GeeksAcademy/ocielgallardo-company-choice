@@ -1,3 +1,5 @@
+import logging
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -13,6 +15,9 @@ from services.app.routers.users import router as users_router
 from services.app.routers.auth import router as auth_router
 from services.app.routers.profiles import router as profiles_router
 from services.app.routers.inventory import router as inventory_router
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+timing_logger = logging.getLogger("api.timing")
 
 
 @asynccontextmanager
@@ -45,6 +50,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def timing_middleware(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000
+    timing_logger.info(
+        "%s %s → %s | %.1fms",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+    )
+    return response
 
 
 @app.exception_handler(RequestValidationError)

@@ -14,7 +14,14 @@
 - Backoffice shell is mobile-first: desktop fixed sidebar with collapsible groups; mobile Dashboard + Office bottom bar; account via avatar menu.
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `audit/REPORT.md` §4.2–§4.3.
 - Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
-- Caching optimisation milestone (Phase 1): branch `feature/caching-optimisation`; `CACHING_REPORT.md` with criteria and endpoint inventory; Phase 2 (measurement) pending.
+- Caching optimisation milestone: **Phase 2 complete** — timing middleware, volume seed, measured latencies; Phase 3 (lazy loading) pending.
+
+
+## Recently Completed (Caching milestone — Phase 2)
+- Middleware: `api.timing` HTTP logger in `services/app/main.py`.
+- Scripts: `scripts/seed_inventory_volume.py`, `scripts/measure_cache_candidates.py`.
+- Measured (2026-08-28): `/inventory/orders` p50 198→364 ms; `/inventory/products` p50 ~152 ms; `/suppliers` p50 1.31 ms (excluded).
+- Phase 5 cache targets: `GET /inventory/orders`, `GET /inventory/products`.
 
 ## Recently Completed (Caching milestone — Phase 1)
 - Branch: `feature/caching-optimisation` (from `feature/performance-audit`).
