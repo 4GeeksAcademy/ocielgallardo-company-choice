@@ -1,0 +1,59 @@
+# Production image for website (:3000) + backoffice (:3001).
+# Build context: monorepo root (.) — includes uis/* and src/ for Hito2Playground.
+
+FROM node:20-alpine AS deps-website
+WORKDIR /app/uis/website
+COPY uis/website/package.json uis/website/package-lock.json ./
+RUN npm ci
+
+FROM node:20-alpine AS deps-backoffice
+WORKDIR /app/uis/backoffice
+COPY uis/backoffice/package.json uis/backoffice/package-lock.json ./
+RUN npm ci
+
+FROM node:20-alpine AS builder-website
+WORKDIR /app
+COPY uis/website ./uis/website
+COPY --from=deps-website /app/uis/website/node_modules ./uis/website/node_modules
+ARG NEXT_PUBLIC_HEALTHCORE_API_URL
+ARG NEXT_PUBLIC_TRACKER_API_URL
+ENV NEXT_PUBLIC_HEALTHCORE_API_URL=$NEXT_PUBLIC_HEALTHCORE_API_URL
+ENV NEXT_PUBLIC_TRACKER_API_URL=$NEXT_PUBLIC_TRACKER_API_URL
+ENV NODE_ENV=production
+WORKDIR /app/uis/website
+RUN npm run build
+
+FROM node:20-alpine AS builder-backoffice
+WORKDIR /app
+COPY uis/backoffice ./uis/backoffice
+COPY src ./src
+COPY --from=deps-backoffice /app/uis/backoffice/node_modules ./uis/backoffice/node_modules
+ARG NEXT_PUBLIC_HEALTHCORE_API_URL
+ARG NEXT_PUBLIC_TRACKER_API_URL
+ENV NEXT_PUBLIC_HEALTHCORE_API_URL=$NEXT_PUBLIC_HEALTHCORE_API_URL
+ENV NEXT_PUBLIC_TRACKER_API_URL=$NEXT_PUBLIC_TRACKER_API_URL
+ENV NODE_ENV=production
+WORKDIR /app/uis/backoffice
+RUN npm run build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=builder-website /app/uis/website/.next ./uis/website/.next
+COPY uis/website/public ./uis/website/public
+COPY uis/website/package.json uis/website/package-lock.json uis/website/next.config.ts ./uis/website/
+COPY --from=deps-website /app/uis/website/node_modules ./uis/website/node_modules
+
+COPY --from=builder-backoffice /app/uis/backoffice/.next ./uis/backoffice/.next
+COPY uis/backoffice/public ./uis/backoffice/public
+COPY uis/backoffice/package.json uis/backoffice/package-lock.json uis/backoffice/next.config.ts ./uis/backoffice/
+COPY --from=deps-backoffice /app/uis/backoffice/node_modules ./uis/backoffice/node_modules
+
+COPY uis/start-prod.sh ./start-prod.sh
+RUN sed -i 's/\r$//' ./start-prod.sh && chmod +x ./start-prod.sh
+
+EXPOSE 3000
+EXPOSE 3001
+
+CMD ["sh", "./start-prod.sh"]

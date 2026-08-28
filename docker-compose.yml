@@ -1,0 +1,54 @@
+# Production stack (default). Hot-reload dev overlay: docker-compose.dev.yml
+services:
+  uis:
+    build:
+      context: .
+      dockerfile: uis/Dockerfile.prod
+      args:
+        NEXT_PUBLIC_HEALTHCORE_API_URL: ${NEXT_PUBLIC_HEALTHCORE_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_TRACKER_API_URL: ${NEXT_PUBLIC_TRACKER_API_URL:-https://playground.4geeks.com/tracker/api/v1}
+    container_name: healthcore-uis
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    depends_on:
+      - backend
+    networks:
+      - healthcore_net
+
+  backend:
+    build:
+      context: .
+      dockerfile: services/Dockerfile.prod
+    container_name: healthcore-backend
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app/packages/shared
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3001}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      SECRET_KEY: ${SECRET_KEY}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      DATABASE_URL: ${DATABASE_URL:-}
+      SUPABASE_DB_HOST: ${SUPABASE_DB_HOST:-}
+      SUPABASE_DB_PORT: ${SUPABASE_DB_PORT:-}
+      SUPABASE_DB_NAME: ${SUPABASE_DB_NAME:-}
+      SUPABASE_DB_USER: ${SUPABASE_DB_USER:-}
+      SUPABASE_DB_PASSWORD: ${SUPABASE_DB_PASSWORD:-}
+      SUPABASE_DB_SSLMODE: ${SUPABASE_DB_SSLMODE:-}
+      EMAIL_SSL_VERIFY: ${EMAIL_SSL_VERIFY:-true}
+      PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: ${PASSWORD_RESET_TOKEN_EXPIRE_MINUTES:-30}
+    ports:
+      - "8000:8000"
+    networks:
+      - healthcore_net
+
+networks:
+  healthcore_net:
+    name: healthcore_dev_network
