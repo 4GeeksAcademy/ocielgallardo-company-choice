@@ -64,7 +64,7 @@ node scripts/extract-lighthouse-kpis.mjs audit/after/*.html --markdown
 node scripts/extract-lighthouse-kpis.mjs audit/final/*.html --markdown
 ```
 
-Use after each audit pass to fill [`AUDIT.md`](../AUDIT.md) and [`REPORT.md`](../REPORT.md) tables.
+Use after each audit pass to fill [`AUDIT.md`](../audit/AUDIT.md) and [`REPORT.md`](../audit/REPORT.md) tables.
 
 ## 💡 Tips
 

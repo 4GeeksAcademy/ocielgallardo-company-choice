@@ -12,7 +12,7 @@
 - Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
 - Backoffice UI cleaned: empty Patients/Appointments/Billing/Claims/Reports placeholders removed; dashboard and nav reflect implemented modules only.
 - Backoffice shell is mobile-first: desktop fixed sidebar with collapsible groups; mobile Dashboard + Office bottom bar; account via avatar menu.
-- Frontend performance audit milestone: **after complete** — 6/6 Lighthouse HTML in `audit/after/` (Docker prod, Incógnito); deltas positivos en Performance (see `REPORT.md` §4.2).
+- Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `audit/REPORT.md` §4.2–§4.3.
 - Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
 
 ## Recently Completed (Performance audit — Phase 2 fixes)
@@ -20,13 +20,13 @@
 - Re-baselined from Lighthouse HTML (website `/`, backoffice `/login` + authenticated `/`).
 - Website: `next/image` on hero (priority first slide) + logo; mobile menu `tabIndex={-1}` when closed (`aria-hidden-focus`).
 - Backoffice: `AuthPageShell` (`<main>`) on login/register/forgot/reset; `Hito2Playground` via `next/dynamic` on dashboard.
-- Docs: `AUDIT.md` + Spanish `REPORT.md` checkpoint; `audit/before/` HTML+PNG; `audit/after/` first HTML pass (not yet official).
+- Docs: `audit/AUDIT.md` + Spanish `audit/REPORT.md` checkpoint; `audit/before/` HTML+PNG; `audit/after/` first HTML pass (not yet official).
 - After (2026-08-28): 6 HTML in `audit/after/` — Docker prod + Incógnito; e.g. website mobile Perf 95 (Δ+42), dashboard mobile 95 (Δ+49). Unstable runs in `next dev` discarded.
 - Docker prod: `docker-compose.yml` (default), `uis/Dockerfile.prod`, `services/Dockerfile.prod`.
 - Commit `17b0d6e`: website form success + redirect; backoffice `FormMessage`/`useFormSubmit`, `useAsyncQuery`/`AsyncRequestPanel`; lazy viewport both UIs.
-- Docs sync: `AUDIT.md` P6/P7 + `REPORT.md` F5–F7 (post-`17b0d6e`).
-- KPI closure docs: `scripts/extract-lighthouse-kpis.mjs` + `scripts/README.md`; `audit/final/README.md` (protocol post-P7); `AUDIT.md` §3 INP/KPI tables + §3.1 interpretation; `REPORT.md` §1.1 refactors, §4.3 dual-delta placeholders, §8 PR notes.
-- Final Lighthouse (2026-08-28): 6/6 HTML in `audit/final/`; `AUDIT.md` §3.0.2 + `REPORT.md` §4.3 filled (dual delta vs before/after).
+- Docs sync: `audit/AUDIT.md` P6/P7 + `audit/REPORT.md` F5–F7 (post-`17b0d6e`).
+- KPI closure docs: `scripts/extract-lighthouse-kpis.mjs` + `scripts/README.md`; `audit/final/README.md` (protocol post-P7); `audit/AUDIT.md` §3 INP/KPI tables + §3.1 interpretation; `audit/REPORT.md` §1.1 refactors, §4.3 dual-delta placeholders, §8 PR notes.
+- Final Lighthouse (2026-08-28): 6/6 HTML in `audit/final/`; `audit/AUDIT.md` §3.0.2 + `audit/REPORT.md` §4.3 filled (dual delta vs before/after).
 - TODO: optional PNG in `audit/after/`/`audit/final/`; PR to `main`.
 
 ## Recently Completed (backoffice — mobile-first navigation shell)

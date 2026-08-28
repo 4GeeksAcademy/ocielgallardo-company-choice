@@ -25,4 +25,4 @@ Baseline: `audit/before/` medido en `next dev`. After: Docker prod local.
 
 **Nota metodológica:** comparar before (`next dev`) con after (Docker `next start`) mezcla **fix de código** y **cambio de entorno**. Los deltas son válidos como evidencia del hito, pero el salto grande en backoffice dashboard refleja sobre todo dejar de medir en dev.
 
-Tabla resumen y checklist: `REPORT.md` §4.2.
+Tabla resumen y checklist: [`REPORT.md`](../REPORT.md) §4.2.
