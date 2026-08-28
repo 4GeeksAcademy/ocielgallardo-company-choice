@@ -26,7 +26,8 @@
 - Commit `17b0d6e`: website form success + redirect; backoffice `FormMessage`/`useFormSubmit`, `useAsyncQuery`/`AsyncRequestPanel`; lazy viewport both UIs.
 - Docs sync: `AUDIT.md` P6/P7 + `REPORT.md` F5–F7 (post-`17b0d6e`).
 - KPI closure docs: `scripts/extract-lighthouse-kpis.mjs` + `scripts/README.md`; `audit/final/README.md` (protocol post-P7); `AUDIT.md` §3 INP/KPI tables + §3.1 interpretation; `REPORT.md` §1.1 refactors, §4.3 dual-delta placeholders, §8 PR notes.
-- TODO: user Lighthouse pass → 6 HTML in `audit/final/` → fill `REPORT.md` §4.3; optional PNG in `audit/after/`; PR to `main`.
+- Final Lighthouse (2026-08-28): 6/6 HTML in `audit/final/`; `AUDIT.md` §3.0.2 + `REPORT.md` §4.3 filled (dual delta vs before/after).
+- TODO: optional PNG in `audit/after/`/`audit/final/`; PR to `main`; commit lazy-panel Docker build fix.
 
 ## Recently Completed (backoffice — mobile-first navigation shell)
 - Shared `navConfig.ts` for work groups and account links.

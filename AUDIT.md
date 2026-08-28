@@ -7,7 +7,7 @@
 
 > Phase 1 = measure & root-cause. Phase 2 code fixes are applied.  
 > **After (2026-08-28):** 6/6 valid Lighthouse HTML in `audit/after/` (Docker prod, Incógnito) — **pre-P7 lazy** (before commit `17b0d6e`). Deltas in `REPORT.md` §4.2.  
-> **Final (post-P7):** pending — save 6 HTML in `audit/final/` per `audit/final/README.md`; fill `REPORT.md` §4.3.  
+> **Final (post-P7):** 6/6 HTML in `audit/final/` (Docker prod, Incógnito, 2026-08-28) — deltas in `REPORT.md` §4.3.  
 > **Phase 3 (2026-08-28):** UX form success, backoffice extractions, lazy viewport — see P6/P7 below (commit `17b0d6e`).
 
 ---
@@ -82,13 +82,18 @@ Extracted with `node scripts/extract-lighthouse-kpis.mjs … --markdown`.
 | Backoffice `/` | Mobile | 95 | 0.8 s | 2.9 s | 110 ms | 60 ms | 0 | ~0 ms |
 | Backoffice `/` | Desktop | 100 | 0.2 s | 0.7 s | 20 ms | 0 ms | 0 | ~0 ms |
 
-### 3.0.2 Final post-P7 (`audit/final/` — TODO)
+### 3.0.2 Final post-P7 (`audit/final/` — Docker prod, 2026-08-28)
 
 | Surface | Mode | Perf | FCP | LCP | INP* | TBT | CLS | TTFB |
 |---------|------|-----:|-----|-----|------|-----|----:|------|
-| *(6 surfaces)* | — | TODO | TODO | TODO | TODO | TODO | TODO | TODO |
+| Website `/` | Mobile | 95 | 0.8 s | 3.0 s | 90 ms | 20 ms | 0.016 | ~0 ms |
+| Website `/` | Desktop | 100 | 0.2 s | 0.6 s | 20 ms | 0 ms | 0.014 | ~0 ms |
+| Backoffice `/login` | Mobile | 99 | 0.8 s | 2.1 s | 170 ms | 40 ms | 0 | ~10 ms |
+| Backoffice `/login` | Desktop | 100 | 0.2 s | 0.5 s | 20 ms | 0 ms | 0 | ~20 ms |
+| Backoffice `/` | Mobile | 94 | 0.8 s | 3.0 s | 90 ms | 40 ms | 0 | ~0 ms |
+| Backoffice `/` | Desktop | 100 | 0.2 s | 0.7 s | 20 ms | 0 ms | 0 | ~0 ms |
 
-Run protocol in `audit/final/README.md`, then `node scripts/extract-lighthouse-kpis.mjs audit/final/*.html --markdown` and update `REPORT.md` §4.3.
+**vs after (pre-P7):** KPIs essentially flat; website desktop Perf +10 and LCP −0.1 s; dashboard mobile Perf −1 and LCP +0.1 s (lab noise). Small CLS on website (hero/layout shift — still well below 0.1).
 
 ### 3.1 KPI interpretation order
 
@@ -191,4 +196,4 @@ When reading Lighthouse (lab) or field data, prioritize in this order:
 | Re-measure → `audit/after/` + score delta in `REPORT.md` | Done — `audit/after/README.md` (2026-08-28) |
 | UX + lazy viewport (P6, P7) + backoffice extractions | Done — commit `17b0d6e` |
 | KPI extraction script + `audit/final/` protocol | Done — `scripts/extract-lighthouse-kpis.mjs`, `audit/final/README.md` |
-| Final Lighthouse pass post-P7 (`audit/final/` → `REPORT.md` §4.3) | **Pending user** — see `audit/final/README.md` |
+| Final Lighthouse pass post-P7 (`audit/final/` → `REPORT.md` §4.3) | Done — 2026-08-28 |

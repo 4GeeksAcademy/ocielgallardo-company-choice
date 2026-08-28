@@ -1,16 +1,5 @@
 import Link from "next/link";
-import { createLazyViewportPanel } from "@/components/ui/createLazyViewportPanel";
-
-const OutboundOrderForm = createLazyViewportPanel(
-  () =>
-    import("@/components/inventory/OutboundOrderForm").then((mod) => ({
-      default: mod.OutboundOrderForm,
-    })),
-  {
-    minHeight: 360,
-    label: "Cargando formulario de consumo…",
-  },
-);
+import { OutboundOrderFormPanel } from "@/components/lazy/lazyViewportPanels";
 
 export default function OutboundOrderPage() {
   return (
@@ -36,7 +25,7 @@ export default function OutboundOrderPage() {
       </header>
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
-        <OutboundOrderForm />
+        <OutboundOrderFormPanel />
       </div>
     </div>
   );

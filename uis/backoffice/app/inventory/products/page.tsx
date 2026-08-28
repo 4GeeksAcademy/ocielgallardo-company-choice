@@ -1,16 +1,5 @@
-import { createLazyViewportPanel } from "@/components/ui/createLazyViewportPanel";
-
-const MedicalSuppliesList = createLazyViewportPanel(
-  () =>
-    import("@/components/inventory/MedicalSuppliesList").then((mod) => ({
-      default: mod.MedicalSuppliesList,
-    })),
-  {
-    minHeight: "50vh",
-    label: "Cargando suministros médicos…",
-  },
-);
+import { MedicalSuppliesListPanel } from "@/components/lazy/lazyViewportPanels";
 
 export default function InventoryProductsPage() {
-  return <MedicalSuppliesList />;
+  return <MedicalSuppliesListPanel />;
 }

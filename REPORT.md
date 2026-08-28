@@ -15,7 +15,7 @@
 | Correcciones de código | Hecho — commits en esta rama |
 | Componente reutilizable | Hecho — ver §1.1 |
 | Remeición after | Hecho — `audit/after/` (6 HTML, Docker prod) |
-| Cierre con deltas medibles | Parcial — §4.2 (before→after pre-P7); §4.3 pendiente post-P7 |
+| Cierre con deltas medibles | Hecho — §4.2 (before→after pre-P7) + §4.3 (final post-P7) |
 
 ### 1.1 Componentes y hooks reutilizables (hito)
 
@@ -129,37 +129,46 @@ Archivos en `audit/after/` de esa noche **no son evidencia oficial**: timeouts e
 
 Corridas con perfil normal (aviso **IndexedDB**) o `PROTOCOL_TIMEOUT` deben descartarse; Incógnito + Docker prod reducen ese ruido.
 
-### 4.3 Final post-P7 (`audit/final/`) — pendiente
+### 4.3 Final post-P7 (`audit/final/`) — 2026-08-28
 
-**Estado:** carpeta y protocolo listos (`audit/final/README.md`); HTML aún no subidos.  
-**Cuándo medir:** tras `docker compose up --build` con rama actual (incluye P7 lazy, commit `17b0d6e`+).
+**Protocolo:** Chrome Incógnito, `docker compose up --build` (rama con P7 lazy + fix lazy panels). Evidencia: `audit/final/*.html`.
 
-#### Tabla KPI (rellenar tras pasada)
+#### Tabla KPI
 
 | Superficie | Modo | Perf | LCP | INP* | CLS | TTFB | TBT | Archivo |
 |------------|------|-----:|-----|------|----:|------|-----|---------|
-| Website `/` | Mobile | TODO | TODO | TODO | TODO | TODO | TODO | `website-mobil-test.html` |
-| Website `/` | Desktop | TODO | TODO | TODO | TODO | TODO | TODO | `website-desktop-test.html` |
-| Backoffice `/login` | Mobile | TODO | TODO | TODO | TODO | TODO | TODO | `backoffice-mobil-login-test.html` |
-| Backoffice `/login` | Desktop | TODO | TODO | TODO | TODO | TODO | TODO | `backoffice-desktop-login-test.html` |
-| Backoffice `/` | Mobile | TODO | TODO | TODO | TODO | TODO | TODO | `backoffice-mobil-test.html` |
-| Backoffice `/` | Desktop | TODO | TODO | TODO | TODO | TODO | TODO | `backoffice-desktop-test.html` |
+| Website `/` | Mobile | **95** | 3.0 s | 90 ms | 0.016 | ~0 ms | 20 ms | `website-mobil-test.html` |
+| Website `/` | Desktop | **100** | 0.6 s | 20 ms | 0.014 | ~0 ms | 0 ms | `website-desktop-test.html` |
+| Backoffice `/login` | Mobile | **99** | 2.1 s | 170 ms | 0 | ~10 ms | 40 ms | `backoffice-mobil-login-test.html` |
+| Backoffice `/login` | Desktop | **100** | 0.5 s | 20 ms | 0 | ~20 ms | 0 ms | `backoffice-desktop-login-test.html` |
+| Backoffice `/` | Mobile | **94** | 3.0 s | 90 ms | 0 | ~0 ms | 40 ms | `backoffice-mobil-test.html` |
+| Backoffice `/` | Desktop | **100** | 0.7 s | 20 ms | 0 | ~0 ms | 0 ms | `backoffice-desktop-test.html` |
 
-Extraer filas: `node scripts/extract-lighthouse-kpis.mjs audit/final/*.html --markdown`
-
-\* INP: audit `interaction-to-next-paint` o maxPotentialFID (proxy lab).
+\* INP: maxPotentialFID (lab proxy) — `interaction-to-next-paint` no presente en export LH 13.4.
 
 #### Δ vs baseline (`audit/before/`) — mejora total del hito
 
 | Superficie | Modo | Δ Perf | Δ LCP | Δ INP* | Δ TBT | Notas |
 |------------|------|--------|-------|--------|-------|-------|
-| *(6 filas)* | — | TODO | TODO | TODO | TODO | Comparar final vs §3.0 `AUDIT.md` |
+| Website `/` | Mobile | **+42** | **−3.5 s** | **−2,190 ms** | **−1,110 ms** | F1 hero + prod stack |
+| Website `/` | Desktop | **+12** | −0.6 s | −550 ms | −260 ms | |
+| Backoffice `/login` | Mobile | **+31** | −0.5 s | **−2,260 ms** | **−2,350 ms** | |
+| Backoffice `/login` | Desktop | **+22** | −0.1 s | −560 ms | −530 ms | |
+| Backoffice `/` | Mobile | **+48** | **−16.1 s** | **−2,290 ms** | **−2,290 ms** | F4 dynamic + prod |
+| Backoffice `/` | Desktop | **+42** | −2.8 s | −580 ms | −550 ms | |
 
 #### Δ vs after 2026-08-28 (`audit/after/`, pre-P7) — impacto F5–F7
 
 | Superficie | Modo | Δ Perf | Δ LCP | Δ INP* | Δ TBT | Notas |
 |------------|------|--------|-------|--------|-------|-------|
-| *(6 filas)* | — | TODO | TODO | TODO | TODO | Aísla P6 UX + P7 lazy vs pasada pre-lazy |
+| Website `/` | Mobile | 0 | 0 | 0 | 0 | Sin cambio medible |
+| Website `/` | Desktop | **+10** | −0.1 s | 0 | 0 | Mejora leve LCP/Perf |
+| Backoffice `/login` | Mobile | 0 | 0 | +80 ms | 0 | INP lab ruido |
+| Backoffice `/login` | Desktop | 0 | 0 | 0 | 0 | |
+| Backoffice `/` | Mobile | −1 | +0.1 s | −20 ms | −20 ms | Variación lab marginal |
+| Backoffice `/` | Desktop | 0 | 0 | 0 | 0 | |
+
+**Interpretación:** la mejora principal del hito ya estaba capturada en §4.2 (F1–F4 + Docker prod). La pasada final post-P7 confirma KPIs estables; P7 lazy no mueve el aguja de forma significativa en lab (esperado: beneficio en JS inicial, no siempre visible en LCP de rutas ya optimizadas). Website desktop sube a Perf 100; CLS website ~0.014–0.016 (vigilar hero, aún &lt; 0.1).
 
 ---
 
@@ -170,17 +179,16 @@ Extraer filas: `node scripts/extract-lighthouse-kpis.mjs audit/final/*.html --ma
 | 1 | Hero `next/image` + priority | Ataca LCP / bytes del website |
 | 2 | `next/dynamic` del playground | Reduce JS crítico del dashboard |
 | 3 | `AuthPageShell` + `tabIndex` menú | A11y + mantenibilidad |
-| 4 | Lazy viewport (F6) | Diferir chunks below-the-fold; menor TBT/JS en carga inicial (sin delta Lighthouse post-P7 aún) |
+| 4 | Lazy viewport (F6) | KPIs lab estables post-P7; beneficio principal ya en §4.2 (ver §4.3 dual delta) |
 | 5 | Form success `/application` (F5) | UX / feedback profesor; impacto perf marginal |
 
 ---
 
 ## 6. Checklist restante
 
-1. **Usuario:** 6 HTML en `audit/final/` + rellenar §4.3 (dual delta vs before y vs after).
-2. Opcional: capturas PNG en `audit/after/` para el entregable visual.
-3. Abrir PR de `feature/performance-audit` → `main` cuando lo pidas.
-4. Re-medir en Incógnito si alguna corrida futura falla o parece inconsistente.
+1. Opcional: capturas PNG en `audit/after/` o `audit/final/` para el entregable visual.
+2. Abrir PR de `feature/performance-audit` → `main` cuando lo pidas.
+3. Re-medir en Incógnito si alguna corrida futura falla o parece inconsistente.
 
 Dev con hot reload: `npm run docker:dev`. Medición Lighthouse: `npm run docker:up` (prod default).
 
@@ -188,7 +196,7 @@ Dev con hot reload: `npm run docker:dev`. Medición Lighthouse: `npm run docker:
 
 ## 8. Notas para PR
 
-Los fixes del hito se agruparon en commits por fase (baseline + correcciones core, stack Docker prod, UX/lazy + extracciones backoffice, documentación), no en el formato “un fix = un commit + Lighthouse cada vez”. La evidencia Lighthouse sigue el protocolo batch: baseline en `next dev` (`audit/before/`), remeición válida en Docker prod (`audit/after/`, 2026-08-28, **antes** de P7 lazy), y pasada **final** post-P7 pendiente en `audit/final/`.
+Los fixes del hito se agruparon en commits por fase (baseline + correcciones core, stack Docker prod, UX/lazy + extracciones backoffice, documentación), no en el formato “un fix = un commit + Lighthouse cada vez”. La evidencia Lighthouse sigue el protocolo batch: baseline en `next dev` (`audit/before/`), remeición en Docker prod pre-P7 (`audit/after/`, 2026-08-28), y pasada **final** post-P7 en `audit/final/` (2026-08-28).
 
 En el análisis se priorizan **KPIs de rendimiento** (TTFB → LCP → CLS → INP → TBT → Performance score) sobre categorías secundarias de Lighthouse (A11y/BP/SEO), que ya partían de puntuaciones altas. P1/P4/P5/P7 son KPI; P2/P3 son secundarias Lighthouse; P6 es UX fuera del alcance perf KPI.
 
@@ -206,3 +214,4 @@ Script de extracción: `scripts/extract-lighthouse-kpis.mjs`. Tablas maestras: `
 - `17b0d6e` — form success website, extracciones backoffice, lazy viewport  
 - `24a6e0b` — docs P6/P7 + a11y lazy placeholders
 - `bf04703` — docs KPI/INP, `audit/final/`, script extracción Lighthouse
+- *(pendiente)* — evidencia `audit/final/` + §4.3; fix lazy panels Docker build

@@ -1,16 +1,5 @@
-import { createLazyViewportPanel } from "@/components/ui/createLazyViewportPanel";
-
-const SuppliersWorkspace = createLazyViewportPanel(
-  () =>
-    import("@/components/SuppliersWorkspace").then((mod) => ({
-      default: mod.SuppliersWorkspace,
-    })),
-  {
-    minHeight: "60vh",
-    label: "Cargando directorio de proveedores…",
-  },
-);
+import { SuppliersWorkspacePanel } from "@/components/lazy/lazyViewportPanels";
 
 export default function SuppliersPage() {
-  return <SuppliersWorkspace />;
+  return <SuppliersWorkspacePanel />;
 }
