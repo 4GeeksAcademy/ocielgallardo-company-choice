@@ -23,7 +23,9 @@
 - Docs: `AUDIT.md` + Spanish `REPORT.md` checkpoint; `audit/before/` HTML+PNG; `audit/after/` first HTML pass (not yet official).
 - After (2026-08-28): 6 HTML in `audit/after/` — Docker prod + Incógnito; e.g. website mobile Perf 95 (Δ+42), dashboard mobile 95 (Δ+49). Unstable runs in `next dev` discarded.
 - Docker prod: `docker-compose.yml` (default), `uis/Dockerfile.prod`, `services/Dockerfile.prod`.
-- TODO: optional PNG in `audit/after/`, PR to `main`.
+- Commit `17b0d6e`: website form success + redirect; backoffice `FormMessage`/`useFormSubmit`, `useAsyncQuery`/`AsyncRequestPanel`; lazy viewport both UIs.
+- Docs sync: `AUDIT.md` P6/P7 + `REPORT.md` F5–F7 (post-`17b0d6e`).
+- TODO: optional PNG in `audit/after/`, re-measure post-lazy (P7), PR to `main`.
 
 ## Recently Completed (backoffice — mobile-first navigation shell)
 - Shared `navConfig.ts` for work groups and account links.

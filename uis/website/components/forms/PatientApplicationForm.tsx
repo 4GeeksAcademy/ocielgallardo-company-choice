@@ -104,7 +104,13 @@ export function PatientApplicationForm() {
 
   if (isSuccess) {
     return (
-      <div ref={successRef} tabIndex={-1} className="outline-none">
+      <div
+        ref={successRef}
+        tabIndex={-1}
+        role="region"
+        aria-label="Application submitted"
+        className="outline-none"
+      >
         <FormStatusMessage variant="success" className="p-6">
           <p className="text-lg font-semibold">Application submitted successfully.</p>
           <p className="mt-2 text-sm">

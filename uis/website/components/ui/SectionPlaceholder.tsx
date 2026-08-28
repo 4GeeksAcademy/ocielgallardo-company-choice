@@ -9,11 +9,10 @@ export function SectionPlaceholder({
 }: SectionPlaceholderProps) {
   return (
     <div
-      aria-hidden="true"
-      className="animate-pulse rounded-2xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800/60"
+      className="animate-pulse rounded-2xl border border-slate-200 bg-slate-100 p-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400"
       style={{ minHeight }}
     >
-      <span className="sr-only">{label}</span>
+      {label}
     </div>
   );
 }

@@ -45,6 +45,24 @@
 - **Cambio:** `Hito2Playground` con `next/dynamic`
 - **Motivo:** Dashboard autenticado con LCP/TBT muy altos en baseline móvil
 
+### F5 — Formulario website: éxito + redirect (P6)
+
+- **Archivos:** `PatientApplicationForm.tsx`, `FormStatusMessage.tsx`, `app/application/page.tsx`
+- **Cambio:** Banner de éxito visible, focus/scroll, redirección a `/` tras 2 s; banner de error en validación
+- **Motivo:** Feedback del profesor en `/application`; UX de intake clara
+
+### F6 — Lazy viewport + code splitting (P7)
+
+- **Archivos:** `LazyWhenVisible.tsx`, `createLazyViewportPanel.tsx`, `createLazyViewportSection.tsx`; páginas home/workspaces/incidents/inventory
+- **Cambio:** `IntersectionObserver` + `next/dynamic` para secciones below-the-fold y paneles pesados
+- **Motivo:** Reducir JS y render inicial; cargar contenido al acercarse al viewport
+
+### F7 — Extracciones backoffice (refactors)
+
+- **Archivos:** `FormMessage.tsx`, `useFormSubmit.ts`, `useAsyncQuery.ts`, `AsyncRequestPanel.tsx`; forms auth + paneles async
+- **Cambio:** Mensajes de formulario y estados loading/error unificados
+- **Motivo:** Mantenibilidad; cierra candidatos de refactor del hito (§5 `AUDIT.md`)
+
 ---
 
 ## 3. Puntuaciones baseline (before) — válidas
@@ -108,14 +126,17 @@ Corridas con perfil normal (aviso **IndexedDB**) o `PROTOCOL_TIMEOUT` deben desc
 | 1 | Hero `next/image` + priority | Ataca LCP / bytes del website |
 | 2 | `next/dynamic` del playground | Reduce JS crítico del dashboard |
 | 3 | `AuthPageShell` + `tabIndex` menú | A11y + mantenibilidad |
+| 4 | Lazy viewport (F6) | Diferir chunks below-the-fold; menor TBT/JS en carga inicial (sin delta Lighthouse post-P7 aún) |
+| 5 | Form success `/application` (F5) | UX / feedback profesor; impacto perf marginal |
 
 ---
 
 ## 6. Checklist restante
 
 1. Opcional: capturas PNG en `audit/after/` para el entregable visual.
-2. Abrir PR de `feature/performance-audit` → `main` cuando lo pidas.
-3. Re-medir en Incógnito si alguna corrida futura falla o parece inconsistente.
+2. Opcional: re-medición Lighthouse post-lazy (F6) para delta P7.
+3. Abrir PR de `feature/performance-audit` → `main` cuando lo pidas.
+4. Re-medir en Incógnito si alguna corrida futura falla o parece inconsistente.
 
 Dev con hot reload: `npm run docker:dev`. Medición Lighthouse: `npm run docker:up` (prod default).
 
@@ -125,4 +146,8 @@ Dev con hot reload: `npm run docker:dev`. Medición Lighthouse: `npm run docker:
 
 - `fa199de` — baseline + fixes de frontend  
 - `e33172b` — capturas PNG before + regla `.cursor/rules/read-agents.mdc`  
-- (este commit) — HTML after + documentación del checkpoint
+- `af71d60` — merge main (depuración / dark mode)  
+- `e974475` — Docker prod stack por defecto  
+- `0affcaf` — HTML after + deltas Lighthouse en `REPORT.md`  
+- `17b0d6e` — form success website, extracciones backoffice, lazy viewport  
+- `6b9e78a` — docs P6/P7 + a11y lazy placeholders

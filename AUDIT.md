@@ -6,7 +6,8 @@
 **Evidence:** `audit/before/*.html`
 
 > Phase 1 = measure & root-cause. Phase 2 code fixes are applied.  
-> **Checkpoint 2026-08-25 night:** first `audit/after/` HTML saved, but mobile runs hit `PROTOCOL_TIMEOUT` — official after deltas deferred (see `REPORT.md` §4). Resume clean re-measure tomorrow.
+> **After (2026-08-28):** 6/6 valid Lighthouse HTML in `audit/after/` (Docker prod, Incógnito). Deltas in `REPORT.md` §4.2.  
+> **Phase 3 (2026-08-28):** UX form success, backoffice extractions, lazy viewport — see P6/P7 below (commit `17b0d6e`).
 
 ---
 
@@ -104,7 +105,7 @@ CLS and TTFB are healthy. LCP + TBT drive the Performance scores.
 | **Where** | `/` loads `Hito2Playground` (client + domain utils) on critical path |
 | **Evidence** | Dashboard mobile LCP **19.1 s**, TBT **2.3 s**; unused JS includes layout/login chunks in dev |
 | **Root cause** | Eager client playground + `next dev` main-thread cost |
-| **Fix applied** | `next/dynamic` for `Hito2Playground` |
+| **Fix applied** | `next/dynamic` for `Hito2Playground`; extended in P7 with viewport lazy wrapper |
 
 ### P5 — Render-blocking CSS / large payloads (both apps)
 
@@ -114,6 +115,24 @@ CLS and TTFB are healthy. LCP + TBT drive the Performance scores.
 | **Root cause** | App Router CSS + assets; amplified in dev |
 | **Status** | Partially helped by image optimization; full gain needs production build |
 
+### P6 — Website `/application`: success feedback + redirect
+
+| | |
+|--|--|
+| **Where** | `PatientApplicationForm.tsx`, `FormStatusMessage.tsx` |
+| **Evidence** | Professor feedback: success state easy to miss; no redirect to home |
+| **Root cause** | Inline `text-xs` status only; form reset on success obscured feedback |
+| **Fix applied** | Full-screen success banner (`role="status"`), focus + scroll, redirect to `/` after 2 s; validation error banner on failed submit |
+
+### P7 — Lazy viewport + code splitting (both UIs)
+
+| | |
+|--|--|
+| **Where** | `LazyWhenVisible.tsx`, `createLazyViewportPanel` / `createLazyViewportSection`; website home sections + footer; backoffice dashboard playground, workspaces, incident/inventory panels |
+| **Evidence** | Below-fold sections and heavy client panels loaded eagerly on initial paint |
+| **Root cause** | No intersection-based deferral; workspace chunks in main route bundle |
+| **Fix applied** | `IntersectionObserver` (`rootMargin: 200px`) + `next/dynamic` for below-fold / heavy panels; hero and page headers remain eager |
+
 ---
 
 ## 5. Refactor candidates (milestone)
@@ -121,8 +140,8 @@ CLS and TTFB are healthy. LCP + TBT drive the Performance scores.
 | Case | Before | Abstraction |
 |------|--------|-------------|
 | Auth page chrome | Duplicated on 4 pages | **`AuthPageShell`** (implemented) |
-| Form field + errors | Repeated across auth forms | TODO: `FormField` / hook if needed later |
-| Async list states | Suppliers / incidents / inventory | TODO: shared empty/loading/error UI |
+| Form field + errors | Repeated across auth forms | **`FormMessage`** + **`useFormSubmit`** (implemented — auth forms) |
+| Async list states | Suppliers / incidents / inventory | **`useAsyncQuery`** + **`AsyncRequestPanel`** (implemented — inventory/incidents panels) |
 
 ---
 
@@ -133,4 +152,6 @@ CLS and TTFB are healthy. LCP + TBT drive the Performance scores.
 | Baseline Lighthouse (website + backoffice login + dashboard) | Done — `audit/before/` |
 | Root-cause analysis | Done — this file |
 | Targeted fixes (images, a11y, shared shell, dynamic import) | Done — code |
-| Re-measure → `audit/after/` + score delta in `REPORT.md` | **Your next step** |
+| Re-measure → `audit/after/` + score delta in `REPORT.md` | Done — `audit/after/README.md` (2026-08-28) |
+| UX + lazy viewport (P6, P7) + backoffice extractions | Done — commit `17b0d6e` |
+| Re-measure post-lazy (P7 delta vs current after) | TODO — optional; not run yet |

@@ -55,7 +55,14 @@ export function LazyWhenVisible({
     minHeight !== undefined ? { minHeight } : undefined;
 
   return (
-    <div ref={containerRef} className={className} style={style} aria-busy={!isVisible}>
+    <div
+      ref={containerRef}
+      className={className}
+      style={style}
+      role="status"
+      aria-live="polite"
+      aria-busy={!isVisible}
+    >
       {isVisible ? children : fallback}
     </div>
   );
