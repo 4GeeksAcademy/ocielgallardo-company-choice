@@ -214,4 +214,4 @@ Script de extracción: `scripts/extract-lighthouse-kpis.mjs`. Tablas maestras: `
 - `17b0d6e` — form success website, extracciones backoffice, lazy viewport  
 - `24a6e0b` — docs P6/P7 + a11y lazy placeholders
 - `bf04703` — docs KPI/INP, `audit/final/`, script extracción Lighthouse
-- *(pendiente)* — evidencia `audit/final/` + §4.3; fix lazy panels Docker build
+- `e3a7ff3` — evidencia `audit/final/` + §4.3; fix lazy panels Docker build
