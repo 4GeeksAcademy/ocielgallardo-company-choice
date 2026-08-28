@@ -1,7 +1,7 @@
 # Caching Optimisation Report — HealthCore Monorepo
 
 **Branch:** `feature/caching-optimisation` (from `feature/performance-audit`)  
-**Phase:** 2 — Measurement complete (middleware + volume seed + latency evidence)  
+**Phase:** 3 — Frontend lazy loading complete (website); Phase 4 (useMemo) next  
 **Last updated:** 2026-08-28
 
 ---
@@ -16,9 +16,8 @@ Caching decisions follow two axes (cost vs storage, freshness vs performance) an
 |---------|--------|
 | Tool | `scripts/measure_cache_candidates.py` (domain mode) |
 | Iterations | 10 per endpoint |
-| Reported stat | p50 (median), min, max (ms) |
-| Volume seed | `scripts/seed_inventory_volume.py` (+200 supplies, +4000 deliveries, +3500 consumptions) |
-| HTTP timing | `api.timing` middleware in `services/app/main.py` |
+| Volume seed | `scripts/seed_inventory_volume.py` |
+| HTTP timing | `api.timing` middleware |
 
 ---
 
@@ -29,57 +28,58 @@ Caching decisions follow two axes (cost vs storage, freshness vs performance) an
 | Supabase | `medical_supplies` | 6 | 206 |
 | Supabase | `supply_deliveries` | 8 | 4,008 |
 | Supabase | `supply_consumptions` | 4 | 3,504 |
-| TinyDB | `incidents` | 95 | 95 |
-| TinyDB | `suppliers` | 16 | 16 |
 
-### 2.1 Measured latency (domain layer, p50 ms)
+### 2.1 Measured latency (p50 ms, confirmed re-run 2026-08-28)
 
-| Endpoint | Before p50 | After p50 (confirmed re-run) | Cost filter (after) |
-|----------|------------|------------------------------|---------------------|
-| `/inventory/products` | 149.26 | **151.85** | **Pass** |
-| `/inventory/orders` | 197.79 | **363.74** | **Pass** (strongest) |
-| `/api/incidents/summary` | 0.32 | 0.32 | **Fail** |
-| `/suppliers` | 1.23 | 1.31 | **Fail** |
-
-Full samples (ms):
-
-| Target | Before min / p50 / max | After min / p50 / max |
-|--------|------------------------|------------------------|
-| `inventory_products` | 145.11 / 149.26 / 157.10 | 146.83 / 151.85 / 238.87 |
-| `inventory_orders` | 191.56 / 197.79 / 220.23 | 339.12 / 363.74 / 518.41 |
-| `incidents_summary` | 0.30 / 0.32 / 2.06 | 0.29 / 0.32 / 0.52 |
-| `suppliers_list` | 1.23 / 1.23 / 5.76 | 1.23 / 1.31 / 2.70 |
+| Endpoint | Before | After | Cache? |
+|----------|--------|-------|--------|
+| `/inventory/products` | 149.26 | **151.85** | Yes (Phase 5) |
+| `/inventory/orders` | 197.79 | **363.74** | Yes (Phase 5) |
+| `/api/incidents/summary` | 0.32 | 0.32 | No |
+| `/suppliers` | 1.23 | 1.31 | No |
 
 ---
 
-## 3.7 Confirmed backend shortlist (Phase 5)
+## 4. Frontend inventory
 
-1. **`GET /inventory/orders`** — p50 **364 ms** after volume seed.
-2. **`GET /inventory/products`** — p50 **152 ms**; high UI frequency.
+### 4.1 Baseline (backoffice)
 
-**Excluded after measurement:** `/api/incidents/summary` (0.32 ms), `/suppliers` (1.31 ms).
+| Location | Technique | Notes |
+|----------|-----------|-------|
+| `uis/backoffice/app/page.tsx` | `next/dynamic` | `Hito2Playground` |
+| `uis/backoffice/app/incidents/*` | `next/dynamic` | Incident panels |
+| `uis/backoffice/components/lazy/lazyViewportPanels.tsx` | `dynamic` + `LazyWhenVisible` | Suppliers, Inventory, Applications |
+
+### 4.2 Phase 3 — website lazy loading (2026-08-28)
+
+| File | Change |
+|------|--------|
+| `uis/website/components/lazy/lazyViewportSections.tsx` | `ServicesSectionLazy`, `ImpactSectionLazy`, `FinalCtaSectionLazy`, `SiteFooterLazy` |
+| `uis/website/app/page.tsx` | Below-fold sections via lazy wrappers (separate JS chunks) |
+| `uis/website/app/application/page.tsx` | `PatientApplicationForm` via `next/dynamic` |
+| `uis/website/components/ui/createLazyViewportSection.tsx` | Types aligned with backoffice |
+
+**Validation:** `cd uis/website && npm run build` — OK.
 
 ---
 
-## 4. Frontend inventory (baseline)
+## 5. Frontend decisions (Phase 3 — implemented)
 
-Backoffice already uses `next/dynamic` (incidents, lazy panels). Website home still uses static imports + `LazyWhenVisible` only — **Phase 3**.
+| Target | Technique | Justification |
+|--------|-----------|---------------|
+| Home below-fold sections | `createLazyViewportSection` | Not needed for first paint; static imports bundled all section JS upfront |
+| `PatientApplicationForm` | `next/dynamic` | ~250-line client form; home `/` visitors do not need this chunk |
 
----
-
-## 6. Backend decisions (Phase 5 targets)
-
-| Endpoint | Before p50 | After p50 | Invalidation |
-|----------|------------|-----------|--------------|
-| `GET /inventory/orders` | 197.79 ms | **363.74 ms** | POST inbound/outbound |
-| `GET /inventory/products` | 149.26 ms | **151.85 ms** | POST products/inbound/outbound |
+Backoffice lazy routes (§4.1) satisfy the ≥2 lazy-loading requirement together with website changes.
 
 ---
 
-## 7. Trade-offs
+## 6. Backend decisions (Phase 5 — targets from Phase 2)
 
-- **`/inventory/orders`:** Brief staleness on history list acceptable; invalidate on writes.
-- **`/inventory/products`:** List may be briefly stale; outbound POST remains authoritative on stock.
+| Endpoint | After p50 | Invalidation |
+|----------|-----------|--------------|
+| `GET /inventory/orders` | **363.74 ms** | POST inbound/outbound |
+| `GET /inventory/products` | **151.85 ms** | POST products/inbound/outbound |
 
 ---
 
@@ -87,21 +87,36 @@ Backoffice already uses `next/dynamic` (incidents, lazy panels). Website home st
 
 | Endpoint | Reason |
 |----------|--------|
-| `GET /auth/me`, `GET /profiles/me` | Cross-user leak risk |
-| `GET /suppliers` | **Measured p50 1.31 ms** — no measurable gain |
-| `GET /api/incidents/summary` | **Measured p50 0.32 ms** |
+| `GET /auth/me`, `GET /profiles/me` | Cross-user leak |
+| `GET /suppliers` | p50 **1.31 ms** |
+| `GET /api/incidents/summary` | p50 **0.32 ms** |
 
 ---
 
-## 9. Phase 2 — completed / Phase 3 — next
+## 9. Phase progress
 
-- [x] Timing middleware, volume seed, benchmark script
-- [x] Latency tables in this report
-- [ ] Website lazy loading (Phase 3)
+- [x] Phase 1 — criteria, lifespan fix, initial report
+- [x] Phase 2 — middleware, seed, measurements
+- [x] Phase 3 — website lazy loading
+- [ ] Phase 4 — `useMemo`
+- [ ] Phase 5 — backend cache + TTL
+
+---
+
+## 10. Validation checklist
+
+| Requirement | Status |
+|-------------|--------|
+| ≥2 lazy-loaded routes with justification | **Done** (website + backoffice) |
+| ≥1 non-trivial `useMemo` | Phase 4 |
+| ≥2 cached endpoints with TTL | Phase 5 |
+| Explicit trade-off discussion | §6–§7 |
+| Measured exclusion example | `/suppliers` 1.31 ms p50 |
 
 ---
 
 ## 11. Related fixes
 
 - **Phase 1:** Removed duplicate `app = FastAPI()` (lifespan restored).
-- **Phase 2:** `api.timing` middleware; `scripts/seed_inventory_volume.py`; `scripts/measure_cache_candidates.py`.
+- **Phase 2:** Timing middleware; volume/measure scripts.
+- **Phase 3:** Website `lazyViewportSections.tsx` and `/application` dynamic form.

@@ -14,8 +14,12 @@
 - Backoffice shell is mobile-first: desktop fixed sidebar with collapsible groups; mobile Dashboard + Office bottom bar; account via avatar menu.
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `audit/REPORT.md` §4.2–§4.3.
 - Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
-- Caching optimisation milestone: **Phase 2 complete** — timing middleware, volume seed, measured latencies; Phase 3 (lazy loading) pending.
+- Caching optimisation milestone: **Phase 3 complete** — website lazy loading; Phase 4 (useMemo) next.
 
+## Recently Completed (Caching milestone — Phase 3)
+- Website: `uis/website/components/lazy/lazyViewportSections.tsx` — Services, Impact, FinalCta, Footer.
+- Website home and `/application` — `next/dynamic` for below-fold sections and patient form.
+- Validation: `uis/website` `npm run build` OK.
 
 ## Recently Completed (Caching milestone — Phase 2)
 - Middleware: `api.timing` HTTP logger in `services/app/main.py`.

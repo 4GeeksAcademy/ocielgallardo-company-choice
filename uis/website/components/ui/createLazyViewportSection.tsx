@@ -12,8 +12,10 @@ interface CreateLazyViewportSectionOptions {
   label?: string;
 }
 
-export function createLazyViewportSection<P extends Record<string, unknown> = Record<string, never>>(
-  loader: () => Promise<{ default: ComponentType<P> }>,
+type LazySectionComponent = ComponentType<Record<string, unknown>>;
+
+export function createLazyViewportSection(
+  loader: () => Promise<{ default: LazySectionComponent }>,
   options: CreateLazyViewportSectionOptions = {},
 ) {
   const fallback =
@@ -24,21 +26,16 @@ export function createLazyViewportSection<P extends Record<string, unknown> = Re
       />
     );
 
-  const DynamicComponent = dynamic(
-    () => loader() as Promise<{ default: ComponentType<P> }>,
-    { loading: () => fallback },
-  );
+  const DynamicComponent = dynamic(loader, { loading: () => fallback });
 
-  function LazyViewportSection(props: P) {
-    const Component = DynamicComponent as ComponentType<P>;
-
+  function LazyViewportSection(props: Record<string, unknown> = {}) {
     return (
       <LazyWhenVisible
         fallback={fallback}
         rootMargin={options.rootMargin}
         minHeight={options.minHeight}
       >
-        <Component {...props} />
+        <DynamicComponent {...props} />
       </LazyWhenVisible>
     );
   }
