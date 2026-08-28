@@ -2,7 +2,7 @@
 
 **Hito:** Auditoría de Rendimiento Frontend (4Geeks Academy)  
 **Rama:** `feature/performance-audit` (desde `main`)  
-**Estado al 2026-08-25 (noche):** fixes aplicados + baseline documentado; **remeición “after” aún no válida** (ver §3)
+**Estado al 2026-08-28:** fixes aplicados + baseline + remeición after en Docker prod (6/6 HTML válidos — ver §4.2)
 
 ---
 
@@ -14,8 +14,8 @@
 | Análisis y causa raíz | Hecho — `AUDIT.md` |
 | Correcciones de código | Hecho — commits en esta rama |
 | Componente reutilizable | Hecho — `AuthPageShell` |
-| Remeición after | **Parcial / inválida** — HTML en `audit/after/`, ver §3 |
-| Cierre con deltas medibles | **Pendiente para mañana** |
+| Remeición after | Hecho — `audit/after/` (6 HTML, Docker prod) |
+| Cierre con deltas medibles | Hecho — ver §4.2 (caveat entorno before=dev / after=prod) |
 
 ---
 
@@ -74,31 +74,30 @@ Evidencia: `audit/before/` (HTML + capturas PNG). Entorno: `next dev`.
 
 ---
 
-## 4. Primera pasada after (2026-08-25 noche) — **no usar como delta final**
+## 4. Remeición after
 
-Archivos guardados en `audit/after/`:
+### 4.1 Primera pasada (2026-08-25) — descartada
 
-| Archivo | URL | Observación |
-|---------|-----|-------------|
-| `Website-mobile-test.html` | `/` | **`PROTOCOL_TIMEOUT`** — corrida inválida |
-| `Backoffice-mobile-test.html` | `/login` | **`PROTOCOL_TIMEOUT`** — corrida inválida |
-| `Website-descktop-test.html` | `/` | Completó; aviso IndexedDB (preferir incógnito) |
-| `Backoffice-descktop-test.html` | `/login` | Completó |
-| `Backoffice-mobile-inside-test.html` | `/` | Completó; aviso de extensiones de Chrome |
-| `Backoffice-desktop-inside-test.html` | `/` | Completó |
+Archivos en `audit/after/` de esa noche **no son evidencia oficial**: timeouts en móvil, IndexedDB/extensiones en desktop. Ver historial en `audit/after/README.md`.
 
-**Conclusión de esta noche:** la percepción de “siguen iguales” es coherente con (1) timeouts en móvil, (2) medición aún en `next dev` (TBT inflado), (3) posibles extensiones / caché. **No se rellenan deltas oficiales hasta una remeición limpia.**
+### 4.2 Mediciones válidas (2026-08-28) — Docker producción
 
-Tabla after (oficial): **aplazada a mañana**.
+**Protocolo:** Chrome **Incógnito**, `docker compose up --build` (`next start` en UIs, uvicorn sin reload). Evidencia: `audit/after/*.html`.
 
-| Superficie | Modo | Perf | A11y | BP | SEO | Δ Perf |
-|------------|------|-----:|-----:|---:|----:|--------|
-| Website `/` | Mobile | — | — | — | — | pendiente |
-| Website `/` | Desktop | — | — | — | — | pendiente |
-| Backoffice `/login` | Mobile | — | — | — | — | pendiente |
-| Backoffice `/login` | Desktop | — | — | — | — | pendiente |
-| Backoffice `/` | Mobile | — | — | — | — | pendiente |
-| Backoffice `/` | Desktop | — | — | — | — | pendiente |
+**Caveat:** mediciones anteriores en `next dev` eran inestables (IndexedDB, `PROTOCOL_TIMEOUT`, scores &lt;49). Esta pasada completó las 6 corridas; si un valor parece anómalo, repetir en Incógnito limpio.
+
+| Superficie | Modo | Perf | A11y | BP | SEO | Δ Perf | Archivo |
+|------------|------|-----:|-----:|---:|----:|--------|---------|
+| Website `/` | Mobile | **95** | 100 | 100 | 100 | **+42** | `website-mobil-test.html` |
+| Website `/` | Desktop | **90** | 100 | 100 | 100 | **+2** | `website-desktop-test.html` |
+| Backoffice `/login` | Mobile | **99** | 100 | 100 | 100 | **+31** | `backoffice-mobil-login-test.html` |
+| Backoffice `/login` | Desktop | **100** | 100 | 100 | 100 | **+22** | `backoffice-desktop-login-test.html` |
+| Backoffice `/` | Mobile | **95** | 100 | 100 | 100 | **+49** | `backoffice-mobil-test.html` |
+| Backoffice `/` | Desktop | **100** | 100 | 100 | 100 | **+42** | `backoffice-desktop-test.html` |
+
+**Interpretación:** todos los deltas de Performance son positivos. El salto más grande en dashboard/backoffice combina F4 (`next/dynamic`) con medir en **producción** vs baseline en `next dev`. Website mobile (+42) es el indicador más alineado con F1 (hero `next/image`).
+
+Corridas con perfil normal (aviso **IndexedDB**) o `PROTOCOL_TIMEOUT` deben descartarse; Incógnito + Docker prod reducen ese ruido.
 
 ---
 
@@ -112,14 +111,13 @@ Tabla after (oficial): **aplazada a mañana**.
 
 ---
 
-## 6. Checklist para mañana
+## 6. Checklist restante
 
-1. Reiniciar website (`:3000`) y backoffice (`:3001`) en `feature/performance-audit`.
-2. Chrome **Incógnito** (sin extensiones).
-3. Repetir las **6** auditorías; descartar cualquier corrida con `PROTOCOL_TIMEOUT`.
-4. Sustituir/añadir HTML + PNG en `audit/after/` (nombres claros).
-5. Opcional recomendado: `npm run build && npm run start` en cada app y medir en producción local.
-6. Actualizar esta tabla §4 con puntuaciones y deltas; cerrar el hito / PR.
+1. Opcional: capturas PNG en `audit/after/` para el entregable visual.
+2. Abrir PR de `feature/performance-audit` → `main` cuando lo pidas.
+3. Re-medir en Incógnito si alguna corrida futura falla o parece inconsistente.
+
+Dev con hot reload: `npm run docker:dev`. Medición Lighthouse: `npm run docker:up` (prod default).
 
 ---
 

@@ -12,7 +12,8 @@
 - Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
 - Backoffice UI cleaned: empty Patients/Appointments/Billing/Claims/Reports placeholders removed; dashboard and nav reflect implemented modules only.
 - Backoffice shell is mobile-first: desktop fixed sidebar with collapsible groups; mobile Dashboard + Office bottom bar; account via avatar menu.
-- Frontend performance audit milestone: **code fixes + before evidence done**; first after HTML saved but **invalid/incomplete** (`PROTOCOL_TIMEOUT` on mobile). Clean re-measure + REPORT deltas pending.
+- Frontend performance audit milestone: **after complete** — 6/6 Lighthouse HTML in `audit/after/` (Docker prod, Incógnito); deltas positivos en Performance (see `REPORT.md` §4.2).
+- Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
 
 ## Recently Completed (Performance audit — Phase 2 fixes)
 - Branch: `feature/performance-audit` (from `main`, merged with depuracion/dark mode).
@@ -20,7 +21,9 @@
 - Website: `next/image` on hero (priority first slide) + logo; mobile menu `tabIndex={-1}` when closed (`aria-hidden-focus`).
 - Backoffice: `AuthPageShell` (`<main>`) on login/register/forgot/reset; `Hito2Playground` via `next/dynamic` on dashboard.
 - Docs: `AUDIT.md` + Spanish `REPORT.md` checkpoint; `audit/before/` HTML+PNG; `audit/after/` first HTML pass (not yet official).
-- TODO: Incognito re-run (no timeouts), optional `next build`/`start`, fill REPORT after table, PR.
+- After (2026-08-28): 6 HTML in `audit/after/` — Docker prod + Incógnito; e.g. website mobile Perf 95 (Δ+42), dashboard mobile 95 (Δ+49). Unstable runs in `next dev` discarded.
+- Docker prod: `docker-compose.yml` (default), `uis/Dockerfile.prod`, `services/Dockerfile.prod`.
+- TODO: optional PNG in `audit/after/`, PR to `main`.
 
 ## Recently Completed (backoffice — mobile-first navigation shell)
 - Shared `navConfig.ts` for work groups and account links.
