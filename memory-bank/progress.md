@@ -10,10 +10,23 @@
 - Type-level model validation command is available in `packages/shared`.
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
 - Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
-- Backoffice UI cleaned: empty Patients/Appointments/Billing/Claims/Reports placeholders removed; dashboard and nav reflect implemented modules only.
-- Backoffice shell is mobile-first: desktop fixed sidebar with collapsible groups; mobile Dashboard + Office bottom bar; account via avatar menu.
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `audit/REPORT.md` §4.2–§4.3.
-- Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
+- Docker: prod-default (`docker compose up` / `npm run docker:up`); dev overlay via `docker-compose.dev.yml` (`npm run docker:dev`).
+
+## Recently Completed (Hito Docker — #infra-40)
+- Branch: `feature/docker-implementation`.
+- `uis/Dockerfile` (Node 20 Alpine, separate website/backoffice deps) + `uis/start.sh` (website `:3000`, backoffice `:3001`, `npm run dev`) + `uis/.dockerignore`.
+- `services/Dockerfile` (Python 3.12 + `uv` + uvicorn `--reload`, `PYTHONPATH=/app/packages/shared`) + `services/.dockerignore`.
+- Root `docker-compose.yml`: prod default (`Dockerfile.prod`, `next start`); dev hot-reload via `docker-compose.dev.yml` overlay (`npm run docker:dev`).
+- Port map per brief: website `3000`, backoffice `3001`, API `8000`. Browser `NEXT_PUBLIC_*` uses `http://localhost:8000`; container DNS hostname for API is `backend`.
+- `.env.example` documents UI public URLs + Docker prod/dev commands. Local `.env` remains gitignored.
+- Validation: `docker compose up --build` (prod) and `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build` (dev) verified locally.
+- Merged to `main` via PR #19; prod-default model extended on `feature/performance-audit` for Lighthouse evidence.
+
+## Recently Completed (feature/inventory — sync with main)
+- Merged `origin/main` into `feature/inventory` to undo the accidental main-revert tip and restore auth, incident manager, and the redesigned shell.
+- Conflict resolution favored `main` for layout/auth/incidents/docs; inventory module retained. Tree matches `main` for delivery of both inventory milestones.
+- `main` left untouched (still at prior tip). No PR to `main` from this sync.
 
 ## Recently Completed (Performance audit — Phase 2 fixes)
 - Branch: `feature/performance-audit` (from `main`, merged with depuracion/dark mode).
@@ -27,7 +40,8 @@
 - Docs sync: `audit/AUDIT.md` P6/P7 + `audit/REPORT.md` F5–F7 (post-`17b0d6e`).
 - KPI closure docs: `scripts/extract-lighthouse-kpis.mjs` + `scripts/README.md`; `audit/final/README.md` (protocol post-P7); `audit/AUDIT.md` §3 INP/KPI tables + §3.1 interpretation; `audit/REPORT.md` §1.1 refactors, §4.3 dual-delta placeholders, §8 PR notes.
 - Final Lighthouse (2026-08-28): 6/6 HTML in `audit/final/`; `audit/AUDIT.md` §3.0.2 + `audit/REPORT.md` §4.3 filled (dual delta vs before/after).
-- TODO: optional PNG in `audit/after/`/`audit/final/`; PR to `main`.
+- Merge `origin/main` (PR #19 Docker) resolved; prod-default + `docker-compose.dev.yml` overlay retained.
+- TODO: optional PNG in `audit/after/`/`audit/final/`; merge PR #21 to `main`.
 
 ## Recently Completed (backoffice — mobile-first navigation shell)
 - Shared `navConfig.ts` for work groups and account links.
