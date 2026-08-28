@@ -1,0 +1,28 @@
+---
+description: Require all Cursor agents to read and follow .agents governance before acting
+alwaysApply: true
+---
+
+# Read `.agents` Before Acting
+
+Every Cursor agent session in this repository MUST load project governance from `.agents/` before planning or changing files.
+
+## Required at session start
+
+1. Read applicable files under `.agents/rules/` for the task (at minimum: `file-modification-policy.md`, plus any domain-relevant rules).
+2. If a matching skill exists under `.agents/skills/`, read that skill's `SKILL.md` and follow it.
+3. Keep aligning with root `AGENTS.md` required reading order (`memory-bank/techContext.md` → `memory-bank/progress.md` → `CONTEXT.md` → relevant `.agents/rules/`).
+
+## What lives in `.agents`
+
+| Path | Purpose |
+|------|---------|
+| `.agents/rules/` | Behavior and contribution policies (coding, docs, git, structure, etc.) |
+| `.agents/skills/` | Task-specific agent skills (`SKILL.md` + references) |
+
+## Enforcement
+
+- Do not skip `.agents/rules/` because context feels familiar from chat history.
+- Prefer `.agents` policies over ad-hoc assumptions when they conflict.
+- If a needed rule or skill is missing, note the gap with `TODO:` and ask before inventing policy.
+- Never ignore `company-choise.md` restrictions defined in `AGENTS.md` / `.agents` rules.

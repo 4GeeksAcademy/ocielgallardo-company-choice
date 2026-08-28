@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { InventoryOrdersList } from "@/components/inventory/InventoryOrdersList";
+import { InventoryOrdersListPanel } from "@/components/lazy/lazyViewportPanels";
 
 export default function InventoryOrdersPage() {
   return (
@@ -28,7 +28,7 @@ export default function InventoryOrdersPage() {
         </div>
       </header>
 
-      <InventoryOrdersList />
+      <InventoryOrdersListPanel />
     </div>
   );
 }

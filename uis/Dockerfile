@@ -18,7 +18,7 @@ COPY website ./uis/website
 COPY backoffice ./uis/backoffice
 COPY start.sh ./start.sh
 
-RUN chmod +x ./start.sh
+RUN chmod +x ./start.sh && sed -i 's/\r$//' ./start.sh
 
 EXPOSE 3000
 EXPOSE 3001

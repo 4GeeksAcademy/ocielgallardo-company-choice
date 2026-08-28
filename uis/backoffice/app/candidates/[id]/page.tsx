@@ -1,13 +1,4 @@
-import { Suspense } from "react";
-import { CandidateDetailWorkspace } from "@/components/candidates/CandidateDetailWorkspace";
-
-function LoadingFallback() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-800">
-      <p className="text-sm text-slate-600 dark:text-slate-300">Cargando candidatura...</p>
-    </div>
-  );
-}
+import { CandidateDetailWorkspacePanel } from "@/components/lazy/lazyViewportPanels";
 
 interface CandidatePageProps {
   params: Promise<{ id: string }>;
@@ -16,9 +7,5 @@ interface CandidatePageProps {
 export default async function CandidatePage({ params }: CandidatePageProps) {
   const { id } = await params;
 
-  return (
-    <Suspense fallback={<LoadingFallback />}>
-      <CandidateDetailWorkspace key={id} candidateId={id} />
-    </Suspense>
-  );
+  return <CandidateDetailWorkspacePanel key={id} candidateId={id} />;
 }

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { PatientApplicationForm } from "@/components/forms/PatientApplicationForm";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { LazyWhenVisible } from "@/components/ui/LazyWhenVisible";
+import { SectionPlaceholder } from "@/components/ui/SectionPlaceholder";
 
 export default function ApplicationPage() {
   return (
@@ -24,7 +26,13 @@ export default function ApplicationPage() {
           </div>
         </section>
       </main>
-      <SiteFooter />
+
+      <LazyWhenVisible
+        fallback={<SectionPlaceholder minHeight={140} label="Loading footer…" />}
+        minHeight={140}
+      >
+        <SiteFooter />
+      </LazyWhenVisible>
     </div>
   );
 }

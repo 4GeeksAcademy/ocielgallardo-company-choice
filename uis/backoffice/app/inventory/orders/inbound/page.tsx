@@ -1,10 +1,5 @@
-import { Suspense } from "react";
 import Link from "next/link";
-import { InboundOrderForm } from "@/components/inventory/InboundOrderForm";
-
-function FormFallback() {
-  return <p className="text-sm text-slate-600 dark:text-slate-300">Cargando formulario…</p>;
-}
+import { InboundOrderFormPanel } from "@/components/lazy/lazyViewportPanels";
 
 export default function InboundOrderPage() {
   return (
@@ -29,9 +24,7 @@ export default function InboundOrderPage() {
       </header>
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
-        <Suspense fallback={<FormFallback />}>
-          <InboundOrderForm />
-        </Suspense>
+        <InboundOrderFormPanel />
       </div>
     </div>
   );

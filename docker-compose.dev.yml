@@ -1,0 +1,42 @@
+# Development overlay (#infra-40 hot reload). Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+services:
+  uis:
+    build:
+      context: ./uis
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_HEALTHCORE_API_URL: ${NEXT_PUBLIC_HEALTHCORE_API_URL:-http://localhost:8000}
+      NEXT_PUBLIC_TRACKER_API_URL: ${NEXT_PUBLIC_TRACKER_API_URL}
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    command: >
+      sh -c "
+      cd /app/uis/website && npm install &&
+      cd /app/uis/backoffice && npm install &&
+      (cd /app/uis/website && HOSTNAME=0.0.0.0 PORT=3000 npm run dev) &
+      (cd /app/uis/backoffice && HOSTNAME=0.0.0.0 PORT=3001 npm run dev) &
+      wait
+      "
+    volumes:
+      - ./uis:/app/uis
+      - ./src:/app/src
+      - uis_website_node_modules:/app/uis/website/node_modules
+      - uis_backoffice_node_modules:/app/uis/backoffice/node_modules
+
+  backend:
+    build:
+      context: ./services
+      dockerfile: Dockerfile
+    command: >
+      uvicorn services.app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+    volumes:
+      - ./:/app
+
+volumes:
+  uis_website_node_modules:
+  uis_backoffice_node_modules:

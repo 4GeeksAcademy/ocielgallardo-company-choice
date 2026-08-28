@@ -1,5 +1,5 @@
-import { MedicalSuppliesList } from "@/components/inventory/MedicalSuppliesList";
+import { MedicalSuppliesListPanel } from "@/components/lazy/lazyViewportPanels";
 
 export default function InventoryProductsPage() {
-  return <MedicalSuppliesList />;
+  return <MedicalSuppliesListPanel />;
 }

@@ -4,7 +4,9 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { FormMessage } from "@/components/ui/FormMessage";
 import { Input } from "@/components/ui/Input";
+import { useFormSubmit } from "@/hooks/useFormSubmit";
 import { login } from "@/lib/services/authApi";
 import { HealthcoreApiError } from "@/lib/services/healthcoreClient";
 
@@ -12,35 +14,32 @@ export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { error, setError, isSubmitting, runSubmit } = useFormSubmit();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
 
     if (!email.trim() || !password) {
       setError("Introduce email y contraseña.");
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      await login({ email: email.trim(), password });
-      router.replace("/");
-    } catch (err) {
-      if (err instanceof HealthcoreApiError) {
-        setError(
-          err.status === 401
-            ? "Credenciales incorrectas."
-            : err.message
-        );
-      } else {
-        setError("No se pudo iniciar sesión. Inténtalo de nuevo.");
+    await runSubmit(async () => {
+      try {
+        await login({ email: email.trim(), password });
+        router.replace("/");
+      } catch (err) {
+        if (err instanceof HealthcoreApiError) {
+          setError(
+            err.status === 401
+              ? "Credenciales incorrectas."
+              : err.message
+          );
+        } else {
+          setError("No se pudo iniciar sesión. Inténtalo de nuevo.");
+        }
       }
-    } finally {
-      setIsSubmitting(false);
-    }
+    });
   }
 
   return (
@@ -64,11 +63,7 @@ export function LoginForm() {
         required
       />
 
-      {error && (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-          {error}
-        </p>
-      )}
+      {error ? <FormMessage variant="error">{error}</FormMessage> : null}
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
         {isSubmitting ? "Entrando…" : "Iniciar sesión"}

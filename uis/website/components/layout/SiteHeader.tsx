@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -20,15 +21,17 @@ export function SiteHeader() {
   }, [menuOpen]);
 
   const closeMenu = () => setMenuOpen(false);
+  const linkTabIndex = menuOpen ? undefined : -1;
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/90 backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/90">
       <div className="relative mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-5 sm:py-4 lg:px-5">
         <Link href="/" className="flex max-w-[min(100%,18rem)] items-center gap-2 sm:gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/icons/logo-01.png"
             alt="HealthCore"
+            width={48}
+            height={48}
             className="h-10 w-10 shrink-0 object-contain sm:h-12 sm:w-12"
           />
           <span className="hidden min-w-0 sm:block">
@@ -121,6 +124,7 @@ export function SiteHeader() {
                 <li>
                   <a
                     href="#services"
+                    tabIndex={linkTabIndex}
                     className="block rounded-md px-3 py-2 font-medium text-(--brand-fg) hover:bg-slate-50 dark:hover:bg-slate-800"
                     onClick={closeMenu}
                   >
@@ -130,6 +134,7 @@ export function SiteHeader() {
                 <li>
                   <a
                     href="#impact"
+                    tabIndex={linkTabIndex}
                     className="block rounded-md px-3 py-2 font-medium text-(--brand-fg) hover:bg-slate-50 dark:hover:bg-slate-800"
                     onClick={closeMenu}
                   >
@@ -139,6 +144,7 @@ export function SiteHeader() {
                 <li>
                   <Link
                     href="/application"
+                    tabIndex={linkTabIndex}
                     className="block rounded-md px-3 py-2 font-bold text-(--brand-fg) hover:bg-slate-50 dark:hover:bg-slate-800"
                     onClick={closeMenu}
                   >

@@ -1,0 +1,53 @@
+# Git and editor
+.git/
+.gitignore
+.idea/
+.vscode/
+.cursor/
+
+# Node / Next.js artifacts
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+out/
+**/out/
+dist/
+**/dist/
+build/
+**/build/
+coverage/
+*.tsbuildinfo
+
+# Python caches
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Secrets (use env_file at runtime)
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Logs and audit artifacts
+*.log
+audit/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs / learning (not needed in images)
+lesson2learn/
+bitacora.md
+memory-bank/
+.agents/
+skills/
+agents/

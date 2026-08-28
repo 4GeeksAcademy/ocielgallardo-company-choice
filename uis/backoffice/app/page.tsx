@@ -1,5 +1,19 @@
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Hito2Playground } from "@/components/dashboard/Hito2Playground";
+import { LazyWhenVisible } from "@/components/ui/LazyWhenVisible";
+import { PanelPlaceholder } from "@/components/ui/PanelPlaceholder";
+
+const Hito2Playground = dynamic(
+  () =>
+    import("@/components/dashboard/Hito2Playground").then((mod) => ({
+      default: mod.Hito2Playground,
+    })),
+  {
+    loading: () => (
+      <PanelPlaceholder minHeight={400} label="Loading Hito 2 playground…" />
+    ),
+  },
+);
 
 const MODULES = [
   {
@@ -64,7 +78,12 @@ export default function HomePage() {
         ))}
       </section>
 
-      <Hito2Playground />
+      <LazyWhenVisible
+        fallback={<PanelPlaceholder minHeight={400} label="Loading Hito 2 playground…" />}
+        minHeight={400}
+      >
+        <Hito2Playground />
+      </LazyWhenVisible>
     </div>
   );
 }
