@@ -1,7 +1,21 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { IncidentListPanel } from "@/components/incidents/IncidentListPanel";
+import { LazyWhenVisible } from "@/components/ui/LazyWhenVisible";
+import { PanelPlaceholder } from "@/components/ui/PanelPlaceholder";
+
+const IncidentListPanel = dynamic(
+  () =>
+    import("@/components/incidents/IncidentListPanel").then((mod) => ({
+      default: mod.IncidentListPanel,
+    })),
+  {
+    loading: () => (
+      <PanelPlaceholder minHeight={400} label="Cargando listado de incidentes…" />
+    ),
+  },
+);
 
 export default function IncidentsPage() {
   return (
@@ -36,7 +50,14 @@ export default function IncidentsPage() {
         </div>
       </header>
 
-      <IncidentListPanel />
+      <LazyWhenVisible
+        fallback={
+          <PanelPlaceholder minHeight={400} label="Cargando listado de incidentes…" />
+        }
+        minHeight={400}
+      >
+        <IncidentListPanel />
+      </LazyWhenVisible>
     </div>
   );
 }

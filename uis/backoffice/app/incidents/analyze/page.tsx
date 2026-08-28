@@ -1,17 +1,31 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import Link from "next/link";
 
-import { IncidentAnalysisSummaryView } from "@/components/incidents/IncidentAnalysisSummary";
 import { IncidentCsvUpload } from "@/components/incidents/IncidentCsvUpload";
 import { Button } from "@/components/ui/Button";
+import { LazyWhenVisible } from "@/components/ui/LazyWhenVisible";
+import { PanelPlaceholder } from "@/components/ui/PanelPlaceholder";
 import {
   analyzeIncidents,
   exportIncidentsResults,
   HealthcoreApiError,
 } from "@/lib/services/healthcoreApi";
 import type { IncidentAnalysisSummary } from "@/types/incidents";
+
+const IncidentAnalysisSummaryView = dynamic(
+  () =>
+    import("@/components/incidents/IncidentAnalysisSummary").then((mod) => ({
+      default: mod.IncidentAnalysisSummaryView,
+    })),
+  {
+    loading: () => (
+      <PanelPlaceholder minHeight={320} label="Loading analysis summary…" />
+    ),
+  },
+);
 
 export default function IncidentsAnalyzePage() {
   const [summary, setSummary] = useState<IncidentAnalysisSummary | null>(null);
@@ -120,7 +134,16 @@ export default function IncidentsAnalyzePage() {
         ) : null}
       </section>
 
-      {summary ? <IncidentAnalysisSummaryView summary={summary} /> : null}
+      {summary ? (
+        <LazyWhenVisible
+          fallback={
+            <PanelPlaceholder minHeight={320} label="Loading analysis summary…" />
+          }
+          minHeight={320}
+        >
+          <IncidentAnalysisSummaryView summary={summary} />
+        </LazyWhenVisible>
+      ) : null}
     </div>
   );
 }

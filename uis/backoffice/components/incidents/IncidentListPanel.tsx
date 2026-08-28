@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { AsyncRequestPanel } from "@/components/ui/AsyncRequestPanel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Select } from "@/components/ui/Select";
 import {
@@ -112,28 +113,13 @@ export function IncidentListPanel() {
     }
   }
 
-  if (status === "loading") {
-    return (
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-600 dark:text-slate-300">
-        Loading incidents…
-      </div>
-    );
-  }
-
-  if (status === "error") {
-    return (
-      <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 p-6">
-        <p className="text-sm text-red-700 dark:text-red-400" role="alert">
-          {error}
-        </p>
-        <Button className="mt-4" type="button" onClick={() => void load(applied)}>
-          Retry
-        </Button>
-      </div>
-    );
-  }
-
   return (
+    <AsyncRequestPanel
+      status={status}
+      error={error}
+      loadingMessage="Loading incidents…"
+      onRetry={() => void load(applied)}
+    >
     <div className="space-y-4">
       <form
         className="grid gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 sm:grid-cols-4"
@@ -272,5 +258,6 @@ export function IncidentListPanel() {
         </div>
       )}
     </div>
+    </AsyncRequestPanel>
   );
 }

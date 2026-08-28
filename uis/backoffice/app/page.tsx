@@ -1,5 +1,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { LazyWhenVisible } from "@/components/ui/LazyWhenVisible";
+import { PanelPlaceholder } from "@/components/ui/PanelPlaceholder";
 
 const Hito2Playground = dynamic(
   () =>
@@ -8,12 +10,7 @@ const Hito2Playground = dynamic(
     })),
   {
     loading: () => (
-      <section
-        className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500 shadow-sm sm:p-6"
-        aria-busy="true"
-      >
-        Loading Hito 2 playground…
-      </section>
+      <PanelPlaceholder minHeight={400} label="Loading Hito 2 playground…" />
     ),
   },
 );
@@ -81,7 +78,12 @@ export default function HomePage() {
         ))}
       </section>
 
-      <Hito2Playground />
+      <LazyWhenVisible
+        fallback={<PanelPlaceholder minHeight={400} label="Loading Hito 2 playground…" />}
+        minHeight={400}
+      >
+        <Hito2Playground />
+      </LazyWhenVisible>
     </div>
   );
 }

@@ -1,7 +1,21 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { IncidentCreateForm } from "@/components/incidents/IncidentCreateForm";
+import { LazyWhenVisible } from "@/components/ui/LazyWhenVisible";
+import { PanelPlaceholder } from "@/components/ui/PanelPlaceholder";
+
+const IncidentCreateForm = dynamic(
+  () =>
+    import("@/components/incidents/IncidentCreateForm").then((mod) => ({
+      default: mod.IncidentCreateForm,
+    })),
+  {
+    loading: () => (
+      <PanelPlaceholder minHeight={420} label="Cargando formulario de incidente…" />
+    ),
+  },
+);
 
 export default function NewIncidentPage() {
   return (
@@ -26,7 +40,14 @@ export default function NewIncidentPage() {
       </header>
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
-        <IncidentCreateForm />
+        <LazyWhenVisible
+          fallback={
+            <PanelPlaceholder minHeight={420} label="Cargando formulario de incidente…" />
+          }
+          minHeight={420}
+        >
+          <IncidentCreateForm />
+        </LazyWhenVisible>
       </div>
     </div>
   );

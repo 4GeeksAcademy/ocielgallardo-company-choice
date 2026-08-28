@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { FormMessage } from "@/components/ui/FormMessage";
 import { Input } from "@/components/ui/Input";
+import { useFormSubmit } from "@/hooks/useFormSubmit";
 import { resetPassword } from "@/lib/services/authApi";
 import { HealthcoreApiError } from "@/lib/services/healthcoreClient";
 
@@ -15,13 +17,12 @@ export function ResetPasswordForm({ token }: { token?: string | null }) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { error: formError, setError: setFormError, isSubmitting, runSubmit } = useFormSubmit();
 
   useEffect(() => {
     setFormError(null);
     setFieldError(null);
-  }, [effectiveToken]);
+  }, [effectiveToken, setFormError]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,27 +44,26 @@ export function ResetPasswordForm({ token }: { token?: string | null }) {
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      await resetPassword({ token: effectiveToken, newPassword });
-      router.replace("/login?reset=success");
-    } catch (err) {
-      if (err instanceof HealthcoreApiError) {
-        setFormError(err.message || "Token inválido o expirado.");
-      } else {
-        setFormError("Token inválido o expirado.");
+    await runSubmit(async () => {
+      try {
+        await resetPassword({ token: effectiveToken, newPassword });
+        router.replace("/login?reset=success");
+      } catch (err) {
+        if (err instanceof HealthcoreApiError) {
+          setFormError(err.message || "Token inválido o expirado.");
+        } else {
+          setFormError("Token inválido o expirado.");
+        }
       }
-    } finally {
-      setIsSubmitting(false);
-    }
+    });
   }
 
   if (!effectiveToken) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+        <FormMessage variant="error">
           El enlace de restablecimiento no es válido o ha expirado.
-        </p>
+        </FormMessage>
         <p className="text-center text-sm text-slate-600 dark:text-slate-300">
           <Link href="/forgot-password" className="font-medium text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-300">
             Solicitar un nuevo enlace
@@ -95,11 +95,7 @@ export function ResetPasswordForm({ token }: { token?: string | null }) {
         required
       />
 
-      {formError && (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-          {formError}
-        </p>
-      )}
+      {formError ? <FormMessage variant="error">{formError}</FormMessage> : null}
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
         {isSubmitting ? "Actualizando…" : "Actualizar contraseña"}

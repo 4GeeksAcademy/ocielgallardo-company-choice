@@ -1,5 +1,16 @@
 import Link from "next/link";
-import { InventoryOrdersList } from "@/components/inventory/InventoryOrdersList";
+import { createLazyViewportPanel } from "@/components/ui/createLazyViewportPanel";
+
+const InventoryOrdersList = createLazyViewportPanel(
+  () =>
+    import("@/components/inventory/InventoryOrdersList").then((mod) => ({
+      default: mod.InventoryOrdersList,
+    })),
+  {
+    minHeight: 400,
+    label: "Cargando historial de órdenes…",
+  },
+);
 
 export default function InventoryOrdersPage() {
   return (

@@ -4,7 +4,9 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { FormMessage } from "@/components/ui/FormMessage";
 import { Input } from "@/components/ui/Input";
+import { useFormSubmit } from "@/hooks/useFormSubmit";
 import { registerAndLogin } from "@/lib/services/authApi";
 import {
   HealthcoreApiError,
@@ -53,12 +55,10 @@ export function RegisterForm() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { error: formError, setError: setFormError, isSubmitting, runSubmit } = useFormSubmit();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setFormError(null);
 
     const clientErrors = validate({ email, password, confirmPassword });
     setFieldErrors(clientErrors);
@@ -66,42 +66,41 @@ export function RegisterForm() {
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      await registerAndLogin({
-        email: email.trim(),
-        password,
-        name: name.trim() || undefined,
-        phone: phone.trim() || undefined,
-        address: address.trim() || undefined,
-      });
-      router.replace("/");
-    } catch (err) {
-      if (err instanceof HealthcoreApiError) {
-        const apiFields = getFieldErrors(err.details);
-        if (apiFields) {
-          setFieldErrors({
-            email: apiFields.email,
-            password: apiFields.password,
-            name: apiFields.name,
-            phone: apiFields.phone,
-            address: apiFields.address,
-          });
+    await runSubmit(async () => {
+      try {
+        await registerAndLogin({
+          email: email.trim(),
+          password,
+          name: name.trim() || undefined,
+          phone: phone.trim() || undefined,
+          address: address.trim() || undefined,
+        });
+        router.replace("/");
+      } catch (err) {
+        if (err instanceof HealthcoreApiError) {
+          const apiFields = getFieldErrors(err.details);
+          if (apiFields) {
+            setFieldErrors({
+              email: apiFields.email,
+              password: apiFields.password,
+              name: apiFields.name,
+              phone: apiFields.phone,
+              address: apiFields.address,
+            });
+          }
+          if (err.status === 409) {
+            setFieldErrors((prev) => ({
+              ...prev,
+              email: err.message || "Este email ya está registrado.",
+            }));
+          } else if (!apiFields) {
+            setFormError(err.message);
+          }
+        } else {
+          setFormError("No se pudo completar el registro. Inténtalo de nuevo.");
         }
-        if (err.status === 409) {
-          setFieldErrors((prev) => ({
-            ...prev,
-            email: err.message || "Este email ya está registrado.",
-          }));
-        } else if (!apiFields) {
-          setFormError(err.message);
-        }
-      } else {
-        setFormError("No se pudo completar el registro. Inténtalo de nuevo.");
       }
-    } finally {
-      setIsSubmitting(false);
-    }
+    });
   }
 
   return (
@@ -164,11 +163,7 @@ export function RegisterForm() {
         error={fieldErrors.address}
       />
 
-      {formError && (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-          {formError}
-        </p>
-      )}
+      {formError ? <FormMessage variant="error">{formError}</FormMessage> : null}
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
         {isSubmitting ? "Creando cuenta…" : "Crear cuenta"}
