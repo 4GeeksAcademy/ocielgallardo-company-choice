@@ -21,6 +21,24 @@
 - `.env.example` documents UI public URLs + Docker notes. Local `.env` remains gitignored.
 - Validation (this machine): `docker compose up --build -d` → both UIs `200`, `/docs` `200`, `wget http://backend:8000/docs` from `uis` OK, `import healthcore_shared` OK.
 - TODO delivery: push branch + open PR to `main` with `docker compose ps` screenshot.
+- Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are complete on branch `feature/inventory` (synced with `main`; `main` not modified from this branch).
+- Backoffice UI cleaned: empty Patients/Appointments/Billing/Claims/Reports placeholders removed; dashboard and nav reflect implemented modules only.
+- Backoffice shell is mobile-first: desktop fixed sidebar with collapsible groups; mobile Dashboard + Office bottom bar; account via avatar menu.
+
+## Recently Completed (feature/inventory — sync with main)
+- Merged `origin/main` into `feature/inventory` to undo the accidental main-revert tip and restore auth, incident manager, and the redesigned shell.
+- Conflict resolution favored `main` for layout/auth/incidents/docs; inventory module retained. Tree matches `main` for delivery of both inventory milestones.
+- `main` left untouched (still at prior tip). No PR to `main` from this sync.
+
+## Recently Completed (backoffice — mobile-first navigation shell)
+- Shared `navConfig.ts` for work groups and account links.
+- `DesktopSidebar`, `MobileBottomBar`, `OfficeMenu`, `AccountMenu`; `BackofficeShell` layout with `md:pl-60` content column.
+- Profile / Change password removed from work nav; avatar + Cerrar sesión in top bar.
+
+## Recently Completed (backoffice — remove empty placeholders)
+- Deleted routes `/patients`, `/appointments`, `/billing`, `/claims`, `/reports` and unused `SectionPlaceholder`.
+- `BackofficeShell` nav and dashboard `MODULES` now link to Incidents, Suppliers, Inventory, and People & Talent.
+- Updated `uis/backoffice/README(.es).md` section lists.
 
 ## Recently Completed (Hito 5 — inventory backoffice UI)
 - Branch: `feature/inventory` (no merge).

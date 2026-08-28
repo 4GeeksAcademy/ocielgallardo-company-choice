@@ -13,8 +13,8 @@ import { ORDER_TYPE_LABELS } from "@/types/inventory";
 import type { AsyncStatus } from "@/types/async";
 
 const ORDER_TYPE_BADGE_CLASSES: Record<OrderType, string> = {
-  inbound: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  outbound: "bg-amber-50 text-amber-700 ring-amber-600/20",
+  inbound: "bg-emerald-50 text-emerald-700 dark:text-emerald-400 ring-emerald-600/20",
+  outbound: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 ring-amber-600/20",
 };
 
 function formatCreatedAt(value: string): string {
@@ -59,10 +59,10 @@ export function InventoryOrdersList() {
     <section className="space-y-4">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
             Historial de órdenes
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
             Entregas y consumos registrados. Esta vista es de solo lectura.
           </p>
         </div>
@@ -78,13 +78,13 @@ export function InventoryOrdersList() {
       </header>
 
       {status === "loading" && (
-        <p className="text-sm text-slate-600">Cargando órdenes…</p>
+        <p className="text-sm text-slate-600 dark:text-slate-300">Cargando órdenes…</p>
       )}
 
       {status === "error" && error && (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800"
         >
           <p>{error}</p>
           <Button
@@ -108,9 +108,9 @@ export function InventoryOrdersList() {
       )}
 
       {status === "success" && orders.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <thead className="bg-slate-50 dark:bg-slate-800 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
               <tr>
                 <th scope="col" className="px-4 py-3">
                   Producto
@@ -135,10 +135,10 @@ export function InventoryOrdersList() {
                   key={`${order.order_type}-${order.id}`}
                   className="hover:bg-slate-50/80"
                 >
-                  <td className="px-4 py-3 font-medium text-slate-900">
+                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-50">
                     {order.supply_name}
                   </td>
-                  <td className="px-4 py-3 tabular-nums text-slate-700">
+                  <td className="px-4 py-3 tabular-nums text-slate-700 dark:text-slate-200">
                     {order.quantity}
                   </td>
                   <td className="px-4 py-3">
@@ -146,10 +146,10 @@ export function InventoryOrdersList() {
                       {ORDER_TYPE_LABELS[order.order_type]}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
                     {formatCreatedAt(order.created_at)}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-700">
+                  <td className="px-4 py-3 font-mono text-xs text-slate-700 dark:text-slate-200">
                     {order.user_uuid}
                   </td>
                 </tr>

@@ -26,15 +26,15 @@ function MetricTable({
 }) {
   const entries = Object.entries(rows).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+    <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
         {title}
       </h2>
       <ul className="mt-3 space-y-1.5 text-sm">
         {entries.map(([key, value]) => (
           <li key={key} className="flex items-center justify-between gap-3">
-            <span className="text-slate-700">{labelFor(key)}</span>
-            <span className="font-semibold tabular-nums text-slate-900">{value}</span>
+            <span className="text-slate-700 dark:text-slate-200">{labelFor(key)}</span>
+            <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-50">{value}</span>
           </li>
         ))}
       </ul>
@@ -72,7 +72,7 @@ export function IncidentSummaryPanel() {
 
   if (status === "loading") {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-600 dark:text-slate-300">
         Loading summary metrics…
       </div>
     );
@@ -80,7 +80,7 @@ export function IncidentSummaryPanel() {
 
   if (status === "error") {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6">
+      <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-6">
         <p className="text-sm text-amber-900" role="alert">
           {error}
         </p>
@@ -97,9 +97,9 @@ export function IncidentSummaryPanel() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-slate-600 dark:text-slate-300">
         Total incidents in the store:{" "}
-        <span className="font-semibold text-slate-900">{summary.total}</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-50">{summary.total}</span>
       </p>
       <div className="grid gap-4 md:grid-cols-2">
         <MetricTable

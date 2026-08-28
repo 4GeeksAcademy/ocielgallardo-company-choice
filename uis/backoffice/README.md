@@ -9,6 +9,12 @@ Internal Next.js application for HealthCore employees.
 - Expose Hito 2 TypeScript business logic utilities through interactive dashboard demos.
 - Host the centralized incident manager (register, list, summary) and CSV analysis against the local HealthCore FastAPI.
 
+## Navigation shell
+
+- **Desktop (`md+`)**: fixed left sidebar with collapsible module groups (Incidents, Suppliers, Inventory, People & Talent).
+- **Mobile**: bottom bar with Dashboard + Office; Office opens an upward sheet with the same work modules.
+- **Account**: avatar icon in the top bar (Profile, Change password) next to Cerrar sesión.
+
 ## Current sections
 
 - `/` Dashboard
@@ -16,11 +22,6 @@ Internal Next.js application for HealthCore employees.
 - `/register` Sign-up (`POST /users` + automatic login)
 - `/forgot-password` Request password-reset email
 - `/reset-password` Set new password from email token (`?token=`)
-- `/patients` Placeholder module
-- `/appointments` Placeholder module
-- `/billing` Placeholder module
-- `/claims` Placeholder module
-- `/reports` Placeholder module
 - `/incidents` Incident manager list (filters + status updates)
 - `/incidents/new` Register a new incident (PHI warning on description)
 - `/incidents/summary` Aggregated metrics by status/category/origin/branch

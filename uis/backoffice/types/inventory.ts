@@ -159,9 +159,9 @@ export function stockLevelFor(currentStock: number): StockLevel {
 }
 
 export const STOCK_LEVEL_BADGE_CLASSES: Record<StockLevel, string> = {
-  critical: "bg-red-50 text-red-700 ring-red-600/20",
-  low: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  healthy: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  critical: "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 ring-red-600/20",
+  low: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 ring-amber-600/20",
+  healthy: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 ring-emerald-600/20",
 };
 
 export const STOCK_LEVEL_LABELS: Record<StockLevel, string> = {

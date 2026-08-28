@@ -237,12 +237,12 @@ export function SupplierForm({ isSubmitting, onSubmit, onCancel }: SupplierFormP
       </div>
 
       <div className="space-y-2">
-        <p className="text-sm font-medium text-slate-700">Categories</p>
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Categories</p>
         <div className="grid gap-2 sm:grid-cols-2">
           {SUPPLIER_CATEGORY_OPTIONS.map((option) => (
             <label
               key={option.value}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
             >
               <input
                 type="checkbox"
@@ -254,7 +254,7 @@ export function SupplierForm({ isSubmitting, onSubmit, onCancel }: SupplierFormP
           ))}
         </div>
         {errors.categories && (
-          <p className="text-sm text-red-600" role="alert">
+          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
             {errors.categories}
           </p>
         )}
@@ -262,7 +262,7 @@ export function SupplierForm({ isSubmitting, onSubmit, onCancel }: SupplierFormP
 
       {formStatus && (
         <p
-          className={`text-sm ${formStatus.includes("No se") || formStatus.includes("Error") ? "text-red-600" : "text-emerald-700"}`}
+          className={`text-sm ${formStatus.includes("No se") || formStatus.includes("Error") ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}`}
           aria-live="polite"
         >
           {formStatus}

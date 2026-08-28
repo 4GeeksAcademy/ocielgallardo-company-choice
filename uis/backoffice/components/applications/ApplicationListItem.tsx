@@ -20,15 +20,15 @@ export function ApplicationListItem({
       className={`block w-full rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
         isSelected
           ? "border-blue-300 bg-blue-50/70 shadow-sm"
-          : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-slate-900">
+          <p className="truncate font-medium text-slate-900 dark:text-slate-50">
             {application.full_name}
           </p>
-          <p className="truncate text-sm text-slate-600">
+          <p className="truncate text-sm text-slate-600 dark:text-slate-300">
             {application.position}
           </p>
         </div>

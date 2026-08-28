@@ -165,7 +165,7 @@ export function RegisterForm() {
       />
 
       {formError && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
           {formError}
         </p>
       )}
@@ -174,9 +174,9 @@ export function RegisterForm() {
         {isSubmitting ? "Creando cuenta…" : "Crear cuenta"}
       </Button>
 
-      <p className="text-center text-sm text-slate-600">
+      <p className="text-center text-sm text-slate-600 dark:text-slate-300">
         ¿Ya tienes cuenta?{" "}
-        <Link href="/login" className="font-medium text-blue-600 hover:text-blue-700">
+        <Link href="/login" className="font-medium text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-300">
           Inicia sesión
         </Link>
       </p>

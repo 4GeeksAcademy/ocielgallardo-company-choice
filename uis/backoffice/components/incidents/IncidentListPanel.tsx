@@ -114,7 +114,7 @@ export function IncidentListPanel() {
 
   if (status === "loading") {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-600 dark:text-slate-300">
         Loading incidents…
       </div>
     );
@@ -122,8 +122,8 @@ export function IncidentListPanel() {
 
   if (status === "error") {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-        <p className="text-sm text-red-700" role="alert">
+      <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 p-6">
+        <p className="text-sm text-red-700 dark:text-red-400" role="alert">
           {error}
         </p>
         <Button className="mt-4" type="button" onClick={() => void load(applied)}>
@@ -136,7 +136,7 @@ export function IncidentListPanel() {
   return (
     <div className="space-y-4">
       <form
-        className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-4"
+        className="grid gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 sm:grid-cols-4"
         onSubmit={(event) => {
           event.preventDefault();
           setApplied({ ...filters });
@@ -195,7 +195,7 @@ export function IncidentListPanel() {
       </form>
 
       {actionError ? (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
           {actionError}
         </p>
       ) : null}
@@ -206,9 +206,9 @@ export function IncidentListPanel() {
           description="There are no incidents for the current filters, or none have been registered yet."
         />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="px-3 py-2">ID</th>
                 <th className="px-3 py-2">Title</th>
@@ -222,13 +222,13 @@ export function IncidentListPanel() {
               {incidents.map((incident) => {
                 const options = nextStatusOptions(incident.status);
                 return (
-                  <tr key={incident.id} className="border-b border-slate-100">
-                    <td className="px-3 py-2 font-mono text-xs text-slate-500">
+                  <tr key={incident.id} className="border-b border-slate-100 dark:border-slate-700">
+                    <td className="px-3 py-2 font-mono text-xs text-slate-500 dark:text-slate-400">
                       {incident.id}
                     </td>
                     <td className="px-3 py-2">
-                      <p className="font-medium text-slate-900">{incident.title}</p>
-                      <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
+                      <p className="font-medium text-slate-900 dark:text-slate-50">{incident.title}</p>
+                      <p className="mt-0.5 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">
                         {incident.description}
                       </p>
                     </td>
@@ -237,12 +237,12 @@ export function IncidentListPanel() {
                     <td className="px-3 py-2">{branchLabel(incident.branch)}</td>
                     <td className="px-3 py-2">
                       {options.length === 0 ? (
-                        <span className="text-slate-700">
+                        <span className="text-slate-700 dark:text-slate-200">
                           {statusLabel(incident.status)}
                         </span>
                       ) : (
                         <select
-                          className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
+                          className="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-sm"
                           value={incident.status}
                           disabled={updatingId === incident.id}
                           aria-label={`Update status for incident ${incident.id}`}
