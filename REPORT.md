@@ -13,9 +13,21 @@
 | Medición inicial (before) | Hecho — `audit/before/` (HTML + PNG) |
 | Análisis y causa raíz | Hecho — `AUDIT.md` |
 | Correcciones de código | Hecho — commits en esta rama |
-| Componente reutilizable | Hecho — `AuthPageShell` |
+| Componente reutilizable | Hecho — ver §1.1 |
 | Remeición after | Hecho — `audit/after/` (6 HTML, Docker prod) |
-| Cierre con deltas medibles | Hecho — ver §4.2 (caveat entorno before=dev / after=prod) |
+| Cierre con deltas medibles | Parcial — §4.2 (before→after pre-P7); §4.3 pendiente post-P7 |
+
+### 1.1 Componentes y hooks reutilizables (hito)
+
+| Abstracción | Uso |
+|-------------|-----|
+| **`AuthPageShell`** | Chrome compartido auth backoffice con `<main>` |
+| **`FormMessage`** | Mensajes de error/éxito en formularios auth |
+| **`useFormSubmit`** | Submit async + estados loading/error en auth forms |
+| **`useAsyncQuery`** | Fetch con loading/error para listas async |
+| **`AsyncRequestPanel`** | UI loading/error/empty unificada (incidents, inventory) |
+| **`LazyWhenVisible`** | `IntersectionObserver` + placeholder (website + backoffice) |
+| **`FormStatusMessage`** | Banner éxito/error en formulario website `/application` |
 
 ---
 
@@ -117,6 +129,38 @@ Archivos en `audit/after/` de esa noche **no son evidencia oficial**: timeouts e
 
 Corridas con perfil normal (aviso **IndexedDB**) o `PROTOCOL_TIMEOUT` deben descartarse; Incógnito + Docker prod reducen ese ruido.
 
+### 4.3 Final post-P7 (`audit/final/`) — pendiente
+
+**Estado:** carpeta y protocolo listos (`audit/final/README.md`); HTML aún no subidos.  
+**Cuándo medir:** tras `docker compose up --build` con rama actual (incluye P7 lazy, commit `17b0d6e`+).
+
+#### Tabla KPI (rellenar tras pasada)
+
+| Superficie | Modo | Perf | LCP | INP* | CLS | TTFB | TBT | Archivo |
+|------------|------|-----:|-----|------|----:|------|-----|---------|
+| Website `/` | Mobile | TODO | TODO | TODO | TODO | TODO | TODO | `website-mobil-test.html` |
+| Website `/` | Desktop | TODO | TODO | TODO | TODO | TODO | TODO | `website-desktop-test.html` |
+| Backoffice `/login` | Mobile | TODO | TODO | TODO | TODO | TODO | TODO | `backoffice-mobil-login-test.html` |
+| Backoffice `/login` | Desktop | TODO | TODO | TODO | TODO | TODO | TODO | `backoffice-desktop-login-test.html` |
+| Backoffice `/` | Mobile | TODO | TODO | TODO | TODO | TODO | TODO | `backoffice-mobil-test.html` |
+| Backoffice `/` | Desktop | TODO | TODO | TODO | TODO | TODO | TODO | `backoffice-desktop-test.html` |
+
+Extraer filas: `node scripts/extract-lighthouse-kpis.mjs audit/final/*.html --markdown`
+
+\* INP: audit `interaction-to-next-paint` o maxPotentialFID (proxy lab).
+
+#### Δ vs baseline (`audit/before/`) — mejora total del hito
+
+| Superficie | Modo | Δ Perf | Δ LCP | Δ INP* | Δ TBT | Notas |
+|------------|------|--------|-------|--------|-------|-------|
+| *(6 filas)* | — | TODO | TODO | TODO | TODO | Comparar final vs §3.0 `AUDIT.md` |
+
+#### Δ vs after 2026-08-28 (`audit/after/`, pre-P7) — impacto F5–F7
+
+| Superficie | Modo | Δ Perf | Δ LCP | Δ INP* | Δ TBT | Notas |
+|------------|------|--------|-------|--------|-------|-------|
+| *(6 filas)* | — | TODO | TODO | TODO | TODO | Aísla P6 UX + P7 lazy vs pasada pre-lazy |
+
 ---
 
 ## 5. Qué tuvo (o debería tener) más impacto
@@ -133,12 +177,22 @@ Corridas con perfil normal (aviso **IndexedDB**) o `PROTOCOL_TIMEOUT` deben desc
 
 ## 6. Checklist restante
 
-1. Opcional: capturas PNG en `audit/after/` para el entregable visual.
-2. Opcional: re-medición Lighthouse post-lazy (F6) para delta P7.
+1. **Usuario:** 6 HTML en `audit/final/` + rellenar §4.3 (dual delta vs before y vs after).
+2. Opcional: capturas PNG en `audit/after/` para el entregable visual.
 3. Abrir PR de `feature/performance-audit` → `main` cuando lo pidas.
 4. Re-medir en Incógnito si alguna corrida futura falla o parece inconsistente.
 
 Dev con hot reload: `npm run docker:dev`. Medición Lighthouse: `npm run docker:up` (prod default).
+
+---
+
+## 8. Notas para PR
+
+Los fixes del hito se agruparon en commits por fase (baseline + correcciones core, stack Docker prod, UX/lazy + extracciones backoffice, documentación), no en el formato “un fix = un commit + Lighthouse cada vez”. La evidencia Lighthouse sigue el protocolo batch: baseline en `next dev` (`audit/before/`), remeición válida en Docker prod (`audit/after/`, 2026-08-28, **antes** de P7 lazy), y pasada **final** post-P7 pendiente en `audit/final/`.
+
+En el análisis se priorizan **KPIs de rendimiento** (TTFB → LCP → CLS → INP → TBT → Performance score) sobre categorías secundarias de Lighthouse (A11y/BP/SEO), que ya partían de puntuaciones altas. P1/P4/P5/P7 son KPI; P2/P3 son secundarias Lighthouse; P6 es UX fuera del alcance perf KPI.
+
+Script de extracción: `scripts/extract-lighthouse-kpis.mjs`. Tablas maestras: `AUDIT.md` §3.
 
 ---
 
@@ -151,3 +205,4 @@ Dev con hot reload: `npm run docker:dev`. Medición Lighthouse: `npm run docker:
 - `0affcaf` — HTML after + deltas Lighthouse en `REPORT.md`  
 - `17b0d6e` — form success website, extracciones backoffice, lazy viewport  
 - `24a6e0b` — docs P6/P7 + a11y lazy placeholders
+- *(pendiente)* — docs KPI/INP, `audit/final/`, script extracción Lighthouse

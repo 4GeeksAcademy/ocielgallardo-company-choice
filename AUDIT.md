@@ -6,7 +6,8 @@
 **Evidence:** `audit/before/*.html`
 
 > Phase 1 = measure & root-cause. Phase 2 code fixes are applied.  
-> **After (2026-08-28):** 6/6 valid Lighthouse HTML in `audit/after/` (Docker prod, Incógnito). Deltas in `REPORT.md` §4.2.  
+> **After (2026-08-28):** 6/6 valid Lighthouse HTML in `audit/after/` (Docker prod, Incógnito) — **pre-P7 lazy** (before commit `17b0d6e`). Deltas in `REPORT.md` §4.2.  
+> **Final (post-P7):** pending — save 6 HTML in `audit/final/` per `audit/final/README.md`; fill `REPORT.md` §4.3.  
 > **Phase 3 (2026-08-28):** UX form success, backoffice extractions, lazy viewport — see P6/P7 below (commit `17b0d6e`).
 
 ---
@@ -54,24 +55,59 @@
 
 ---
 
-## 3. Core Web Vitals (baseline)
+## 3. Core Web Vitals (KPI-first)
 
-| Surface | Mode | FCP | LCP | TBT | CLS | TTFB |
-|---------|------|-----|-----|-----|-----|------|
-| Website `/` | Mobile | 1.7 s | **6.5 s** | **1,130 ms** | 0 | 80 ms |
-| Website `/` | Desktop | 0.4 s | 1.2 s | 260 ms | 0 | 80 ms |
-| Backoffice `/login` | Mobile | 0.8 s | 2.6 s | **2,390 ms** | 0 | 80 ms |
-| Backoffice `/login` | Desktop | 0.4 s | 0.6 s | 530 ms | 0 | 70 ms |
-| Backoffice `/` | Mobile | 1.2 s | **19.1 s** | **2,330 ms** | 0 | 70 ms |
-| Backoffice `/` | Desktop | 0.4 s | **3.5 s** | 550 ms | 0 | 70 ms |
+Extracted with `node scripts/extract-lighthouse-kpis.mjs … --markdown`.  
+\* **INP:** `interaction-to-next-paint` when present in the export; otherwise **maxPotentialFID** (lab proxy — common in Lighthouse 13.x HTML).
 
-CLS and TTFB are healthy. LCP + TBT drive the Performance scores.
+### 3.0 Baseline (`audit/before/` — `next dev`)
+
+| Surface | Mode | Perf | FCP | LCP | INP* | TBT | CLS | TTFB |
+|---------|------|-----:|-----|-----|------|-----|----:|------|
+| Website `/` | Mobile | 53 | 1.7 s | **6.5 s** | **2,280 ms** | **1,130 ms** | 0 | 80 ms |
+| Website `/` | Desktop | 88 | 0.4 s | 1.2 s | 570 ms | 260 ms | 0 | 80 ms |
+| Backoffice `/login` | Mobile | 68 | 0.8 s | 2.6 s | **2,430 ms** | **2,390 ms** | 0 | 80 ms |
+| Backoffice `/login` | Desktop | 78 | 0.4 s | 0.6 s | 580 ms | 530 ms | 0 | 70 ms |
+| Backoffice `/` | Mobile | 46 | 1.2 s | **19.1 s** | **2,380 ms** | **2,330 ms** | 0 | 70 ms |
+| Backoffice `/` | Desktop | 58 | 0.4 s | **3.5 s** | 600 ms | 550 ms | 0 | 70 ms |
+
+### 3.0.1 After 2026-08-28 (`audit/after/` — Docker prod, **pre-P7**)
+
+| Surface | Mode | Perf | FCP | LCP | INP* | TBT | CLS | TTFB |
+|---------|------|-----:|-----|-----|------|-----|----:|------|
+| Website `/` | Mobile | 95 | 0.8 s | 3.0 s | 90 ms | 20 ms | 0 | ~0 ms |
+| Website `/` | Desktop | 90 | 0.2 s | 0.7 s | 20 ms | 0 ms | 0 | ~0 ms |
+| Backoffice `/login` | Mobile | 99 | 0.8 s | 2.1 s | 90 ms | 40 ms | 0 | ~10 ms |
+| Backoffice `/login` | Desktop | 100 | 0.2 s | 0.5 s | 20 ms | 0 ms | 0 | ~10 ms |
+| Backoffice `/` | Mobile | 95 | 0.8 s | 2.9 s | 110 ms | 60 ms | 0 | ~0 ms |
+| Backoffice `/` | Desktop | 100 | 0.2 s | 0.7 s | 20 ms | 0 ms | 0 | ~0 ms |
+
+### 3.0.2 Final post-P7 (`audit/final/` — TODO)
+
+| Surface | Mode | Perf | FCP | LCP | INP* | TBT | CLS | TTFB |
+|---------|------|-----:|-----|-----|------|-----|----:|------|
+| *(6 surfaces)* | — | TODO | TODO | TODO | TODO | TODO | TODO | TODO |
+
+Run protocol in `audit/final/README.md`, then `node scripts/extract-lighthouse-kpis.mjs audit/final/*.html --markdown` and update `REPORT.md` §4.3.
+
+### 3.1 KPI interpretation order
+
+When reading Lighthouse (lab) or field data, prioritize in this order:
+
+1. **TTFB** — server / network baseline (healthy here; not the bottleneck).
+2. **LCP** — largest contentful paint; primary load KPI (P1 hero, P4/P7 deferral).
+3. **CLS** — layout stability (already 0 across surfaces).
+4. **INP** — interaction responsiveness (field KPI; lab proxy via INP* column above).
+5. **TBT** — lab main-thread blocking; complements INP when field INP is unavailable.
+6. **Performance score** — composite; useful for summary, not for root-cause alone.
+
+**Secondary (outside perf KPI scope for this milestone):** Accessibility (P2, P3), Best Practices, SEO — strong baselines; fixes applied but not the performance gap.
 
 ---
 
 ## 4. Problems — root cause
 
-### P1 — Website LCP: unoptimized hero image
+### P1 — Website LCP: unoptimized hero image `KPI`
 
 | | |
 |--|--|
@@ -80,7 +116,7 @@ CLS and TTFB are healthy. LCP + TBT drive the Performance scores.
 | **Root cause** | No `next/image`, large PNG, all slides eager |
 | **Fix applied** | `next/image` + `fill` + `sizes="100vw"` + `priority` on first slide |
 
-### P2 — Website a11y: focusable links inside `aria-hidden` mobile nav
+### P2 — Website a11y: focusable links inside `aria-hidden` mobile nav `Secondary (Lighthouse A11y)`
 
 | | |
 |--|--|
@@ -89,7 +125,7 @@ CLS and TTFB are healthy. LCP + TBT drive the Performance scores.
 | **Root cause** | Menu kept in DOM for animation while closed, still tabbable |
 | **Fix applied** | `tabIndex={-1}` on menu links when closed |
 
-### P3 — Backoffice login: missing `<main>` landmark
+### P3 — Backoffice login: missing `<main>` landmark `Secondary (Lighthouse A11y)`
 
 | | |
 |--|--|
@@ -98,7 +134,7 @@ CLS and TTFB are healthy. LCP + TBT drive the Performance scores.
 | **Root cause** | Duplicated auth chrome without landmark |
 | **Fix applied** | Shared `AuthPageShell` with `<main>` (login, register, forgot, reset) |
 
-### P4 — Dashboard: heavy client JS / late LCP text paint
+### P4 — Dashboard: heavy client JS / late LCP text paint `KPI`
 
 | | |
 |--|--|
@@ -107,7 +143,7 @@ CLS and TTFB are healthy. LCP + TBT drive the Performance scores.
 | **Root cause** | Eager client playground + `next dev` main-thread cost |
 | **Fix applied** | `next/dynamic` for `Hito2Playground`; extended in P7 with viewport lazy wrapper |
 
-### P5 — Render-blocking CSS / large payloads (both apps)
+### P5 — Render-blocking CSS / large payloads (both apps) `KPI`
 
 | | |
 |--|--|
@@ -115,7 +151,7 @@ CLS and TTFB are healthy. LCP + TBT drive the Performance scores.
 | **Root cause** | App Router CSS + assets; amplified in dev |
 | **Status** | Partially helped by image optimization; full gain needs production build |
 
-### P6 — Website `/application`: success feedback + redirect
+### P6 — Website `/application`: success feedback + redirect `UX (outside perf KPI)`
 
 | | |
 |--|--|
@@ -124,7 +160,7 @@ CLS and TTFB are healthy. LCP + TBT drive the Performance scores.
 | **Root cause** | Inline `text-xs` status only; form reset on success obscured feedback |
 | **Fix applied** | Full-screen success banner (`role="status"`), focus + scroll, redirect to `/` after 2 s; validation error banner on failed submit |
 
-### P7 — Lazy viewport + code splitting (both UIs)
+### P7 — Lazy viewport + code splitting (both UIs) `KPI`
 
 | | |
 |--|--|
@@ -154,4 +190,5 @@ CLS and TTFB are healthy. LCP + TBT drive the Performance scores.
 | Targeted fixes (images, a11y, shared shell, dynamic import) | Done — code |
 | Re-measure → `audit/after/` + score delta in `REPORT.md` | Done — `audit/after/README.md` (2026-08-28) |
 | UX + lazy viewport (P6, P7) + backoffice extractions | Done — commit `17b0d6e` |
-| Re-measure post-lazy (P7 delta vs current after) | TODO — optional; not run yet |
+| KPI extraction script + `audit/final/` protocol | Done — `scripts/extract-lighthouse-kpis.mjs`, `audit/final/README.md` |
+| Final Lighthouse pass post-P7 (`audit/final/` → `REPORT.md` §4.3) | **Pending user** — see `audit/final/README.md` |

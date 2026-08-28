@@ -54,6 +54,18 @@ uv run seed-incidents
 
 **Source of truth:** `docs/incident-manager/CONTEXT-HealthCore.md`
 
+### `extract-lighthouse-kpis.mjs` — KPI table from Lighthouse HTML exports
+
+Parses `window.__LIGHTHOUSE_JSON__` from saved Lighthouse HTML reports and prints Performance, FCP, LCP, INP (or maxPotentialFID lab proxy), CLS, TTFB, and TBT.
+
+```bash
+node scripts/extract-lighthouse-kpis.mjs audit/before/*.html --markdown
+node scripts/extract-lighthouse-kpis.mjs audit/after/*.html --markdown
+node scripts/extract-lighthouse-kpis.mjs audit/final/*.html --markdown
+```
+
+Use after each audit pass to fill [`AUDIT.md`](../AUDIT.md) and [`REPORT.md`](../REPORT.md) tables.
+
 ## 💡 Tips
 
 - Keep each script focused: parse args, call services, present results.
