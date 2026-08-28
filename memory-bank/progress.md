@@ -14,6 +14,12 @@
 - Backoffice shell is mobile-first: desktop fixed sidebar with collapsible groups; mobile Dashboard + Office bottom bar; account via avatar menu.
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `audit/REPORT.md` §4.2–§4.3.
 - Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
+- Caching optimisation milestone (Phase 1): branch `feature/caching-optimisation`; `CACHING_REPORT.md` with criteria and endpoint inventory; Phase 2 (measurement) pending.
+
+## Recently Completed (Caching milestone — Phase 1)
+- Branch: `feature/caching-optimisation` (from `feature/performance-audit`).
+- Fix: `services/app/main.py` — removed duplicate `app = FastAPI()` that dropped `lifespan` (inventory init on startup restored).
+- Docs: root `CACHING_REPORT.md` — methodology, backend/frontend inventory, HIPAA exclusions, trade-off framework.
 
 ## Recently Completed (Performance audit — Phase 2 fixes)
 - Branch: `feature/performance-audit` (from `main`, merged with depuracion/dark mode).

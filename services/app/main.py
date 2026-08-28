@@ -32,7 +32,6 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="HealthCore API", lifespan=lifespan)
-app = FastAPI(title="HealthCore API")
 
 app.add_middleware(
     CORSMiddleware,
