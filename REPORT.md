@@ -205,4 +205,4 @@ Script de extracción: `scripts/extract-lighthouse-kpis.mjs`. Tablas maestras: `
 - `0affcaf` — HTML after + deltas Lighthouse en `REPORT.md`  
 - `17b0d6e` — form success website, extracciones backoffice, lazy viewport  
 - `24a6e0b` — docs P6/P7 + a11y lazy placeholders
-- *(pendiente)* — docs KPI/INP, `audit/final/`, script extracción Lighthouse
+- `bf04703` — docs KPI/INP, `audit/final/`, script extracción Lighthouse
