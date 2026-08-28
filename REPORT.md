@@ -150,4 +150,4 @@ Dev con hot reload: `npm run docker:dev`. Medición Lighthouse: `npm run docker:
 - `e974475` — Docker prod stack por defecto  
 - `0affcaf` — HTML after + deltas Lighthouse en `REPORT.md`  
 - `17b0d6e` — form success website, extracciones backoffice, lazy viewport  
-- `6b9e78a` — docs P6/P7 + a11y lazy placeholders
+- `24a6e0b` — docs P6/P7 + a11y lazy placeholders
