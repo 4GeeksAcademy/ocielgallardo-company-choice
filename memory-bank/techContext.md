@@ -59,6 +59,7 @@
 
 ## Repository Navigation Guide
 - `CONTEXT.md`: business domain baseline and company scenario.
+- `docs/telemetry/`: Telemetry Plan design docs (`telemetry-plan.md`, `event-schemas.json`); CONTEXT metrics in `CONTEXT-healthcore.md`.
 - `memory-bank/`: persistent AI-agent context and progress tracking.
 - `.agents/rules/`: behavior and contribution constraints for AI agents.
 - `src/`: core typed models and utility logic.

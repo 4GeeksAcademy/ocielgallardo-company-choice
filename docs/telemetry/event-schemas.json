@@ -1,0 +1,1289 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://healthcore.local/schemas/telemetry/event-schemas.json",
+  "title": "HealthCore Telemetry Event Schemas",
+  "description": "JSON Schema catalog for HealthCore telemetry. Identifiers match CONTEXT-healthcore.md and telemetry-plan.md. No PHI in properties.",
+  "x-priority-index": {
+    "P0": [
+      "inbound_order_created",
+      "outbound_order_created",
+      "stock_threshold_triggered",
+      "direct_stock_edit_rejected",
+      "supply_expiry_flagged"
+    ],
+    "P1": [
+      "product_created",
+      "outbound_order_rejected",
+      "inbound_order_rejected",
+      "inventory_form_started",
+      "inventory_form_abandoned",
+      "login_succeeded",
+      "login_failed",
+      "logout_completed",
+      "user_registered",
+      "password_reset_requested",
+      "password_reset_completed",
+      "password_reset_failed",
+      "password_changed",
+      "session_unauthorized",
+      "page_viewed",
+      "form_abandoned",
+      "incident_created",
+      "incident_validation_failed",
+      "incident_status_changed",
+      "incident_status_rejected",
+      "incident_csv_analyzed",
+      "incident_csv_rejected",
+      "incident_results_exported",
+      "incident_summary_viewed",
+      "supplier_created",
+      "supplier_rate_updated",
+      "supplier_status_changed",
+      "supplier_deleted",
+      "http_request_failed",
+      "api_unhandled_error",
+      "email_send_failed",
+      "job_run_completed"
+    ],
+    "P2": [
+      "talent_list_filtered",
+      "talent_record_created",
+      "talent_candidate_viewed",
+      "website_page_viewed",
+      "intake_form_started",
+      "intake_form_submitted",
+      "intake_form_validation_failed"
+    ]
+  },
+  "$defs": {
+    "iso8601": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "country": {
+      "type": "string",
+      "enum": ["US", "UK"]
+    },
+    "product_category": {
+      "type": "string",
+      "enum": ["medication", "ppe", "consumable", "equipment"]
+    },
+    "app_surface": {
+      "type": "string",
+      "enum": ["backoffice", "website"]
+    },
+    "envelope_fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "timestamp",
+        "sessionId",
+        "userId",
+        "event_type",
+        "schemaVersion",
+        "requestId",
+        "properties"
+      ],
+      "properties": {
+        "eventId": { "type": "string", "format": "uuid" },
+        "timestamp": { "$ref": "#/$defs/iso8601" },
+        "sessionId": { "type": ["string", "null"] },
+        "userId": { "type": "string", "minLength": 1 },
+        "event_type": { "type": "string", "minLength": 1 },
+        "schemaVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "requestId": { "type": ["string", "null"] },
+        "properties": { "type": "object" }
+      }
+    },
+    "inventory_core": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity"
+      ],
+      "properties": {
+        "clinic_id": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "country": { "$ref": "#/$defs/country" },
+        "product_id": { "type": "integer", "minimum": 1 },
+        "product_category": { "$ref": "#/$defs/product_category" },
+        "quantity": { "type": "integer", "minimum": 0 },
+        "department": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Clinical service area; never a patient id"
+        },
+        "sku": { "type": "string" },
+        "unit": { "type": "string" },
+        "order_id": { "type": "integer", "minimum": 1 },
+        "vendor_name": { "type": "string" },
+        "consumption_type": {
+          "type": "string",
+          "enum": ["clinical_use", "expiry_waste"]
+        },
+        "current_stock": { "type": "integer", "minimum": 0 },
+        "min_stock_threshold": { "type": "integer", "minimum": 0 },
+        "threshold_band": { "type": "string", "enum": ["low", "critical"] },
+        "attempted_path": { "type": "string" },
+        "http_status": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "rejection_reason": { "type": "string" },
+        "expiry_date": { "type": "string", "format": "date" },
+        "days_to_expiry": { "type": "integer" },
+        "batch_id": { "type": "string" },
+        "form_name": {
+          "type": "string",
+          "enum": ["inbound", "outbound", "product_create"]
+        },
+        "error_code": { "type": "string" }
+      }
+    },
+    "inbound_order_created": {
+      "title": "inbound_order_created",
+      "x-priority": "P0",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "inbound_order_created" },
+            "properties": {
+              "allOf": [
+                { "$ref": "#/$defs/inventory_core" },
+                {
+                  "type": "object",
+                  "required": ["vendor_name"]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "outbound_order_created": {
+      "title": "outbound_order_created",
+      "x-priority": "P0",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "outbound_order_created" },
+            "properties": {
+              "allOf": [
+                { "$ref": "#/$defs/inventory_core" },
+                {
+                  "type": "object",
+                  "required": ["department"]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "stock_threshold_triggered": {
+      "title": "stock_threshold_triggered",
+      "x-priority": "P0",
+      "x-pipeline": "stream",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "stock_threshold_triggered" },
+            "properties": {
+              "allOf": [
+                { "$ref": "#/$defs/inventory_core" },
+                {
+                  "type": "object",
+                  "required": [
+                    "current_stock",
+                    "min_stock_threshold",
+                    "threshold_band"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "direct_stock_edit_rejected": {
+      "title": "direct_stock_edit_rejected",
+      "x-priority": "P0",
+      "x-pipeline": "stream",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "direct_stock_edit_rejected" },
+            "properties": {
+              "allOf": [
+                { "$ref": "#/$defs/inventory_core" },
+                {
+                  "type": "object",
+                  "required": [
+                    "attempted_path",
+                    "http_status",
+                    "rejection_reason"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "supply_expiry_flagged": {
+      "title": "supply_expiry_flagged",
+      "x-priority": "P0",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "supply_expiry_flagged" },
+            "properties": {
+              "allOf": [
+                { "$ref": "#/$defs/inventory_core" },
+                {
+                  "type": "object",
+                  "required": ["expiry_date", "days_to_expiry"]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "product_created": {
+      "title": "product_created",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "product_created" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "product_id",
+                "product_category",
+                "country",
+                "sku"
+              ],
+              "properties": {
+                "product_id": { "type": "integer", "minimum": 1 },
+                "product_category": { "$ref": "#/$defs/product_category" },
+                "country": { "$ref": "#/$defs/country" },
+                "sku": { "type": "string" },
+                "unit": { "type": "string" },
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "quantity": { "type": "integer", "const": 0 }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "outbound_order_rejected": {
+      "title": "outbound_order_rejected",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "outbound_order_rejected" },
+            "properties": {
+              "allOf": [
+                { "$ref": "#/$defs/inventory_core" },
+                {
+                  "type": "object",
+                  "required": ["http_status", "error_code"]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "inbound_order_rejected": {
+      "title": "inbound_order_rejected",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "inbound_order_rejected" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["http_status", "error_code"],
+              "properties": {
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "country": { "$ref": "#/$defs/country" },
+                "product_id": { "type": "integer", "minimum": 1 },
+                "product_category": { "$ref": "#/$defs/product_category" },
+                "quantity": { "type": "integer", "minimum": 0 },
+                "http_status": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 599
+                },
+                "error_code": { "type": "string" },
+                "vendor_name": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "inventory_form_started": {
+      "title": "inventory_form_started",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "inventory_form_started" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["form_name", "path"],
+              "properties": {
+                "form_name": {
+                  "type": "string",
+                  "enum": ["inbound", "outbound", "product_create"]
+                },
+                "path": { "type": "string" },
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "inventory_form_abandoned": {
+      "title": "inventory_form_abandoned",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "inventory_form_abandoned" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["form_name", "path"],
+              "properties": {
+                "form_name": {
+                  "type": "string",
+                  "enum": ["inbound", "outbound", "product_create"]
+                },
+                "path": { "type": "string" },
+                "last_field": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "login_succeeded": {
+      "title": "login_succeeded",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "login_succeeded" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "role": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "login_failed": {
+      "title": "login_failed",
+      "x-priority": "P1",
+      "x-pipeline": "stream",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "login_failed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["http_status"],
+              "properties": {
+                "http_status": { "type": "integer", "const": 401 },
+                "email_hash": {
+                  "type": "string",
+                  "description": "Optional hashed identifier; never raw password"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "logout_completed": {
+      "title": "logout_completed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "logout_completed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "user_registered": {
+      "title": "user_registered",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "user_registered" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "role": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "password_reset_requested": {
+      "title": "password_reset_requested",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "password_reset_requested" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "result": {
+                  "type": "string",
+                  "const": "accepted",
+                  "description": "Always accepted to avoid email enumeration"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "password_reset_completed": {
+      "title": "password_reset_completed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "password_reset_completed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {}
+            }
+          }
+        }
+      ]
+    },
+    "password_reset_failed": {
+      "title": "password_reset_failed",
+      "x-priority": "P1",
+      "x-pipeline": "stream",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "password_reset_failed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["error_code"],
+              "properties": {
+                "error_code": {
+                  "type": "string",
+                  "enum": ["invalid_token", "expired_token", "used_token"]
+                },
+                "http_status": { "type": "integer" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "password_changed": {
+      "title": "password_changed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "password_changed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {}
+            }
+          }
+        }
+      ]
+    },
+    "session_unauthorized": {
+      "title": "session_unauthorized",
+      "x-priority": "P1",
+      "x-pipeline": "stream",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "session_unauthorized" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "http_status"],
+              "properties": {
+                "path": { "type": "string" },
+                "http_status": { "type": "integer", "const": 401 },
+                "method": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "page_viewed": {
+      "title": "page_viewed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "page_viewed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "app"],
+              "properties": {
+                "path": { "type": "string" },
+                "app": { "$ref": "#/$defs/app_surface" },
+                "referrer_path": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "form_abandoned": {
+      "title": "form_abandoned",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "form_abandoned" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["form_name", "path", "app"],
+              "properties": {
+                "form_name": { "type": "string" },
+                "path": { "type": "string" },
+                "app": { "$ref": "#/$defs/app_surface" },
+                "last_field": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "incident_created": {
+      "title": "incident_created",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "incident_created" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["incident_id"],
+              "properties": {
+                "incident_id": { "type": "string" },
+                "category": { "type": "string" },
+                "origin": { "type": "string" },
+                "branch": { "type": "string" },
+                "status": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "incident_validation_failed": {
+      "title": "incident_validation_failed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "incident_validation_failed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["fields"],
+              "properties": {
+                "fields": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Failing field names only; never free-text values"
+                },
+                "http_status": { "type": "integer" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "incident_status_changed": {
+      "title": "incident_status_changed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "incident_status_changed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["incident_id", "from_status", "to_status"],
+              "properties": {
+                "incident_id": { "type": "string" },
+                "from_status": { "type": "string" },
+                "to_status": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "incident_status_rejected": {
+      "title": "incident_status_rejected",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "incident_status_rejected" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["incident_id", "from_status", "to_status"],
+              "properties": {
+                "incident_id": { "type": "string" },
+                "from_status": { "type": "string" },
+                "to_status": { "type": "string" },
+                "http_status": { "type": "integer" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "incident_csv_analyzed": {
+      "title": "incident_csv_analyzed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "incident_csv_analyzed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "row_count": { "type": "integer", "minimum": 0 },
+                "valid_count": { "type": "integer", "minimum": 0 },
+                "invalid_count": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "incident_csv_rejected": {
+      "title": "incident_csv_rejected",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "incident_csv_rejected" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["error_code"],
+              "properties": {
+                "error_code": { "type": "string" },
+                "http_status": { "type": "integer" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "incident_results_exported": {
+      "title": "incident_results_exported",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "incident_results_exported" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "format": { "type": "string", "const": "csv" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "incident_summary_viewed": {
+      "title": "incident_summary_viewed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "incident_summary_viewed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "supplier_created": {
+      "title": "supplier_created",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "supplier_created" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["supplier_id"],
+              "properties": {
+                "supplier_id": { "type": "integer", "minimum": 1 },
+                "country": { "$ref": "#/$defs/country" },
+                "category": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "supplier_rate_updated": {
+      "title": "supplier_rate_updated",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "supplier_rate_updated" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["supplier_id"],
+              "properties": {
+                "supplier_id": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "supplier_status_changed": {
+      "title": "supplier_status_changed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "supplier_status_changed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["supplier_id", "to_status"],
+              "properties": {
+                "supplier_id": { "type": "integer", "minimum": 1 },
+                "from_status": { "type": "string" },
+                "to_status": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "supplier_deleted": {
+      "title": "supplier_deleted",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "supplier_deleted" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["supplier_id"],
+              "properties": {
+                "supplier_id": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "talent_list_filtered": {
+      "title": "talent_list_filtered",
+      "x-priority": "P2",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "talent_list_filtered" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "status": { "type": "string" },
+                "stage": { "type": "string" },
+                "has_query": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "talent_record_created": {
+      "title": "talent_record_created",
+      "x-priority": "P2",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "talent_record_created" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["record_id"],
+              "properties": {
+                "record_id": { "type": "string" },
+                "status": { "type": "string" },
+                "stage": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "talent_candidate_viewed": {
+      "title": "talent_candidate_viewed",
+      "x-priority": "P2",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "talent_candidate_viewed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["record_id"],
+              "properties": {
+                "record_id": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "website_page_viewed": {
+      "title": "website_page_viewed",
+      "x-priority": "P2",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "website_page_viewed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path"],
+              "properties": {
+                "path": { "type": "string" },
+                "referrer_path": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "intake_form_started": {
+      "title": "intake_form_started",
+      "x-priority": "P2",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "intake_form_started" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path"],
+              "properties": {
+                "path": { "type": "string", "const": "/application" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "intake_form_submitted": {
+      "title": "intake_form_submitted",
+      "x-priority": "P2",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "intake_form_submitted" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Codes only — no name, email, phone, or reason",
+              "properties": {
+                "country": { "$ref": "#/$defs/country" },
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "consent_given": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "intake_form_validation_failed": {
+      "title": "intake_form_validation_failed",
+      "x-priority": "P2",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "intake_form_validation_failed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["fields"],
+              "properties": {
+                "fields": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Field names only; never field values"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "http_request_failed": {
+      "title": "http_request_failed",
+      "x-priority": "P1",
+      "x-pipeline": "stream",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "http_request_failed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "method", "http_status"],
+              "properties": {
+                "path": { "type": "string" },
+                "method": { "type": "string" },
+                "http_status": {
+                  "type": "integer",
+                  "minimum": 400,
+                  "maximum": 599
+                },
+                "duration_ms": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "api_unhandled_error": {
+      "title": "api_unhandled_error",
+      "x-priority": "P1",
+      "x-pipeline": "stream",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "api_unhandled_error" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "method"],
+              "properties": {
+                "path": { "type": "string" },
+                "method": { "type": "string" },
+                "error_class": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "email_send_failed": {
+      "title": "email_send_failed",
+      "x-priority": "P1",
+      "x-pipeline": "stream",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "email_send_failed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["purpose", "error_code"],
+              "properties": {
+                "purpose": {
+                  "type": "string",
+                  "enum": ["password_reset"]
+                },
+                "error_code": { "type": "string" },
+                "provider": { "type": "string", "const": "resend" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "job_run_completed": {
+      "title": "job_run_completed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        { "$ref": "#/$defs/envelope_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "job_run_completed" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["job_name", "status", "duration_ms"],
+              "properties": {
+                "job_name": {
+                  "type": "string",
+                  "enum": [
+                    "inventory_seed",
+                    "supplier_seed",
+                    "incident_seed",
+                    "supply_expiry_scan"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["success", "failure", "skipped"]
+                },
+                "duration_ms": { "type": "integer", "minimum": 0 },
+                "records_processed": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/inbound_order_created" },
+    { "$ref": "#/$defs/outbound_order_created" },
+    { "$ref": "#/$defs/stock_threshold_triggered" },
+    { "$ref": "#/$defs/direct_stock_edit_rejected" },
+    { "$ref": "#/$defs/supply_expiry_flagged" },
+    { "$ref": "#/$defs/product_created" },
+    { "$ref": "#/$defs/outbound_order_rejected" },
+    { "$ref": "#/$defs/inbound_order_rejected" },
+    { "$ref": "#/$defs/inventory_form_started" },
+    { "$ref": "#/$defs/inventory_form_abandoned" },
+    { "$ref": "#/$defs/login_succeeded" },
+    { "$ref": "#/$defs/login_failed" },
+    { "$ref": "#/$defs/logout_completed" },
+    { "$ref": "#/$defs/user_registered" },
+    { "$ref": "#/$defs/password_reset_requested" },
+    { "$ref": "#/$defs/password_reset_completed" },
+    { "$ref": "#/$defs/password_reset_failed" },
+    { "$ref": "#/$defs/password_changed" },
+    { "$ref": "#/$defs/session_unauthorized" },
+    { "$ref": "#/$defs/page_viewed" },
+    { "$ref": "#/$defs/form_abandoned" },
+    { "$ref": "#/$defs/incident_created" },
+    { "$ref": "#/$defs/incident_validation_failed" },
+    { "$ref": "#/$defs/incident_status_changed" },
+    { "$ref": "#/$defs/incident_status_rejected" },
+    { "$ref": "#/$defs/incident_csv_analyzed" },
+    { "$ref": "#/$defs/incident_csv_rejected" },
+    { "$ref": "#/$defs/incident_results_exported" },
+    { "$ref": "#/$defs/incident_summary_viewed" },
+    { "$ref": "#/$defs/supplier_created" },
+    { "$ref": "#/$defs/supplier_rate_updated" },
+    { "$ref": "#/$defs/supplier_status_changed" },
+    { "$ref": "#/$defs/supplier_deleted" },
+    { "$ref": "#/$defs/talent_list_filtered" },
+    { "$ref": "#/$defs/talent_record_created" },
+    { "$ref": "#/$defs/talent_candidate_viewed" },
+    { "$ref": "#/$defs/website_page_viewed" },
+    { "$ref": "#/$defs/intake_form_started" },
+    { "$ref": "#/$defs/intake_form_submitted" },
+    { "$ref": "#/$defs/intake_form_validation_failed" },
+    { "$ref": "#/$defs/http_request_failed" },
+    { "$ref": "#/$defs/api_unhandled_error" },
+    { "$ref": "#/$defs/email_send_failed" },
+    { "$ref": "#/$defs/job_run_completed" }
+  ]
+}

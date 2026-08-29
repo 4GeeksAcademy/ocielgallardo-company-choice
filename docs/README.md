@@ -29,6 +29,13 @@ docs/
 │   ├── CONTEXT-HealthCore.md
 │   └── CONTEXT-HealthCore.es.md
 │
+├── telemetry/                  ← telemetry plan (design docs; no capture code yet)
+│   ├── CONTEXT-healthcore.md
+│   ├── CONTEXT-healthcore.es.md
+│   ├── telemetry-plan.md
+│   ├── telemetry-plan.es.md
+│   └── event-schemas.json
+│
 ├── api/                  (futuro)
 │
 ├── decisions/            (futuro)
