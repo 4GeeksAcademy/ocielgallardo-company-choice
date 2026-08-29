@@ -4,7 +4,7 @@
 
 - Business context source established in `CONTEXT.md`.
 - Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`).
-- Serialization audit milestone in progress on `feature/serialization-audit`: every JSON endpoint has an explicit Pydantic `response_model`; audit written in `audit/serialization-audit.md`.
+- Serialization audit milestone in progress on `feature/serialization-audit`: every JSON endpoint has an explicit Pydantic `response_model`; audit written in `docs/audit/serialization-audit.md`.
 - Centralized incident manager implemented (shared validation, seed, API, backoffice UI).
 - Web deliverables for Milestone 1 are implemented.
 - Core TypeScript domain/utilities for Milestone 2 are implemented.
@@ -12,13 +12,13 @@
 - Type-level model validation command is available in `packages/shared`.
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
 - Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
-- Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `audit/REPORT.md` §4.2–§4.3.
+- Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `docs/audit/REPORT.md` §4.2–§4.3.
 - Docker: prod-default (`docker compose up` / `npm run docker:up`); dev overlay via `docker-compose.dev.yml` (`npm run docker:dev`).
 
 ## Recently Completed (serialization audit)
 
 - Branch: `feature/serialization-audit` (from `main`).
-- Audit doc: `audit/serialization-audit.md` (endpoint inventory, status, target payloads).
+- Audit doc: `docs/audit/serialization-audit.md` (endpoint inventory, status, target payloads).
 - Auth: `AuthMeResponse`, `MessageResponse` on `/auth/me`, forgot/reset/change-password.
 - Deletes: `DetailResponse` on `DELETE /users/{id}` and `DELETE /suppliers/{id}`.
 - Incidents: `IncidentAnalysisSummary` on CSV analyze; `IncidentListItem` for list (no timestamps).
@@ -50,15 +50,15 @@
 - Re-baselined from Lighthouse HTML (website `/`, backoffice `/login` + authenticated `/`).
 - Website: `next/image` on hero (priority first slide) + logo; mobile menu `tabIndex={-1}` when closed (`aria-hidden-focus`).
 - Backoffice: `AuthPageShell` (`<main>`) on login/register/forgot/reset; `Hito2Playground` via `next/dynamic` on dashboard.
-- Docs: `audit/AUDIT.md` + Spanish `audit/REPORT.md` checkpoint; `audit/before/` HTML+PNG; `audit/after/` first HTML pass (not yet official).
-- After (2026-08-28): 6 HTML in `audit/after/` — Docker prod + Incógnito; e.g. website mobile Perf 95 (Δ+42), dashboard mobile 95 (Δ+49). Unstable runs in `next dev` discarded.
+- Docs: `docs/audit/AUDIT.md` + Spanish `docs/audit/REPORT.md` checkpoint; `docs/audit/before/` HTML+PNG; `docs/audit/after/` first HTML pass (not yet official).
+- After (2026-08-28): 6 HTML in `docs/audit/after/` — Docker prod + Incógnito; e.g. website mobile Perf 95 (Δ+42), dashboard mobile 95 (Δ+49). Unstable runs in `next dev` discarded.
 - Docker prod: `docker-compose.yml` (default), `uis/Dockerfile.prod`, `services/Dockerfile.prod`.
 - Commit `17b0d6e`: website form success + redirect; backoffice `FormMessage`/`useFormSubmit`, `useAsyncQuery`/`AsyncRequestPanel`; lazy viewport both UIs.
-- Docs sync: `audit/AUDIT.md` P6/P7 + `audit/REPORT.md` F5–F7 (post-`17b0d6e`).
-- KPI closure docs: `scripts/extract-lighthouse-kpis.mjs` + `scripts/README.md`; `audit/final/README.md` (protocol post-P7); `audit/AUDIT.md` §3 INP/KPI tables + §3.1 interpretation; `audit/REPORT.md` §1.1 refactors, §4.3 dual-delta placeholders, §8 PR notes.
-- Final Lighthouse (2026-08-28): 6/6 HTML in `audit/final/`; `audit/AUDIT.md` §3.0.2 + `audit/REPORT.md` §4.3 filled (dual delta vs before/after).
+- Docs sync: `docs/audit/AUDIT.md` P6/P7 + `docs/audit/REPORT.md` F5–F7 (post-`17b0d6e`).
+- KPI closure docs: `scripts/extract-lighthouse-kpis.mjs` + `scripts/README.md`; `docs/audit/final/README.md` (protocol post-P7); `docs/audit/AUDIT.md` §3 INP/KPI tables + §3.1 interpretation; `docs/audit/REPORT.md` §1.1 refactors, §4.3 dual-delta placeholders, §8 PR notes.
+- Final Lighthouse (2026-08-28): 6/6 HTML in `docs/audit/final/`; `docs/audit/AUDIT.md` §3.0.2 + `docs/audit/REPORT.md` §4.3 filled (dual delta vs before/after).
 - Merge `origin/main` (PR #19 Docker) resolved; prod-default + `docker-compose.dev.yml` overlay retained.
-- TODO: optional PNG in `audit/after/`/`audit/final/`; merge PR #21 to `main`.
+- TODO: optional PNG in `docs/audit/after/`/`docs/audit/final/`; merge PR #21 to `main`.
 
 ## Recently Completed (backoffice — mobile-first navigation shell)
 

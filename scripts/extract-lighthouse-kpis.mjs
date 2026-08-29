@@ -4,8 +4,8 @@
  * Parses window.__LIGHTHOUSE_JSON__ embedded in DevTools / Lighthouse reports.
  *
  * Usage:
- *   node scripts/extract-lighthouse-kpis.mjs audit/before/*.html
- *   node scripts/extract-lighthouse-kpis.mjs audit/after/*.html --markdown
+ *   node scripts/extract-lighthouse-kpis.mjs docs/audit/before/*.html
+ *   node scripts/extract-lighthouse-kpis.mjs docs/audit/after/*.html --markdown
  */
 
 import { readFileSync } from "node:fs";

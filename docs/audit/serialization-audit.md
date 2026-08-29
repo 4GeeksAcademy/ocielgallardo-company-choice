@@ -1,6 +1,6 @@
 # Serialization Audit — HealthCore API
 
-Location: `audit/serialization-audit.md`  
+Location: `docs/audit/serialization-audit.md`  
 Branch: `feature/serialization-audit`  
 Scope: `services/app` FastAPI surface. Consumer: `uis/backoffice` only.  
 Phase 1 status: **closed** (every endpoint classified below).

@@ -23,4 +23,4 @@ Evidencia y documentación de auditorías técnicas (4Geeks Academy).
 | [`after/`](./after/) | 2026-08-28, pre-P7 lazy | Docker prod |
 | [`final/`](./final/) | 2026-08-28, post-P7 | Docker prod |
 
-Extraer métricas: `node scripts/extract-lighthouse-kpis.mjs audit/<pass>/*.html --markdown`
+Extraer métricas: `node scripts/extract-lighthouse-kpis.mjs docs/audit/<pass>/*.html --markdown`

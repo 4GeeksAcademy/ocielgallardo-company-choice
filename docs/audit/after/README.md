@@ -21,7 +21,7 @@ Archivos eliminados (`Website-mobile-test.html`, `Backoffice-mobile-test.html`, 
 | Backoffice `/` (auth) | Mobile | **95** | 100 | 100 | 100 | **+49** (46→95) | `backoffice-mobil-test.html` |
 | Backoffice `/` (auth) | Desktop | **100** | 100 | 100 | 100 | **+42** (58→100) | `backoffice-desktop-test.html` |
 
-Baseline: `audit/before/` medido en `next dev`. After: Docker prod local.
+Baseline: `docs/audit/before/` medido en `next dev`. After: Docker prod local.
 
 **Nota metodológica:** comparar before (`next dev`) con after (Docker `next start`) mezcla **fix de código** y **cambio de entorno**. Los deltas son válidos como evidencia del hito, pero el salto grande en backoffice dashboard refleja sobre todo dejar de medir en dev.
 

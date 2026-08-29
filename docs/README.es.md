@@ -10,6 +10,14 @@ docs/
 ├── README.md
 ├── README.es.md
 │
+├── audit/                      ← auditorías técnicas (serialización API + rendimiento frontend)
+│   ├── serialization-audit.md
+│   ├── AUDIT.md
+│   ├── REPORT.md
+│   ├── before/
+│   ├── after/
+│   └── final/
+│
 ├── architecture/
 │   ├── ARCHITECTURE_PROPOSAL.md
 │   └── ARCHITECTURE_PROPOSAL.es.md
