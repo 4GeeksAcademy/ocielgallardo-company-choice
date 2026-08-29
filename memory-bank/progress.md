@@ -18,6 +18,7 @@
 ## Recently Completed (serialization audit — milestone close)
 - Milestone marked **complete** in `docs/audit/serialization-audit.md` (31/31 Ya serializado; 0 partial; 0 unserialized).
 - Verification notes: Docker smoke + Postman `GET /auth/me` after Bearer login.
+- Docs sync: `docs/audit/README.md`, `services/README(.es).md`, `memory-bank/techContext.md`, `bitacora.md`.
 
 ## Recently Completed (serialization audit — Phase 2)
 - Branch: `feature/serialization-audit`.

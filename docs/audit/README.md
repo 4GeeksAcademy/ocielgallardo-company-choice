@@ -6,7 +6,9 @@ Evidencia y documentación de auditorías técnicas (4Geeks Academy).
 
 | Documento | Contenido |
 |-----------|-----------|
-| [`serialization-audit.md`](./serialization-audit.md) | Endpoint inventory, classification (serialized / partial / none), target payloads |
+| [`serialization-audit.md`](./serialization-audit.md) | **Milestone complete** — 31/31 endpoints Ya serializado; checklist, target payloads, smoke/Postman evidence |
+
+Status: closed on branch `feature/serialization-audit`. Every JSON route declares an explicit Pydantic `response_model`; auth register/login/forgot/reset never echo password or email (`GET /auth/me` may return caller email).
 
 ## Performance audit (frontend)
 
