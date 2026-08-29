@@ -85,11 +85,11 @@ class SupplierCreate(SupplierBase):
 
 
 # ==========================================================
-# Response model
+# Response model (read contract — does not inherit write validators)
 # ==========================================================
 
-class Supplier(SupplierCreate):
-    """Supplier returned by the API."""
+class SupplierResponse(SupplierBase):
+    """Supplier returned by the API. Separate from SupplierCreate."""
 
     id: int
     updated_at: datetime | None = None

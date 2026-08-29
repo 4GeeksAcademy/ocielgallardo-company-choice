@@ -37,6 +37,15 @@ class UserPublic(BaseModel):
     created_at: datetime
 
 
+class RegisterResponse(BaseModel):
+    """Safe registration confirmation — no email or credentials in the body."""
+
+    id: int
+    is_active: bool
+    role: UserRole
+    created_at: datetime
+
+
 class LoginRequest(BaseModel):
     username: EmailStr
     password: str

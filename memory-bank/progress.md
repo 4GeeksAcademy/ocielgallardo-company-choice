@@ -4,7 +4,7 @@
 
 - Business context source established in `CONTEXT.md`.
 - Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`).
-- Serialization audit milestone in progress on `feature/serialization-audit`: every JSON endpoint has an explicit Pydantic `response_model`; audit written in `docs/audit/serialization-audit.md`.
+- Serialization audit milestone on `feature/serialization-audit`: every JSON endpoint has an explicit Pydantic `response_model`; audit in `docs/audit/serialization-audit.md` (Phases 1–2 closed).
 - Centralized incident manager implemented (shared validation, seed, API, backoffice UI).
 - Web deliverables for Milestone 1 are implemented.
 - Core TypeScript domain/utilities for Milestone 2 are implemented.
@@ -15,8 +15,15 @@
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `docs/audit/REPORT.md` §4.2–§4.3.
 - Docker: prod-default (`docker compose up` / `npm run docker:up`); dev overlay via `docker-compose.dev.yml` (`npm run docker:dev`).
 
-## Recently Completed (serialization audit)
+## Recently Completed (serialization audit — Phase 2)
+- Branch: `feature/serialization-audit`.
+- `SupplierResponse` split from `SupplierCreate` (response no longer inherits write validators).
+- `POST /users` returns `RegisterResponse` without email; auth login/forgot/reset/change stay token/message-only.
+- `GET /auth/me` retains caller `email` for profile UI.
+- Audit checklist: 31/31 **Ya serializado**; 0 partial; 0 unserialized.
+- Docs moved: root `audit/` → `docs/audit/` (Lighthouse + serialization).
 
+## Recently Completed (serialization audit — Phase 1)
 - Branch: `feature/serialization-audit` (from `main`).
 - Audit doc: `docs/audit/serialization-audit.md` (endpoint inventory, status, target payloads).
 - Auth: `AuthMeResponse`, `MessageResponse` on `/auth/me`, forgot/reset/change-password.

@@ -15,9 +15,9 @@ from services.app.domain.supplier_service import (
     update_supplier_status,
 )
 from services.app.models.supplier import (
-    Supplier,
     SupplierCreate,
     SupplierRateUpdate,
+    SupplierResponse,
     SupplierStatusUpdate,
 )
 from services.app.models.user import DetailResponse, UserPublic
@@ -25,7 +25,7 @@ from services.app.models.user import DetailResponse, UserPublic
 router = APIRouter(prefix="/suppliers", tags=["suppliers"])
 
 
-@router.post("", response_model=Supplier, status_code=201)
+@router.post("", response_model=SupplierResponse, status_code=201)
 def create_supplier_endpoint(
     payload: SupplierCreate,
     _current_user: UserPublic = Depends(get_current_user),
@@ -34,7 +34,7 @@ def create_supplier_endpoint(
     return create_supplier(payload)
 
 
-@router.get("", response_model=list[Supplier])
+@router.get("", response_model=list[SupplierResponse])
 def list_suppliers_endpoint(
     country: str | None = Query(default=None),
     category: str | None = Query(default=None),
@@ -44,7 +44,7 @@ def list_suppliers_endpoint(
     return list_suppliers(country=country, category=category)
 
 
-@router.get("/{supplier_id}", response_model=Supplier)
+@router.get("/{supplier_id}", response_model=SupplierResponse)
 def get_supplier_endpoint(
     supplier_id: int,
     _current_user: UserPublic = Depends(get_current_user),
@@ -56,7 +56,7 @@ def get_supplier_endpoint(
         raise HTTPException(status_code=404, detail="Supplier not found")
 
 
-@router.patch("/{supplier_id}/rate", response_model=Supplier)
+@router.patch("/{supplier_id}/rate", response_model=SupplierResponse)
 def update_supplier_rate_endpoint(
     supplier_id: int,
     payload: SupplierRateUpdate,
@@ -69,7 +69,7 @@ def update_supplier_rate_endpoint(
         raise HTTPException(status_code=404, detail="Supplier not found")
 
 
-@router.patch("/{supplier_id}/status", response_model=Supplier)
+@router.patch("/{supplier_id}/status", response_model=SupplierResponse)
 def update_supplier_status_endpoint(
     supplier_id: int,
     payload: SupplierStatusUpdate,

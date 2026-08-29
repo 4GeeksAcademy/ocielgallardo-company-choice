@@ -11,6 +11,7 @@ from services.app.domain.user_service import (
 )
 from services.app.models.user import (
     DetailResponse,
+    RegisterResponse,
     UserCreate,
     UserPublic,
     UserUpdate,
@@ -20,10 +21,16 @@ from services.app.models.user import (
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("", response_model=UserPublic, status_code=201)
+@router.post("", response_model=RegisterResponse, status_code=201)
 def register_user(payload: UserCreate):
     try:
-        return create_user(payload)
+        user = create_user(payload)
+        return RegisterResponse(
+            id=user.id,
+            is_active=user.is_active,
+            role=user.role,
+            created_at=user.created_at,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
 
