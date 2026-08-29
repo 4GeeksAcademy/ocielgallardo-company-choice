@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, col, func, select
 
+from services.app.core.ttl_cache import inventory_list_cache
 from services.app.models.inventory import (
     MedicalSupply,
     SupplyConsumption,
@@ -18,6 +19,15 @@ from services.app.schemas import (
     SupplyDeliveryCreate,
     SupplyDeliveryResponse,
 )
+
+# Org-wide list keys (authenticated endpoints; response is not user-scoped).
+CACHE_KEY_PRODUCTS = "inventory:products"
+CACHE_KEY_ORDERS = "inventory:orders"
+INVENTORY_LIST_TTL_SECONDS = 60
+
+
+def _invalidate_inventory_lists() -> None:
+    inventory_list_cache.invalidate(CACHE_KEY_PRODUCTS, CACHE_KEY_ORDERS)
 
 
 def _stock_for_supply_id(session: Session, supply_id: int) -> int:
@@ -70,13 +80,21 @@ def _to_supply_response(
 
 
 def list_supplies(session: Session) -> list[MedicalSupplyResponse]:
+    cached = inventory_list_cache.get(CACHE_KEY_PRODUCTS)
+    if cached is not None:
+        return cached
+
     supplies = session.exec(select(MedicalSupply).order_by(MedicalSupply.id)).all()
     stocks = _stocks_by_supply_id(session)
-    return [
+    result = [
         _to_supply_response(s, stocks.get(s.id, 0))
         for s in supplies
         if s.id is not None
     ]
+    inventory_list_cache.set(
+        CACHE_KEY_PRODUCTS, result, INVENTORY_LIST_TTL_SECONDS
+    )
+    return result
 
 
 def get_supply(session: Session, supply_id: int) -> MedicalSupplyResponse:
@@ -104,6 +122,7 @@ def create_supply(
     session.add(supply)
     session.commit()
     session.refresh(supply)
+    _invalidate_inventory_lists()
     return _to_supply_response(supply, 0)
 
 
@@ -125,6 +144,7 @@ def create_delivery(
     session.add(delivery)
     session.commit()
     session.refresh(delivery)
+    _invalidate_inventory_lists()
     return SupplyDeliveryResponse(
         id=delivery.id,
         supply_id=delivery.supply_id,
@@ -163,6 +183,7 @@ def create_consumption(
     session.add(consumption)
     session.commit()
     session.refresh(consumption)
+    _invalidate_inventory_lists()
     return SupplyConsumptionResponse(
         id=consumption.id,
         supply_id=consumption.supply_id,
@@ -176,6 +197,10 @@ def create_consumption(
 
 def list_orders(session: Session) -> list[InventoryOrderResponse]:
     """List deliveries and consumptions with related supply data (eager-loaded)."""
+    cached = inventory_list_cache.get(CACHE_KEY_ORDERS)
+    if cached is not None:
+        return cached
+
     deliveries = session.exec(
         select(SupplyDelivery)
         .options(selectinload(SupplyDelivery.supply))
@@ -221,4 +246,5 @@ def list_orders(session: Session) -> list[InventoryOrderResponse]:
             )
         )
     orders.sort(key=lambda o: o.created_at, reverse=True)
+    inventory_list_cache.set(CACHE_KEY_ORDERS, orders, INVENTORY_LIST_TTL_SECONDS)
     return orders

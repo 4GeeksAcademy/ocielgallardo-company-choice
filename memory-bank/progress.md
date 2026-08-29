@@ -14,12 +14,18 @@
 - Backoffice shell is mobile-first: desktop fixed sidebar with collapsible groups; mobile Dashboard + Office bottom bar; account via avatar menu.
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `docs/audit/REPORT.md` §4.2–§4.3.
 - Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
-- Caching optimisation milestone: **Phase 4 complete** — `useMemo` on inventory orders; Phase 5 (backend cache) next.
+- Caching optimisation milestone: **Phase 5 complete** — in-memory TTL cache + invalidation on inventory list endpoints; report closed.
 
 ## Recently Completed (docs — audit under docs/)
 - Moved repo-root `audit/` → `docs/audit/` (Lighthouse evidence + AUDIT/REPORT).
 - Moved `CACHING_REPORT.md` → `docs/audit/CACHING_REPORT.md`.
 - Updated links in `docs/README(.es).md`, `scripts/README.md`, `scripts/extract-lighthouse-kpis.mjs`, and this memory-bank.
+
+## Recently Completed (Caching milestone — Phase 5)
+- `services/app/core/ttl_cache.py` — in-process `TtlCache` (`get` / `set` / `invalidate`).
+- `inventory_service`: cache `list_supplies` / `list_orders` (keys `inventory:products`, `inventory:orders`, TTL 60 s); invalidate both on create supply/delivery/consumption.
+- Measured (domain, n=10, 2026-08-29): products/orders p50 hit **0.0 ms** (max ≈ miss 323 / 733 ms) vs Phase 2 baseline 152 / 364 ms.
+- Docs: `docs/audit/CACHING_REPORT.md` §2.2, §6–§7, checklist Phase 5 done.
 
 ## Recently Completed (Caching milestone — Phase 4)
 - Backoffice: `InventoryOrdersList` — `orderSummary`, `filteredOrders`, `displayRows` via `useMemo` (deps on `orders` / `typeFilter` / `filteredOrders`).
