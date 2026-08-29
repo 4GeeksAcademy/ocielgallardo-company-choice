@@ -5,6 +5,7 @@
 - Domain and utilities: TypeScript (typed models and utility modules).
 - Package tooling: npm scripts via `packages/shared/package.json`.
 - Shared Python package: `packages/shared/healthcore_shared` (CSV validation + incident-manager constants/maps). Import via `PYTHONPATH=packages/shared` or hatch `dev-mode-dirs`.
+- Local Docker Compose (`#infra-40`): `uis` (website `:3000` + backoffice `:3001`) and `backend` (`:8000`) on `healthcore_dev_network`. Start from repo root: `docker compose up`. Browser API URL: `NEXT_PUBLIC_HEALTHCORE_API_URL=http://localhost:8000`; in-network hostname: `backend`.
 
 ## Verified Technical Areas
 - TypeScript domain package in `src/`:
