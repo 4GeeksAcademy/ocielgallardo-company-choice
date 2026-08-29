@@ -4,7 +4,7 @@
 
 - Business context source established in `CONTEXT.md`.
 - Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`).
-- Serialization audit milestone on `feature/serialization-audit`: every JSON endpoint has an explicit Pydantic `response_model`; audit in `docs/audit/serialization-audit.md` (Phases 1–2 closed).
+- Serialization audit milestone: **complete** on `feature/serialization-audit` — all 31 endpoints **Ya serializado**; audit in `docs/audit/serialization-audit.md` (milestone closed; smoke + Postman verified).
 - Centralized incident manager implemented (shared validation, seed, API, backoffice UI).
 - Web deliverables for Milestone 1 are implemented.
 - Core TypeScript domain/utilities for Milestone 2 are implemented.
@@ -14,6 +14,10 @@
 - Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `docs/audit/REPORT.md` §4.2–§4.3.
 - Docker: prod-default (`docker compose up` / `npm run docker:up`); dev overlay via `docker-compose.dev.yml` (`npm run docker:dev`).
+
+## Recently Completed (serialization audit — milestone close)
+- Milestone marked **complete** in `docs/audit/serialization-audit.md` (31/31 Ya serializado; 0 partial; 0 unserialized).
+- Verification notes: Docker smoke + Postman `GET /auth/me` after Bearer login.
 
 ## Recently Completed (serialization audit — Phase 2)
 - Branch: `feature/serialization-audit`.

@@ -3,6 +3,7 @@
 Location: `docs/audit/serialization-audit.md`  
 Branch: `feature/serialization-audit`  
 Scope: `services/app` FastAPI surface. Consumer: `uis/backoffice` only.  
+**Milestone status: complete**  
 Phase 1 status: **closed**  
 Phase 2 status: **closed**
 
@@ -19,6 +20,8 @@ Every endpoint must have exactly one of:
 ---
 
 ## Master checklist
+
+All **31** endpoints below are classified **1. Ya serializado**. None remain partial or unserialized.
 
 | # | Method | Path | Response schema | Classification | Notes |
 |---|--------|------|-----------------|----------------|-------|
@@ -54,20 +57,21 @@ Every endpoint must have exactly one of:
 | 30 | POST | `/inventory/orders/outbound` | `SupplyConsumptionResponse` | **1. Ya serializado** | Input: `SupplyConsumptionCreate`. |
 | 31 | GET | `/inventory/orders` | `list[InventoryOrderListItem]` | **1. Ya serializado** | Lean history columns only. |
 
-### Totals (Phase 2 close)
+### Totals (milestone close)
 
 | Classification | Count |
 |----------------|-------|
-| **1. Ya serializado** | 31 |
+| **1. Ya serializado** | **31** |
 | **2. Parcialmente serializado** | **0** |
 | **3. Sin serializar** | **0** |
 
-Phase 2 gates:
+Milestone gates:
 
 - Every JSON endpoint has an explicit `response_model` → **pass**
 - Write routes use separate input schemas → **pass**
 - Auth register/login/forgot/reset never return password or email → **pass**
 - `GET /auth/me` may return caller email → **pass**
+- Runtime smoke + Postman checks match declared schemas → **pass**
 
 ---
 
@@ -82,7 +86,12 @@ Phase 2 gates:
 
 ## Verification evidence
 
-OpenAPI (`app.openapi()`) lists an explicit JSON schema component for every JSON route above.  
+OpenAPI (`app.openapi()` / `/docs` / `/openapi.json`) lists an explicit JSON schema component for every JSON route above.  
 `GET /api/incidents/results/export` is CSV `FileResponse` (no JSON body schema by design).  
 `SupplierResponse` extends `SupplierBase` (not `SupplierCreate`).  
 `RegisterResponse` properties: `id`, `is_active`, `role`, `created_at`.
+
+Runtime checks (Docker rebuild on `feature/serialization-audit`, `http://127.0.0.1:8000`):
+
+- Smoke: `POST /users` → no `email`; `POST /auth/login` → token only; `GET /auth/me` → caller `email` + profile; forgot/change-password → `{message}`; `GET /suppliers` → `SupplierResponse` rows; `GET /api/incidents` → lean list (no timestamps).
+- Manual Postman: login then `GET /auth/me` with Bearer token; response shape matches `AuthMeResponse`.
