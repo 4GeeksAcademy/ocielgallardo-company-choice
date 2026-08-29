@@ -4,7 +4,7 @@
 
 - Business context source established in `CONTEXT.md`.
 - Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`).
-- Serialization audit milestone in progress on `feature/serialization-audit`: every JSON endpoint has an explicit Pydantic `response_model`; audit written in `docs/serialization-audit.md`.
+- Serialization audit milestone in progress on `feature/serialization-audit`: every JSON endpoint has an explicit Pydantic `response_model`; audit written in `audit/serialization-audit.md`.
 - Centralized incident manager implemented (shared validation, seed, API, backoffice UI).
 - Web deliverables for Milestone 1 are implemented.
 - Core TypeScript domain/utilities for Milestone 2 are implemented.
@@ -18,7 +18,7 @@
 ## Recently Completed (serialization audit)
 
 - Branch: `feature/serialization-audit` (from `main`).
-- Audit doc: `docs/serialization-audit.md` (endpoint inventory, status, target payloads).
+- Audit doc: `audit/serialization-audit.md` (endpoint inventory, status, target payloads).
 - Auth: `AuthMeResponse`, `MessageResponse` on `/auth/me`, forgot/reset/change-password.
 - Deletes: `DetailResponse` on `DELETE /users/{id}` and `DELETE /suppliers/{id}`.
 - Incidents: `IncidentAnalysisSummary` on CSV analyze; `IncidentListItem` for list (no timestamps).

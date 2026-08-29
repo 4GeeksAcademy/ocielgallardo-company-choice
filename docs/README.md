@@ -10,7 +10,6 @@ This folder holds **cross-cutting documentation** for the monorepo: architecture
 docs/
 ├── README.md
 ├── README.es.md
-├── serialization-audit.md  ← API response serialization audit (this milestone)
 │
 ├── architecture/
 │   ├── ARCHITECTURE_PROPOSAL.md

@@ -1,6 +1,14 @@
-# Performance audit — HealthCore
+# Audits — HealthCore
 
-Evidencia y documentación del hito **Auditoría de Rendimiento Frontend** (4Geeks Academy).
+Evidencia y documentación de auditorías técnicas (4Geeks Academy).
+
+## Serialization audit (API)
+
+| Documento | Contenido |
+|-----------|-----------|
+| [`serialization-audit.md`](./serialization-audit.md) | Endpoint inventory, classification (serialized / partial / none), target payloads |
+
+## Performance audit (frontend)
 
 | Documento | Contenido |
 |-----------|-----------|
