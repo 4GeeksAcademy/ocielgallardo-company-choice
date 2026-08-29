@@ -20,7 +20,7 @@ from services.app.models.supplier import (
     SupplierRateUpdate,
     SupplierStatusUpdate,
 )
-from services.app.models.user import UserPublic
+from services.app.models.user import DetailResponse, UserPublic
 
 router = APIRouter(prefix="/suppliers", tags=["suppliers"])
 
@@ -82,7 +82,11 @@ def update_supplier_status_endpoint(
         raise HTTPException(status_code=404, detail="Supplier not found")
 
 
-@router.delete("/{supplier_id}", status_code=200)
+@router.delete(
+    "/{supplier_id}",
+    response_model=DetailResponse,
+    status_code=200,
+)
 def delete_supplier_endpoint(
     supplier_id: int,
     _current_user: UserPublic = Depends(get_current_user),
@@ -92,4 +96,4 @@ def delete_supplier_endpoint(
         delete_supplier(supplier_id)
     except SupplierNotFoundError:
         raise HTTPException(status_code=404, detail="Supplier not found")
-    return {"detail": "Supplier deleted"}
+    return DetailResponse(detail="Supplier deleted")

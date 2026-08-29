@@ -72,15 +72,16 @@ export interface SupplyConsumptionCreateInput {
 export interface InventoryOrder {
   order_type: OrderType;
   id: number;
-  supply_id: number;
   supply_name: string;
-  supply_sku: string;
   quantity: number;
-  clinic_id: number;
   created_at: string;
   user_uuid: string;
-  vendor_name: string | null;
-  consumption_type: string | null;
+  /** Omitted from lean GET /inventory/orders list projection. */
+  supply_id?: number;
+  supply_sku?: string;
+  clinic_id?: number;
+  vendor_name?: string | null;
+  consumption_type?: string | null;
 }
 
 export const SUPPLY_CATEGORY_OPTIONS: Array<{

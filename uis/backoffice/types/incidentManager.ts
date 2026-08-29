@@ -41,8 +41,9 @@ export interface ManagedIncident {
   status: IncidentStatus;
   origin: IncidentOrigin;
   branch: IncidentBranch;
-  created_at: string;
-  updated_at: string;
+  /** Present on detail / status-update responses; omitted from list projection. */
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface IncidentCreateInput {

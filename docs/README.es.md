@@ -9,6 +9,7 @@ Esta carpeta contiene la **documentación transversal** del monorepo: guías de 
 docs/
 ├── README.md
 ├── README.es.md
+├── serialization-audit.md  ← auditoría de serialización de la API (este hito)
 │
 ├── architecture/
 │   ├── ARCHITECTURE_PROPOSAL.md
