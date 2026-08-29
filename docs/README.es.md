@@ -28,6 +28,13 @@ docs/
 │   ├── CONTEXT-HealthCore.md
 │   └── CONTEXT-HealthCore.es.md
 │
+├── audit/                      ← auditoría de rendimiento (Lighthouse) + informe de caching
+│   ├── AUDIT.md
+│   ├── REPORT.md
+│   ├── CACHING_REPORT.md
+│   ├── before/ | after/ | final/
+│   └── README.md
+│
 ├── api/                  (futuro)
 │
 ├── decisions/            (futuro)

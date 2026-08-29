@@ -60,6 +60,7 @@
 - `CONTEXT.md`: business domain baseline and company scenario.
 - `memory-bank/`: persistent AI-agent context and progress tracking.
 - `.agents/rules/`: behavior and contribution constraints for AI agents.
+- `docs/`: cross-cutting docs; milestone CONTEXTs and `docs/audit/` (Lighthouse evidence + `CACHING_REPORT.md`).
 - `src/`: core typed models and utility logic.
 - `uis/`: UI applications and interface-focused projects.
 - `services/`: backend/API and workers (future or partial, depending on milestone).

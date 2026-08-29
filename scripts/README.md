@@ -59,12 +59,12 @@ uv run seed-incidents
 Parses `window.__LIGHTHOUSE_JSON__` from saved Lighthouse HTML reports and prints Performance, FCP, LCP, INP (or maxPotentialFID lab proxy), CLS, TTFB, and TBT.
 
 ```bash
-node scripts/extract-lighthouse-kpis.mjs audit/before/*.html --markdown
-node scripts/extract-lighthouse-kpis.mjs audit/after/*.html --markdown
-node scripts/extract-lighthouse-kpis.mjs audit/final/*.html --markdown
+node scripts/extract-lighthouse-kpis.mjs docs/audit/before/*.html --markdown
+node scripts/extract-lighthouse-kpis.mjs docs/audit/after/*.html --markdown
+node scripts/extract-lighthouse-kpis.mjs docs/audit/final/*.html --markdown
 ```
 
-Use after each audit pass to fill [`AUDIT.md`](../audit/AUDIT.md) and [`REPORT.md`](../audit/REPORT.md) tables.
+Use after each audit pass to fill [`AUDIT.md`](../docs/audit/AUDIT.md) and [`REPORT.md`](../docs/audit/REPORT.md) tables.
 
 ### `seed_inventory_volume.py` — append inventory volume for caching benchmarks
 
@@ -87,7 +87,7 @@ uv run python scripts/measure_cache_candidates.py --json
 uv run python scripts/measure_cache_candidates.py --http --base-url http://127.0.0.1:8000
 ```
 
-Use before and after `seed_inventory_volume.py` to fill [`CACHING_REPORT.md`](../CACHING_REPORT.md) Phase 2 tables.
+Use before and after `seed_inventory_volume.py` to fill [`docs/audit/CACHING_REPORT.md`](../docs/audit/CACHING_REPORT.md) Phase 2 tables.
 
 ## 💡 Tips
 

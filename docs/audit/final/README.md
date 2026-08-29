@@ -2,13 +2,13 @@
 
 **Cuándo:** después de `docker compose up --build` con la rama actual (incluye lazy viewport P7, commit `17b0d6e`+).
 
-**Diferencia vs `audit/after/`:** la pasada del 2026-08-28 midió código **antes** de P7 lazy. Esta carpeta captura el estado **final** del hito.
+**Diferencia vs `docs/audit/after/`:** la pasada del 2026-08-28 midió código **antes** de P7 lazy. Esta carpeta captura el estado **final** del hito.
 
 ## Protocolo
 
 1. Chrome **Incógnito** (evitar IndexedDB / extensiones).
 2. Stack: `docker compose up --build` (Docker prod, `next start`).
-3. Mismas **6 superficies** que `audit/after/`:
+3. Mismas **6 superficies** que `docs/audit/after/`:
 
 | # | URL | Modo Lighthouse | Nombre sugerido del HTML |
 |---|-----|-----------------|--------------------------|
@@ -33,12 +33,12 @@ Analiza en este orden por corrida; deja A11y/BP/SEO para después:
 ## Post-paso
 
 ```bash
-node scripts/extract-lighthouse-kpis.mjs audit/final/*.html --markdown
+node scripts/extract-lighthouse-kpis.mjs docs/audit/final/*.html --markdown
 ```
 
 Rellenar [`REPORT.md`](../REPORT.md) §4.3 con:
 
-- **Δ vs `audit/before/`** — mejora total del hito
-- **Δ vs `audit/after/`** — impacto F5–F7 (sobre todo P7 lazy)
+- **Δ vs `docs/audit/before/`** — mejora total del hito
+- **Δ vs `docs/audit/after/`** — impacto F5–F7 (sobre todo P7 lazy)
 
 Tabla resumen de referencia: [`AUDIT.md`](../AUDIT.md) §3.

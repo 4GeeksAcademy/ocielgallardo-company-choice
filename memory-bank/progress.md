@@ -2,7 +2,7 @@
 
 ## Current Status Snapshot
 - Business context source established in `CONTEXT.md`.
-- Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`).
+- Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`, `audit`).
 - Centralized incident manager implemented (shared validation, seed, API, backoffice UI).
 - Web deliverables for Milestone 1 are implemented.
 - Core TypeScript domain/utilities for Milestone 2 are implemented.
@@ -12,9 +12,19 @@
 - Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
 - Backoffice UI cleaned: empty Patients/Appointments/Billing/Claims/Reports placeholders removed; dashboard and nav reflect implemented modules only.
 - Backoffice shell is mobile-first: desktop fixed sidebar with collapsible groups; mobile Dashboard + Office bottom bar; account via avatar menu.
-- Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `audit/REPORT.md` §4.2–§4.3.
+- Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `docs/audit/REPORT.md` §4.2–§4.3.
 - Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
-- Caching optimisation milestone: **Phase 3 complete** — website lazy loading; Phase 4 (useMemo) next.
+- Caching optimisation milestone: **Phase 4 complete** — `useMemo` on inventory orders; Phase 5 (backend cache) next.
+
+## Recently Completed (docs — audit under docs/)
+- Moved repo-root `audit/` → `docs/audit/` (Lighthouse evidence + AUDIT/REPORT).
+- Moved `CACHING_REPORT.md` → `docs/audit/CACHING_REPORT.md`.
+- Updated links in `docs/README(.es).md`, `scripts/README.md`, `scripts/extract-lighthouse-kpis.mjs`, and this memory-bank.
+
+## Recently Completed (Caching milestone — Phase 4)
+- Backoffice: `InventoryOrdersList` — `orderSummary`, `filteredOrders`, `displayRows` via `useMemo` (deps on `orders` / `typeFilter` / `filteredOrders`).
+- UI: type filter chips + summary cards for inbound/outbound counts and quantities over the volume-seeded list.
+- Docs: `docs/audit/CACHING_REPORT.md` §5.1; checklist useMemo marked done.
 
 ## Recently Completed (Caching milestone — Phase 3)
 - Website: `uis/website/components/lazy/lazyViewportSections.tsx` — Services, Impact, FinalCta, Footer.
@@ -30,21 +40,21 @@
 ## Recently Completed (Caching milestone — Phase 1)
 - Branch: `feature/caching-optimisation` (from `feature/performance-audit`).
 - Fix: `services/app/main.py` — removed duplicate `app = FastAPI()` that dropped `lifespan` (inventory init on startup restored).
-- Docs: root `CACHING_REPORT.md` — methodology, backend/frontend inventory, HIPAA exclusions, trade-off framework.
+- Docs: `docs/audit/CACHING_REPORT.md` — methodology, backend/frontend inventory, HIPAA exclusions, trade-off framework.
 
 ## Recently Completed (Performance audit — Phase 2 fixes)
 - Branch: `feature/performance-audit` (from `main`, merged with depuracion/dark mode).
 - Re-baselined from Lighthouse HTML (website `/`, backoffice `/login` + authenticated `/`).
 - Website: `next/image` on hero (priority first slide) + logo; mobile menu `tabIndex={-1}` when closed (`aria-hidden-focus`).
 - Backoffice: `AuthPageShell` (`<main>`) on login/register/forgot/reset; `Hito2Playground` via `next/dynamic` on dashboard.
-- Docs: `audit/AUDIT.md` + Spanish `audit/REPORT.md` checkpoint; `audit/before/` HTML+PNG; `audit/after/` first HTML pass (not yet official).
-- After (2026-08-28): 6 HTML in `audit/after/` — Docker prod + Incógnito; e.g. website mobile Perf 95 (Δ+42), dashboard mobile 95 (Δ+49). Unstable runs in `next dev` discarded.
+- Docs: `docs/audit/AUDIT.md` + Spanish `docs/audit/REPORT.md` checkpoint; `docs/audit/before/` HTML+PNG; `docs/audit/after/` first HTML pass (not yet official).
+- After (2026-08-28): 6 HTML in `docs/audit/after/` — Docker prod + Incógnito; e.g. website mobile Perf 95 (Δ+42), dashboard mobile 95 (Δ+49). Unstable runs in `next dev` discarded.
 - Docker prod: `docker-compose.yml` (default), `uis/Dockerfile.prod`, `services/Dockerfile.prod`.
 - Commit `17b0d6e`: website form success + redirect; backoffice `FormMessage`/`useFormSubmit`, `useAsyncQuery`/`AsyncRequestPanel`; lazy viewport both UIs.
-- Docs sync: `audit/AUDIT.md` P6/P7 + `audit/REPORT.md` F5–F7 (post-`17b0d6e`).
-- KPI closure docs: `scripts/extract-lighthouse-kpis.mjs` + `scripts/README.md`; `audit/final/README.md` (protocol post-P7); `audit/AUDIT.md` §3 INP/KPI tables + §3.1 interpretation; `audit/REPORT.md` §1.1 refactors, §4.3 dual-delta placeholders, §8 PR notes.
-- Final Lighthouse (2026-08-28): 6/6 HTML in `audit/final/`; `audit/AUDIT.md` §3.0.2 + `audit/REPORT.md` §4.3 filled (dual delta vs before/after).
-- TODO: optional PNG in `audit/after/`/`audit/final/`; PR to `main`.
+- Docs sync: `docs/audit/AUDIT.md` P6/P7 + `docs/audit/REPORT.md` F5–F7 (post-`17b0d6e`).
+- KPI closure docs: `scripts/extract-lighthouse-kpis.mjs` + `scripts/README.md`; `docs/audit/final/README.md` (protocol post-P7); `docs/audit/AUDIT.md` §3 INP/KPI tables + §3.1 interpretation; `docs/audit/REPORT.md` §1.1 refactors, §4.3 dual-delta placeholders, §8 PR notes.
+- Final Lighthouse (2026-08-28): 6/6 HTML in `docs/audit/final/`; `docs/audit/AUDIT.md` §3.0.2 + `docs/audit/REPORT.md` §4.3 filled (dual delta vs before/after).
+- TODO: optional PNG in `docs/audit/after/`/`docs/audit/final/`; PR to `main`.
 
 ## Recently Completed (backoffice — mobile-first navigation shell)
 - Shared `navConfig.ts` for work groups and account links.
