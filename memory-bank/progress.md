@@ -3,7 +3,7 @@
 ## Current Status Snapshot
 - Business context source established in `CONTEXT.md`.
 - Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`, `telemetry`).
-- Telemetry Plan (design only) delivered under `docs/telemetry/` — bilingual plan + `event-schemas.json`; no capture code yet.
+- Telemetry Plan (design only) delivered under `docs/telemetry/` — 47 events (5 mandatory + 42 identified), full course rubric; no capture code yet.
 - Centralized incident manager implemented (shared validation, seed, API, backoffice UI).
 - Web deliverables for Milestone 1 are implemented.
 - Core TypeScript domain/utilities for Milestone 2 are implemented.
@@ -14,13 +14,12 @@
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `audit/REPORT.md` §4.2–§4.3.
 - Docker: prod-default (`docker compose up` / `npm run docker:up`); dev overlay via `docker-compose.dev.yml` (`npm run docker:dev`).
 
-## Recently Completed (Telemetry Plan — design docs)
-- Added `docs/telemetry/telemetry-plan.md` and `telemetry-plan.es.md` (same `event_type` ids).
-- Added `docs/telemetry/event-schemas.json` (44 events: 5 P0 CONTEXT mandatory + extended P1/P2).
-- Indexed under `docs/README.md` and `docs/README.es.md`.
-- P0 locked to CONTEXT: `inbound_order_created`, `outbound_order_created`, `stock_threshold_triggered`, `direct_stock_edit_rejected`, `supply_expiry_flagged`.
-- Validation: JSON parse OK; documentation-only (no instrumentation tests).
-- TODO: capture/instrumentation, storage pipeline, and CONTEXT §5 seed volumes in later milestones.
+## Recently Completed (Telemetry Plan — rubric pass)
+- Expanded `docs/telemetry/telemetry-plan.md` and `.es.md`: inventory flow (10 points), mandatory vs identified, allowlists, PII, stream/batch, throttle, risks/exclusions.
+- Enriched `event-schemas.json`: 47 events, `x-catalogue`, `x-gold-rule` all events; added `session_expired`, `api_latency_recorded`, `frontend_error_captured`.
+- Categories: business_inventory, authentication, navigation, performance, errors, incidents, suppliers, talent, website, platform.
+- Validation: JSON parse OK; documentation-only.
+- TODO: Capture/Storage/Report; PR `docs: telemetry design plan` when ready.
 
 ## Recently Completed (Hito Docker — #infra-40)
 - Branch: `feature/docker-implementation`.
