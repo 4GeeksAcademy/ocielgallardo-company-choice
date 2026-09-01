@@ -136,110 +136,6 @@
         }
       }
     },
-    "inventory_core": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "clinic_id",
-        "country",
-        "product_id",
-        "product_category",
-        "quantity"
-      ],
-      "properties": {
-        "clinic_id": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 12
-        },
-        "country": {
-          "$ref": "#/$defs/country"
-        },
-        "product_id": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "product_category": {
-          "$ref": "#/$defs/product_category"
-        },
-        "quantity": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "department": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Clinical service area; never a patient id"
-        },
-        "sku": {
-          "type": "string"
-        },
-        "unit": {
-          "type": "string"
-        },
-        "order_id": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "vendor_name": {
-          "type": "string"
-        },
-        "consumption_type": {
-          "type": "string",
-          "enum": [
-            "clinical_use",
-            "expiry_waste"
-          ]
-        },
-        "current_stock": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "min_stock_threshold": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "threshold_band": {
-          "type": "string",
-          "enum": [
-            "low",
-            "critical"
-          ]
-        },
-        "attempted_path": {
-          "type": "string"
-        },
-        "http_status": {
-          "type": "integer",
-          "minimum": 100,
-          "maximum": 599
-        },
-        "rejection_reason": {
-          "type": "string"
-        },
-        "expiry_date": {
-          "type": "string",
-          "format": "date"
-        },
-        "days_to_expiry": {
-          "type": "integer"
-        },
-        "batch_id": {
-          "type": "string"
-        },
-        "form_name": {
-          "type": "string",
-          "enum": [
-            "inbound",
-            "outbound",
-            "product_create"
-          ]
-        },
-        "error_code": {
-          "type": "string"
-        }
-      }
-    },
     "inbound_order_created": {
       "title": "inbound_order_created",
       "x-priority": "P0",
@@ -255,17 +151,50 @@
               "const": "inbound_order_created"
             },
             "properties": {
-              "allOf": [
-                {
-                  "$ref": "#/$defs/inventory_core"
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "clinic_id",
+                "country",
+                "product_id",
+                "product_category",
+                "quantity",
+                "vendor_name"
+              ],
+              "properties": {
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
                 },
-                {
-                  "type": "object",
-                  "required": [
-                    "vendor_name"
-                  ]
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "product_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "product_category": {
+                  "$ref": "#/$defs/product_category"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "vendor_name": {
+                  "type": "string"
+                },
+                "sku": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "order_id": {
+                  "type": "integer",
+                  "minimum": 1
                 }
-              ]
+              }
             }
           }
         }
@@ -301,17 +230,59 @@
               "const": "outbound_order_created"
             },
             "properties": {
-              "allOf": [
-                {
-                  "$ref": "#/$defs/inventory_core"
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "clinic_id",
+                "country",
+                "product_id",
+                "product_category",
+                "quantity",
+                "department"
+              ],
+              "properties": {
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
                 },
-                {
-                  "type": "object",
-                  "required": [
-                    "department"
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "product_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "product_category": {
+                  "$ref": "#/$defs/product_category"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "department": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Clinical service area; never a patient id"
+                },
+                "consumption_type": {
+                  "type": "string",
+                  "enum": [
+                    "clinical_use",
+                    "expiry_waste"
                   ]
+                },
+                "sku": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "order_id": {
+                  "type": "integer",
+                  "minimum": 1
                 }
-              ]
+              }
             }
           }
         }
@@ -348,19 +319,54 @@
               "const": "stock_threshold_triggered"
             },
             "properties": {
-              "allOf": [
-                {
-                  "$ref": "#/$defs/inventory_core"
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "clinic_id",
+                "country",
+                "product_id",
+                "product_category",
+                "quantity",
+                "current_stock",
+                "min_stock_threshold",
+                "threshold_band"
+              ],
+              "properties": {
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
                 },
-                {
-                  "type": "object",
-                  "required": [
-                    "current_stock",
-                    "min_stock_threshold",
-                    "threshold_band"
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "product_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "product_category": {
+                  "$ref": "#/$defs/product_category"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "current_stock": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "min_stock_threshold": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "threshold_band": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "critical"
                   ]
                 }
-              ]
+              }
             }
           }
         }
@@ -395,19 +401,49 @@
               "const": "direct_stock_edit_rejected"
             },
             "properties": {
-              "allOf": [
-                {
-                  "$ref": "#/$defs/inventory_core"
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "clinic_id",
+                "country",
+                "product_id",
+                "product_category",
+                "attempted_path",
+                "http_status",
+                "rejection_reason"
+              ],
+              "properties": {
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
                 },
-                {
-                  "type": "object",
-                  "required": [
-                    "attempted_path",
-                    "http_status",
-                    "rejection_reason"
-                  ]
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "product_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "product_category": {
+                  "$ref": "#/$defs/product_category"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "attempted_path": {
+                  "type": "string"
+                },
+                "http_status": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 599
+                },
+                "rejection_reason": {
+                  "type": "string"
                 }
-              ]
+              }
             }
           }
         }
@@ -442,18 +478,48 @@
               "const": "supply_expiry_flagged"
             },
             "properties": {
-              "allOf": [
-                {
-                  "$ref": "#/$defs/inventory_core"
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "clinic_id",
+                "country",
+                "product_id",
+                "product_category",
+                "quantity",
+                "expiry_date",
+                "days_to_expiry"
+              ],
+              "properties": {
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
                 },
-                {
-                  "type": "object",
-                  "required": [
-                    "expiry_date",
-                    "days_to_expiry"
-                  ]
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "product_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "product_category": {
+                  "$ref": "#/$defs/product_category"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "expiry_date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "days_to_expiry": {
+                  "type": "integer"
+                },
+                "batch_id": {
+                  "type": "string"
                 }
-              ]
+              }
             }
           }
         }
@@ -513,11 +579,6 @@
                 "unit": {
                   "type": "string"
                 },
-                "clinic_id": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 12
-                },
                 "quantity": {
                   "type": "integer",
                   "const": 0
@@ -555,18 +616,41 @@
               "const": "outbound_order_rejected"
             },
             "properties": {
-              "allOf": [
-                {
-                  "$ref": "#/$defs/inventory_core"
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "http_status",
+                "error_code"
+              ],
+              "properties": {
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
                 },
-                {
-                  "type": "object",
-                  "required": [
-                    "http_status",
-                    "error_code"
-                  ]
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "product_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "product_category": {
+                  "$ref": "#/$defs/product_category"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "http_status": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 599
+                },
+                "error_code": {
+                  "type": "string"
                 }
-              ]
+              }
             }
           }
         }
@@ -2358,6 +2442,99 @@
           }
         }
       ]
+    },
+    "inventory_field_types": {
+      "clinic_id": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 12
+      },
+      "country": {
+        "$ref": "#/$defs/country"
+      },
+      "product_id": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "product_category": {
+        "$ref": "#/$defs/product_category"
+      },
+      "quantity": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "department": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Clinical service area; never a patient id"
+      },
+      "sku": {
+        "type": "string"
+      },
+      "unit": {
+        "type": "string"
+      },
+      "order_id": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "vendor_name": {
+        "type": "string"
+      },
+      "consumption_type": {
+        "type": "string",
+        "enum": [
+          "clinical_use",
+          "expiry_waste"
+        ]
+      },
+      "current_stock": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "min_stock_threshold": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "threshold_band": {
+        "type": "string",
+        "enum": [
+          "low",
+          "critical"
+        ]
+      },
+      "attempted_path": {
+        "type": "string"
+      },
+      "http_status": {
+        "type": "integer",
+        "minimum": 100,
+        "maximum": 599
+      },
+      "rejection_reason": {
+        "type": "string"
+      },
+      "expiry_date": {
+        "type": "string",
+        "format": "date"
+      },
+      "days_to_expiry": {
+        "type": "integer"
+      },
+      "batch_id": {
+        "type": "string"
+      },
+      "form_name": {
+        "type": "string",
+        "enum": [
+          "inbound",
+          "outbound",
+          "product_create"
+        ]
+      },
+      "error_code": {
+        "type": "string"
+      }
     }
   },
   "oneOf": [

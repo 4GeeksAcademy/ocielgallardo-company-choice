@@ -112,6 +112,8 @@ Detalle por evento obligatorio: ver [telemetry-plan.md](./telemetry-plan.md) §1
 
 Esquemas exportados en [event-schemas.json](./event-schemas.json) (JSON Schema draft 2020-12, compatible con validadores draft-07).
 
+Cada evento define su propio objeto `properties` con allowlist exclusiva (`additionalProperties: false`). No se reutilizan bloques compartidos de payload (p. ej. sin `inventory_core`); solo tipos de campo documentados en `$defs/inventory_field_types` como referencia.
+
 ---
 
 ## Fase 3 — Estrategia de entrega

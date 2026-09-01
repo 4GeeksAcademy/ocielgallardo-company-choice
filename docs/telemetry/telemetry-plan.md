@@ -239,7 +239,7 @@ Every event in [event-schemas.json](./event-schemas.json) sets `additionalProper
 [event-schemas.json](./event-schemas.json) uses **JSON Schema draft 2020-12** (compatible with draft-07 validators). Each event definition includes:
 
 - `allOf` envelope + `event_type` const
-- `properties` with `additionalProperties: false`
+- **Per-event `properties` object** — each event declares its own allowlist inline; payloads are **not** composed from shared property bags (e.g. no shared `inventory_core`). Field type shapes may be documented in `$defs/inventory_field_types` for reference only; validation enforces the event-specific key list with `additionalProperties: false`.
 - `x-source`: `mandatory` | `identified`
 - `x-category`, `x-pipeline`, `x-allowlist`, `x-gold-rule`
 - `x-sensitive` / `x-sanitize` when applicable
