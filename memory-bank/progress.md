@@ -19,6 +19,7 @@
 - Milestone marked **complete** in `docs/audit/serialization-audit.md` (31/31 Ya serializado; 0 partial; 0 unserialized).
 - Verification notes: Docker smoke + Postman `GET /auth/me` after Bearer login.
 - Docs sync: `docs/audit/README.md`, `services/README(.es).md`, `memory-bank/techContext.md`, `bitacora.md`.
+- PR #22 feedback: audit checklist expanded with **before/after** per endpoint (baseline on `main`: 16 OK, 8 partial, 7 unserialized; 15 routes remediated).
 
 ## Recently Completed (serialization audit — Phase 2)
 - Branch: `feature/serialization-audit`.
