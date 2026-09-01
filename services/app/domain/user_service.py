@@ -19,7 +19,7 @@ def create_user(payload: UserCreate) -> UserPublic:
         "email": str(payload.email),
         "hashed_password": hash_password(payload.password),
         "is_active": True,
-        "role": payload.role.value,
+        "role": UserRole.USER.value,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     user_id = users_table.insert(user_doc)

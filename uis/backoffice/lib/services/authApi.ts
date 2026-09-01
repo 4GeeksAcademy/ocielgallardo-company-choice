@@ -1,8 +1,8 @@
 import type {
   LoginCredentials,
   RegisterInput,
+  RegisterResponse,
   TokenResponse,
-  UserPublic,
   AuthMeResponse,
   ProfilePublic,
 } from "@/types/auth";
@@ -60,8 +60,8 @@ export async function login(credentials: LoginCredentials): Promise<TokenRespons
   return token;
 }
 
-export async function register(input: RegisterInput): Promise<UserPublic> {
-  return healthcoreRequest<UserPublic>("/users", {
+export async function register(input: RegisterInput): Promise<RegisterResponse> {
+  return healthcoreRequest<RegisterResponse>("/users", {
     method: "POST",
     auth: false,
     body: JSON.stringify({

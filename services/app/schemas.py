@@ -74,7 +74,7 @@ class SupplyConsumptionResponse(BaseModel):
 
 
 class InventoryOrderResponse(BaseModel):
-    """Unified row for GET /inventory/orders (deliveries + consumptions)."""
+    """Full unified order row (internal / write-adjacent projections)."""
 
     order_type: Literal["inbound", "outbound"]
     id: int
@@ -87,3 +87,14 @@ class InventoryOrderResponse(BaseModel):
     user_uuid: str
     vendor_name: str | None = None
     consumption_type: str | None = None
+
+
+class InventoryOrderListItem(BaseModel):
+    """Lean history row for GET /inventory/orders (backoffice table columns)."""
+
+    order_type: Literal["inbound", "outbound"]
+    id: int
+    supply_name: str
+    quantity: int
+    created_at: datetime
+    user_uuid: str

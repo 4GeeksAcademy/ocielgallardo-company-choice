@@ -1,6 +1,7 @@
 # Progress
 
 ## Current Status Snapshot
+
 - Business context source established in `CONTEXT.md`.
 - Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`, `audit`).
 - Centralized incident manager implemented (shared validation, seed, API, backoffice UI).
@@ -50,7 +51,33 @@
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `audit/REPORT.md` §4.2–§4.3.
 - Docker: prod-default (`docker compose up` / `npm run docker:up`); dev overlay via `docker-compose.dev.yml` (`npm run docker:dev`).
 
+## Recently Completed (serialization audit — milestone close)
+- Milestone marked **complete** in `docs/audit/serialization-audit.md` (31/31 Ya serializado; 0 partial; 0 unserialized).
+- Verification notes: Docker smoke + Postman `GET /auth/me` after Bearer login.
+- Docs sync: `docs/audit/README.md`, `services/README(.es).md`, `memory-bank/techContext.md`, `bitacora.md`.
+- PR #22 feedback: audit checklist expanded with **before/after** per endpoint (baseline on `main`: 16 OK, 8 partial, 7 unserialized; 15 routes remediated).
+
+## Recently Completed (serialization audit — Phase 2)
+- Branch: `feature/serialization-audit`.
+- `SupplierResponse` split from `SupplierCreate` (response no longer inherits write validators).
+- `POST /users` returns `RegisterResponse` without email; auth login/forgot/reset/change stay token/message-only.
+- `GET /auth/me` retains caller `email` for profile UI.
+- Audit checklist: 31/31 **Ya serializado**; 0 partial; 0 unserialized.
+- Docs moved: root `audit/` → `docs/audit/` (Lighthouse + serialization).
+
+## Recently Completed (serialization audit — Phase 1)
+- Branch: `feature/serialization-audit` (from `main`).
+- Audit doc: `docs/audit/serialization-audit.md` (endpoint inventory, status, target payloads).
+- Auth: `AuthMeResponse`, `MessageResponse` on `/auth/me`, forgot/reset/change-password.
+- Deletes: `DetailResponse` on `DELETE /users/{id}` and `DELETE /suppliers/{id}`.
+- Incidents: `IncidentAnalysisSummary` on CSV analyze; `IncidentListItem` for list (no timestamps).
+- Inventory: `InventoryOrderListItem` for order history list.
+- Input hardening: `UserCreate` no longer accepts `role` (public register always `user`).
+- Backoffice types updated for lean list fields (`incidentManager.ts`, `inventory.ts`).
+- Validation: OpenAPI confirms `response_model` on all JSON routes; CSV export remains `FileResponse`.
+
 ## Recently Completed (Hito Docker — #infra-40)
+
 - Branch: `feature/docker-implementation`.
 - `uis/Dockerfile` (Node 20 Alpine, separate website/backoffice deps) + `uis/start.sh` (website `:3000`, backoffice `:3001`, `npm run dev`) + `uis/.dockerignore`.
 - `services/Dockerfile` (Python 3.12 + `uv` + uvicorn `--reload`, `PYTHONPATH=/app/packages/shared`) + `services/.dockerignore`.
@@ -61,11 +88,13 @@
 - Merged to `main` via PR #19; prod-default model extended on `feature/performance-audit` for Lighthouse evidence.
 
 ## Recently Completed (feature/inventory — sync with main)
+
 - Merged `origin/main` into `feature/inventory` to undo the accidental main-revert tip and restore auth, incident manager, and the redesigned shell.
 - Conflict resolution favored `main` for layout/auth/incidents/docs; inventory module retained. Tree matches `main` for delivery of both inventory milestones.
 - `main` left untouched (still at prior tip). No PR to `main` from this sync.
 
 ## Recently Completed (Performance audit — Phase 2 fixes)
+
 - Branch: `feature/performance-audit` (from `main`, merged with depuracion/dark mode).
 - Re-baselined from Lighthouse HTML (website `/`, backoffice `/login` + authenticated `/`).
 - Website: `next/image` on hero (priority first slide) + logo; mobile menu `tabIndex={-1}` when closed (`aria-hidden-focus`).
@@ -82,19 +111,22 @@
 - KPI closure docs: `scripts/extract-lighthouse-kpis.mjs` + `scripts/README.md`; `audit/final/README.md` (protocol post-P7); `audit/AUDIT.md` §3 INP/KPI tables + §3.1 interpretation; `audit/REPORT.md` §1.1 refactors, §4.3 dual-delta placeholders, §8 PR notes.
 - Final Lighthouse (2026-08-28): 6/6 HTML in `audit/final/`; `audit/AUDIT.md` §3.0.2 + `audit/REPORT.md` §4.3 filled (dual delta vs before/after).
 - Merge `origin/main` (PR #19 Docker) resolved; prod-default + `docker-compose.dev.yml` overlay retained.
-- TODO: optional PNG in `audit/after/`/`audit/final/`; merge PR #21 to `main`.
+- TODO: optional PNG in `docs/audit/after/`/`docs/audit/final/`; merge PR #21 to `main`.
 
 ## Recently Completed (backoffice — mobile-first navigation shell)
+
 - Shared `navConfig.ts` for work groups and account links.
 - `DesktopSidebar`, `MobileBottomBar`, `OfficeMenu`, `AccountMenu`; `BackofficeShell` layout with `md:pl-60` content column.
 - Profile / Change password removed from work nav; avatar + Cerrar sesión in top bar.
 
 ## Recently Completed (backoffice — remove empty placeholders)
+
 - Deleted routes `/patients`, `/appointments`, `/billing`, `/claims`, `/reports` and unused `SectionPlaceholder`.
 - `BackofficeShell` nav and dashboard `MODULES` now link to Incidents, Suppliers, Inventory, and People & Talent.
 - Updated `uis/backoffice/README(.es).md` section lists.
 
 ## Recently Completed (Hito 5 — inventory backoffice UI)
+
 - Branch: `feature/inventory` (no merge).
 - Four authenticated views: `/inventory/products`, `/inventory/orders/inbound`, `/inventory/orders/outbound`, `/inventory/orders`.
 - Client: `uis/backoffice/lib/services/inventoryApi.ts` (Bearer via `healthcoreClient`; no direct `fetch` in components).
@@ -104,6 +136,7 @@
 - Validation: lints clean on new files. `npx tsc --noEmit` not run here (Node/npm not on PATH; `uis/backoffice/node_modules` absent). Manual API smoke not run in this session.
 
 ## Recently Completed (Hito 5 — inventory ORM + dual database)
+
 - Branch: `feature/inventory` (cut from `feature/auth`).
 - Context: `docs/inventory/CONTEXT-HealthCore.es.md` (MedicalSupply / SupplyDelivery / SupplyConsumption).
 - Dependencies: `sqlmodel`, `psycopg2-binary`.
@@ -119,9 +152,11 @@
 - AUTH-03 complete on `feature/password-reset`: forgot/reset/change password + Resend email.
 
 ## Recently Completed (incident manager — docs pass)
+
 - Documented milestone in `bitacora.md` and READMEs: `services`, `uis/backoffice`, `packages/shared`, `scripts`, `data/process`, `incidents_analysis`, `uis`, `docs`.
 
 ## Recently Completed (incident manager — centralized incidents)
+
 - Shared Python package `packages/shared/healthcore_shared`: CSV validation, manager enums/transitions, seed mapping, create/status field validation.
 - `services/incidents_analysis/validator.py` re-exports shared CSV rules (no duplication).
 - TinyDB `data/process/incidents/incidents.json`; domain `incident_manager_service.py`; models in `services/app/models/incident.py`.
@@ -131,10 +166,12 @@
 - Validation: seed×2 + curl smoke (summary/list/create/bad transition/good transition/400/404); `uis/backoffice` `tsc --noEmit` OK.
 
 ## Recently Completed (docs — incident-manager folder)
+
 - Added `docs/incident-manager/` with placeholder `CONTEXT-HealthCore.md` and `CONTEXT-HealthCore.es.md` (content pending paste).
 - Updated `docs/README.md` and `docs/README.es.md` tree to include `supplier-directory/` and `incident-manager/`.
 
 ## Recently Completed (AUTH-03 — password recovery and change)
+
 - Branch: `feature/password-reset`.
 - Backend: `POST /auth/forgot-password` (always 200), `POST /auth/reset-password` (400 invalid/expired/used), `POST /auth/change-password` (Bearer; 400 wrong current).
 - TinyDB table `password_reset_tokens` (hash + expires_at; prior tokens removed on new request; deleted after successful reset).
@@ -144,16 +181,19 @@
 - Website untouched. Validation: API smoke + real Resend delivery; `tsc --noEmit` OK; full `next build` blocked in this environment by Google Fonts SSL (unrelated to auth).
 
 ## Recently Completed (AUTH-02 phases 4–5 — profile + logout)
+
 - `/account/profile`: `GET /auth/me` + editable name/phone/address via `PUT /profiles/me` (`ProfileForm`, `fetchCurrentUser`, `updateMyProfile`).
 - Nav link Profile; shell button **Cerrar sesión** → `clearSessionAndRedirectToLogin()`.
 - Website untouched. `data/process/auth/auth.json` remains gitignored.
 
 ## Recently Completed (AUTH-02 phase 3 — route guard + register confirm)
+
 - `AppChrome` protects all backoffice routes except `/login` and `/register` (`useSyncExternalStore` for token); missing token → `/login`, token on auth pages → `/`.
 - Register form requires password confirmation.
 - Website untouched.
 
 ## Recently Completed (AUTH-02 phases 1–2 — frontend auth views)
+
 - Branch: `feature/auth-frontend`.
 - Shared HealthCore client: `uis/backoffice/lib/services/healthcoreClient.ts` (token get/set/clear, Bearer header, 401 → clear + redirect `/login`).
 - Auth API helpers: `uis/backoffice/lib/services/authApi.ts` (`login`, `register`, `registerAndLogin`).
@@ -165,6 +205,7 @@
 - Validation: `cd uis/backoffice && npm run build` (routes `/login`, `/register` generated).
 
 ## Recently Completed (AUTH-01 — authentication foundation)
+
 - Branch: `feature/auth`.
 - Dependencies: `passlib[bcrypt]`, `bcrypt==4.0.1`, `python-jose[cryptography]`, `python-dotenv`.
 - Env (repo root): `.env` / `.env.example` with `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`.
@@ -182,6 +223,7 @@
 - Known gap (non-blocking): Swagger Authorize OAuth2 form vs JSON login mismatch; use curl/`Authorization: Bearer` for manual checks. Backoffice Bearer wiring delivered in AUTH-02 phases 1–2.
 
 ## Recently Completed (Documentation Context Setup)
+
 - Created Memory Bank baseline:
   - `memory-bank/projectbrief.md`
   - `memory-bank/techContext.md`
@@ -191,6 +233,7 @@
   - Focused rule files in `.agents/rules/`.
 
 ## Recently Completed (services/api → services/app refactor)
+
 - Migrated FastAPI package from `services/api/` to layered `services/app/`:
   - `core/` — TinyDB (`database.py`) and supplier seed (`seed.py`)
   - `models/supplier.py` — supplier Pydantic models/enums
@@ -203,12 +246,14 @@
 - Updated operational docs: `services/README(.es).md`, `uis/backoffice/README(.es).md`, root `README(.es).md`, `docs/architecture/ARCHITECTURE_PROPOSAL(.es).md`, `lesson2learn/...cli-a-fastapi.md`, `bitacora.md`, and this memory-bank entry.
 
 ## Recently Completed (Supplier directory models)
+
 - Pydantic enums and models in `services/app/models/supplier.py` for Milestone 09 supplier directory:
   - Enums: `Country`, `Currency`, `SupplierStatus`, `SupplierCategory`, `ComplianceAgreement`.
   - Models: `SupplierCreate`, `SupplierRateUpdate`, `SupplierStatusUpdate`, `Supplier`.
   - Enforces USA/USD and UK/GBP pairing via `model_validator`.
 
 ## Recently Completed (API structure)
+
 - HealthCore FastAPI entrypoint at `services/app/main.py` (CORS for local backoffice origins).
 - Incidents HTTP routes in `services/app/routers/incidents.py` (orchestration via `domain/incident_service.py`):
   - `POST /api/incidents/analyze` — multipart CSV → JSON summary; persists last run via `export_results` to `data/process/results.csv`.
@@ -216,6 +261,7 @@
 - Business logic remains in `services/incidents_analysis/` (no duplication in the router).
 
 ## Recently Completed (Supplier runtime data organization)
+
 - Reorganized TinyDB runtime persistence for supplier directory:
   - from `data/suppliers.json`
   - to `data/process/suppliers/suppliers.json`
@@ -227,12 +273,14 @@
 - Restored ignore for `data/process/suppliers/suppliers.json` after it was accidentally re-tracked on `main`; file kept local-only via `git rm --cached`.
 
 ## Recently Completed (Incidents backoffice UI)
+
 - Nav entry `Incidents` → `/incidents` in `uis/backoffice/components/layout/BackofficeShell.tsx`.
 - Page `uis/backoffice/app/incidents/page.tsx` with CSV upload (drag/drop), analyze, summary panels, and CSV download.
 - Client `uis/backoffice/lib/services/healthcoreApi.ts` targets `NEXT_PUBLIC_HEALTHCORE_API_URL` (default `http://127.0.0.1:8000`); Tracker client unchanged.
 - Types in `uis/backoffice/types/incidents.ts` use CONTEXT category/status/invalid rule names.
 
 ## Recently Completed (Supplier directory backoffice UI)
+
 - Added nav entry `Suppliers` in `uis/backoffice/components/layout/BackofficeShell.tsx`.
 - Added route `uis/backoffice/app/suppliers/page.tsx`.
 - Implemented supplier module in `uis/backoffice/components/SuppliersWorkspace.tsx`:
@@ -246,6 +294,7 @@
 - Verified with `cd uis/backoffice && npm run build` (route `/suppliers` generated successfully).
 
 ## Recently Completed (Architecture Migration)
+
 - Migrated internal UI app path from `uis/talent-pipeline-tracker` to `uis/backoffice`.
 - Added a new public Next.js app at `uis/website` (App Router, componentized sections, and intake form route).
 - Added backoffice dashboard landing and module navigation:
@@ -256,6 +305,7 @@
 - Removed retired root static website/playground artifacts after the UI migration to `uis/website` and `uis/backoffice`.
 
 ## In-Scope Baselines from Context
+
 - 12 clinics across US/UK.
 - ~200 employees.
 - Reported no-show baseline: 22%.
@@ -263,16 +313,19 @@
 - Dual compliance obligations: HIPAA and UK GDPR.
 
 ## Assumptions and Constraints
+
 - `CONTEXT.md` is the business source of truth.
 - `company-choise.md` remains out of scope until explicit developer authorization.
 - Missing details must be tracked as TODOs, not inferred.
 
 ## Open TODOs
+
 - TODO: Confirm whether the intended restricted filename is `company-choise.md` only or also similarly named files.
 - TODO: Confirm repository-wide command matrix for lint/test/build across all workspaces.
 - TODO: Add milestone-by-milestone acceptance criteria if formally defined by maintainers.
 
 ## Next Documentation Maintenance Rules
+
 - Update this file after any major implementation or policy change.
 - Keep entries factual, timestamp-friendly, and short.
 - Prefer explicit references to actual files over general statements.

@@ -16,7 +16,9 @@ from services.app.domain.incident_manager_service import (
 from services.app.domain.incident_service import analyze_csv_bytes, results_csv_path
 from services.app.models.incident import (
     Incident,
+    IncidentAnalysisSummary,
     IncidentCreate,
+    IncidentListItem,
     IncidentStatusUpdate,
     IncidentSummary,
 )
@@ -32,7 +34,7 @@ def _validation_http_exception(exc: IncidentValidationError) -> HTTPException:
     )
 
 
-@router.post("/analyze")
+@router.post("/analyze", response_model=IncidentAnalysisSummary)
 async def analyze(file: UploadFile = File(...)):
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="CSV file required")
@@ -76,7 +78,7 @@ def create_incident_endpoint(
         raise _validation_http_exception(exc) from exc
 
 
-@router.get("", response_model=list[Incident])
+@router.get("", response_model=list[IncidentListItem])
 def list_incidents_endpoint(
     status: str | None = Query(default=None),
     origin: str | None = Query(default=None),
@@ -84,7 +86,7 @@ def list_incidents_endpoint(
     category: str | None = Query(default=None),
     _current_user: UserPublic = Depends(get_current_user),
 ):
-    """List incidents with optional filters."""
+    """List incidents with optional filters (lean list projection)."""
     return list_incidents(
         status=status,
         origin=origin,

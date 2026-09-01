@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
+from services.app.models.profile import ProfilePublic
+
 
 class UserRole(str, Enum):
     ADMIN = "admin"
@@ -11,9 +13,10 @@ class UserRole(str, Enum):
 
 
 class UserCreate(BaseModel):
+    """Public registration payload. Role is never accepted from the client."""
+
     email: EmailStr
     password: str = Field(min_length=8)
-    role: UserRole = UserRole.USER
     name: str | None = None
     phone: str | None = None
     address: str | None = None
@@ -33,6 +36,16 @@ class UserPublic(BaseModel):
     role: UserRole
     created_at: datetime
 
+
+class RegisterResponse(BaseModel):
+    """Safe registration confirmation — no email or credentials in the body."""
+
+    id: int
+    is_active: bool
+    role: UserRole
+    created_at: datetime
+
+
 class LoginRequest(BaseModel):
     username: EmailStr
     password: str
@@ -42,6 +55,26 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class AuthMeResponse(BaseModel):
+    """Safe session projection for GET /auth/me."""
+
+    email: EmailStr
+    role: UserRole
+    profile: ProfilePublic | None = None
+
+
+class MessageResponse(BaseModel):
+    """Generic confirmation body (password flows)."""
+
+    message: str
+
+
+class DetailResponse(BaseModel):
+    """Generic confirmation body (deletes)."""
+
+    detail: str
 
 
 class ForgotPasswordRequest(BaseModel):
