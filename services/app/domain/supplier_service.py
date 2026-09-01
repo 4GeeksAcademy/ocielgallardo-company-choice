@@ -3,9 +3,9 @@ from datetime import datetime, timezone
 
 from services.app.core.database import suppliers_table
 from services.app.models.supplier import (
-    Supplier,
     SupplierCreate,
     SupplierRateUpdate,
+    SupplierResponse,
     SupplierStatusUpdate,
 )
 
@@ -14,9 +14,9 @@ class SupplierNotFoundError(LookupError):
     """Raised when a supplier id does not exist in TinyDB."""
 
 
-def _doc_to_response(doc) -> Supplier:
-    """Convert a TinyDB document to a Supplier response model."""
-    return Supplier(
+def _doc_to_response(doc) -> SupplierResponse:
+    """Convert a TinyDB document to a SupplierResponse model."""
+    return SupplierResponse(
         id=doc.doc_id,
         name=doc["name"],
         country=doc["country"],
@@ -32,7 +32,7 @@ def _doc_to_response(doc) -> Supplier:
     )
 
 
-def create_supplier(payload: SupplierCreate) -> Supplier:
+def create_supplier(payload: SupplierCreate) -> SupplierResponse:
     """Register a new supplier."""
     doc = payload.model_dump(mode="json")
     doc["updated_at"] = None
@@ -44,7 +44,7 @@ def create_supplier(payload: SupplierCreate) -> Supplier:
 def list_suppliers(
     country: str | None = None,
     category: str | None = None,
-) -> list[Supplier]:
+) -> list[SupplierResponse]:
     """List suppliers, optionally filtered by country and/or category."""
     results = suppliers_table.all()
 
@@ -56,7 +56,7 @@ def list_suppliers(
     return [_doc_to_response(r) for r in results]
 
 
-def get_supplier(supplier_id: int) -> Supplier:
+def get_supplier(supplier_id: int) -> SupplierResponse:
     """Get a single supplier by ID."""
     doc = suppliers_table.get(doc_id=supplier_id)
     if doc is None:
@@ -64,7 +64,9 @@ def get_supplier(supplier_id: int) -> Supplier:
     return _doc_to_response(doc)
 
 
-def update_supplier_rate(supplier_id: int, payload: SupplierRateUpdate) -> Supplier:
+def update_supplier_rate(
+    supplier_id: int, payload: SupplierRateUpdate
+) -> SupplierResponse:
     """Update a supplier's monthly rate and record the timestamp."""
     doc = suppliers_table.get(doc_id=supplier_id)
     if doc is None:
@@ -81,7 +83,7 @@ def update_supplier_rate(supplier_id: int, payload: SupplierRateUpdate) -> Suppl
 
 def update_supplier_status(
     supplier_id: int, payload: SupplierStatusUpdate
-) -> Supplier:
+) -> SupplierResponse:
     """Activate or suspend a supplier."""
     doc = suppliers_table.get(doc_id=supplier_id)
     if doc is None:

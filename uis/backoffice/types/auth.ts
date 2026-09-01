@@ -24,6 +24,14 @@ export interface UserPublic {
   created_at: string;
 }
 
+/** POST /users — no email or credentials in the body. */
+export interface RegisterResponse {
+  id: number;
+  is_active: boolean;
+  role: string;
+  created_at: string;
+}
+
 export interface ProfilePublic {
   id: number;
   user_id: number;

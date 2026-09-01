@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import JSONResponse
 
 from services.app.domain.user_service import authenticate_user, InvalidCredentialsError
 from services.app.models.user import (
@@ -8,6 +7,8 @@ from services.app.models.user import (
     ForgotPasswordRequest,
     ResetPasswordRequest,
     ChangePasswordRequest,
+    AuthMeResponse,
+    MessageResponse,
 )
 from services.app.core.deps import get_current_user
 from services.app.domain.profile_service import (
@@ -33,37 +34,40 @@ def login(payload: LoginRequest):
     except InvalidCredentialsError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
 
-@router.get("/me")
+
+@router.get("/me", response_model=AuthMeResponse)
 def read_me(current_user: UserPublic = Depends(get_current_user)):
     try:
         profile = get_profile_by_user_id(current_user.id)
     except ProfileNotFoundError:
         profile = None
-    return {
-        "email": current_user.email,
-        "role": current_user.role,
-        "profile": profile,
-    }
+    return AuthMeResponse(
+        email=current_user.email,
+        role=current_user.role,
+        profile=profile,
+    )
 
 
-@router.post("/forgot-password")
+@router.post("/forgot-password", response_model=MessageResponse)
 def forgot_password(payload: ForgotPasswordRequest):
     # Must always return 200 to avoid user enumeration.
     result = forgot_password_service(payload.email)
-    return JSONResponse(status_code=200, content=result)
+    return MessageResponse(message=result["message"])
 
 
-@router.post("/reset-password")
+@router.post("/reset-password", response_model=MessageResponse)
 def reset_password(payload: ResetPasswordRequest):
     try:
-        result = reset_password_service(token=payload.token, new_password=payload.new_password)
-        return result
+        result = reset_password_service(
+            token=payload.token, new_password=payload.new_password
+        )
+        return MessageResponse(message=result["message"])
     except HTTPException as exc:
         # For invalid or expired tokens, rubric expects 400.
         raise HTTPException(status_code=400, detail=str(exc.detail))
 
 
-@router.post("/change-password")
+@router.post("/change-password", response_model=MessageResponse)
 def change_password(
     payload: ChangePasswordRequest,
     current_user: UserPublic = Depends(get_current_user),
@@ -74,6 +78,6 @@ def change_password(
             current_password=payload.current_password,
             new_password=payload.new_password,
         )
-        return result
+        return MessageResponse(message=result["message"])
     except HTTPException as exc:
         raise HTTPException(status_code=400, detail=str(exc.detail))

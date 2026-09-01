@@ -3,11 +3,11 @@
 **Milestone:** Auditoría de Rendimiento Frontend (4Geeks Academy)  
 **Baseline date:** 2026-08-25 (re-run, evening)  
 **Environment:** local `next dev` (website `:3000`, backoffice `:3001`)  
-**Evidence:** `audit/before/*.html`
+**Evidence:** `docs/audit/before/*.html`
 
 > Phase 1 = measure & root-cause. Phase 2 code fixes are applied.  
-> **After (2026-08-28):** 6/6 valid Lighthouse HTML in `audit/after/` (Docker prod, Incógnito) — **pre-P7 lazy** (before commit `17b0d6e`). Deltas in `REPORT.md` §4.2.  
-> **Final (post-P7):** 6/6 HTML in `audit/final/` (Docker prod, Incógnito, 2026-08-28) — deltas in `REPORT.md` §4.3.  
+> **After (2026-08-28):** 6/6 valid Lighthouse HTML in `docs/audit/after/` (Docker prod, Incógnito) — **pre-P7 lazy** (before commit `17b0d6e`). Deltas in `REPORT.md` §4.2.  
+> **Final (post-P7):** 6/6 HTML in `docs/audit/final/` (Docker prod, Incógnito, 2026-08-28) — deltas in `REPORT.md` §4.3.  
 > **Phase 3 (2026-08-28):** UX form success, backoffice extractions, lazy viewport — see P6/P7 below (commit `17b0d6e`).
 
 ---
@@ -60,7 +60,7 @@
 Extracted with `node scripts/extract-lighthouse-kpis.mjs … --markdown`.  
 \* **INP:** `interaction-to-next-paint` when present in the export; otherwise **maxPotentialFID** (lab proxy — common in Lighthouse 13.x HTML).
 
-### 3.0 Baseline (`audit/before/` — `next dev`)
+### 3.0 Baseline (`docs/audit/before/` — `next dev`)
 
 | Surface | Mode | Perf | FCP | LCP | INP* | TBT | CLS | TTFB |
 |---------|------|-----:|-----|-----|------|-----|----:|------|
@@ -71,7 +71,7 @@ Extracted with `node scripts/extract-lighthouse-kpis.mjs … --markdown`.
 | Backoffice `/` | Mobile | 46 | 1.2 s | **19.1 s** | **2,380 ms** | **2,330 ms** | 0 | 70 ms |
 | Backoffice `/` | Desktop | 58 | 0.4 s | **3.5 s** | 600 ms | 550 ms | 0 | 70 ms |
 
-### 3.0.1 After 2026-08-28 (`audit/after/` — Docker prod, **pre-P7**)
+### 3.0.1 After 2026-08-28 (`docs/audit/after/` — Docker prod, **pre-P7**)
 
 | Surface | Mode | Perf | FCP | LCP | INP* | TBT | CLS | TTFB |
 |---------|------|-----:|-----|-----|------|-----|----:|------|
@@ -82,7 +82,7 @@ Extracted with `node scripts/extract-lighthouse-kpis.mjs … --markdown`.
 | Backoffice `/` | Mobile | 95 | 0.8 s | 2.9 s | 110 ms | 60 ms | 0 | ~0 ms |
 | Backoffice `/` | Desktop | 100 | 0.2 s | 0.7 s | 20 ms | 0 ms | 0 | ~0 ms |
 
-### 3.0.2 Final post-P7 (`audit/final/` — Docker prod, 2026-08-28)
+### 3.0.2 Final post-P7 (`docs/audit/final/` — Docker prod, 2026-08-28)
 
 | Surface | Mode | Perf | FCP | LCP | INP* | TBT | CLS | TTFB |
 |---------|------|-----:|-----|-----|------|-----|----:|------|
@@ -190,10 +190,10 @@ When reading Lighthouse (lab) or field data, prioritize in this order:
 
 | Item | Status |
 |------|--------|
-| Baseline Lighthouse (website + backoffice login + dashboard) | Done — `audit/before/` |
+| Baseline Lighthouse (website + backoffice login + dashboard) | Done — `docs/audit/before/` |
 | Root-cause analysis | Done — this file |
 | Targeted fixes (images, a11y, shared shell, dynamic import) | Done — code |
-| Re-measure → `audit/after/` + score delta in `REPORT.md` | Done — `audit/after/README.md` (2026-08-28) |
+| Re-measure → `docs/audit/after/` + score delta in `REPORT.md` | Done — `docs/audit/after/README.md` (2026-08-28) |
 | UX + lazy viewport (P6, P7) + backoffice extractions | Done — commit `17b0d6e` |
-| KPI extraction script + `audit/final/` protocol | Done — `scripts/extract-lighthouse-kpis.mjs`, `audit/final/README.md` |
-| Final Lighthouse pass post-P7 (`audit/final/` → `REPORT.md` §4.3) | Done — 2026-08-28 |
+| KPI extraction script + `docs/audit/final/` protocol | Done — `scripts/extract-lighthouse-kpis.mjs`, `docs/audit/final/README.md` |
+| Final Lighthouse pass post-P7 (`docs/audit/final/` → `REPORT.md` §4.3) | Done — 2026-08-28 |

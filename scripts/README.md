@@ -59,12 +59,12 @@ uv run seed-incidents
 Parses `window.__LIGHTHOUSE_JSON__` from saved Lighthouse HTML reports and prints Performance, FCP, LCP, INP (or maxPotentialFID lab proxy), CLS, TTFB, and TBT.
 
 ```bash
-node scripts/extract-lighthouse-kpis.mjs audit/before/*.html --markdown
-node scripts/extract-lighthouse-kpis.mjs audit/after/*.html --markdown
-node scripts/extract-lighthouse-kpis.mjs audit/final/*.html --markdown
+node scripts/extract-lighthouse-kpis.mjs docs/audit/before/*.html --markdown
+node scripts/extract-lighthouse-kpis.mjs docs/audit/after/*.html --markdown
+node scripts/extract-lighthouse-kpis.mjs docs/audit/final/*.html --markdown
 ```
 
-Use after each audit pass to fill [`AUDIT.md`](../audit/AUDIT.md) and [`REPORT.md`](../audit/REPORT.md) tables.
+Use after each audit pass to fill [`AUDIT.md`](../docs/audit/AUDIT.md) and [`REPORT.md`](../docs/audit/REPORT.md) tables.
 
 ## 💡 Tips
 
