@@ -66,6 +66,29 @@ node scripts/extract-lighthouse-kpis.mjs docs/audit/final/*.html --markdown
 
 Use after each audit pass to fill [`AUDIT.md`](../docs/audit/AUDIT.md) and [`REPORT.md`](../docs/audit/REPORT.md) tables.
 
+### `seed_inventory_volume.py` — append inventory volume for caching benchmarks
+
+Adds ~200 extra `medical_supplies` rows plus thousands of `supply_deliveries` and `supply_consumptions` in Supabase for realistic read latency. Idempotent: skips when `supply_deliveries` already has ≥1000 rows. Does **not** replace the CONTEXT seed in `services/app/core/inventory_seed.py`.
+
+```bash
+# from repo root (requires SUPABASE_DB_* or DATABASE_URL in .env)
+uv run python scripts/seed_inventory_volume.py
+# or
+uv run seed-inventory-volume
+```
+
+### `measure_cache_candidates.py` — row counts and latency for cache shortlist
+
+Runs 10 iterations (default) and reports min / p50 / max latency for inventory, incidents summary, and suppliers. Domain mode hits service functions directly; `--http` mode requires a running API and `BENCHMARK_USERNAME` / `BENCHMARK_PASSWORD` in `.env`.
+
+```bash
+uv run python scripts/measure_cache_candidates.py
+uv run python scripts/measure_cache_candidates.py --json
+uv run python scripts/measure_cache_candidates.py --http --base-url http://127.0.0.1:8000
+```
+
+Use before and after `seed_inventory_volume.py` to fill [`docs/audit/CACHING_REPORT.md`](../docs/audit/CACHING_REPORT.md) Phase 2 tables.
+
 ## 💡 Tips
 
 - Keep each script focused: parse args, call services, present results.

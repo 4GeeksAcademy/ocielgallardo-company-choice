@@ -1,9 +1,20 @@
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { PatientApplicationForm } from "@/components/forms/PatientApplicationForm";
-import { SiteFooter } from "@/components/layout/SiteFooter";
+import { SiteFooterLazy } from "@/components/lazy/lazyViewportSections";
 import { SiteHeader } from "@/components/layout/SiteHeader";
-import { LazyWhenVisible } from "@/components/ui/LazyWhenVisible";
 import { SectionPlaceholder } from "@/components/ui/SectionPlaceholder";
+
+const PatientApplicationForm = dynamic(
+  () =>
+    import("@/components/forms/PatientApplicationForm").then((mod) => ({
+      default: mod.PatientApplicationForm,
+    })),
+  {
+    loading: () => (
+      <SectionPlaceholder minHeight={420} label="Loading application form…" />
+    ),
+  },
+);
 
 export default function ApplicationPage() {
   return (
@@ -26,13 +37,7 @@ export default function ApplicationPage() {
           </div>
         </section>
       </main>
-
-      <LazyWhenVisible
-        fallback={<SectionPlaceholder minHeight={140} label="Loading footer…" />}
-        minHeight={140}
-      >
-        <SiteFooter />
-      </LazyWhenVisible>
+      <SiteFooterLazy />
     </div>
   );
 }

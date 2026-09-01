@@ -3,8 +3,7 @@
 ## Current Status Snapshot
 
 - Business context source established in `CONTEXT.md`.
-- Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`).
-- Serialization audit milestone: **complete** on `feature/serialization-audit` — all 31 endpoints **Ya serializado**; audit in `docs/audit/serialization-audit.md` (milestone closed; smoke + Postman verified).
+- Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`, `audit`).
 - Centralized incident manager implemented (shared validation, seed, API, backoffice UI).
 - Web deliverables for Milestone 1 are implemented.
 - Core TypeScript domain/utilities for Milestone 2 are implemented.
@@ -12,7 +11,44 @@
 - Type-level model validation command is available in `packages/shared`.
 - AUTH-01 (JWT auth) is complete on branch `feature/auth` (route protection + 403 ownership rules applied).
 - Hito 5 inventory API (SQLModel + Supabase) and backoffice UI are implemented on branch `feature/inventory` (not merged).
+- Backoffice UI cleaned: empty Patients/Appointments/Billing/Claims/Reports placeholders removed; dashboard and nav reflect implemented modules only.
+- Backoffice shell is mobile-first: desktop fixed sidebar with collapsible groups; mobile Dashboard + Office bottom bar; account via avatar menu.
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `docs/audit/REPORT.md` §4.2–§4.3.
+- Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
+- Caching optimisation milestone: **Phase 5 complete** — in-memory TTL cache + invalidation on inventory list endpoints; report closed.
+
+## Recently Completed (docs — audit under docs/)
+- Moved repo-root `audit/` → `docs/audit/` (Lighthouse evidence + AUDIT/REPORT).
+- Moved `CACHING_REPORT.md` → `docs/audit/CACHING_REPORT.md`.
+- Updated links in `docs/README(.es).md`, `scripts/README.md`, `scripts/extract-lighthouse-kpis.mjs`, and this memory-bank.
+
+## Recently Completed (Caching milestone — Phase 5)
+- `services/app/core/ttl_cache.py` — in-process `TtlCache` (`get` / `set` / `invalidate`).
+- `inventory_service`: cache `list_supplies` / `list_orders` (keys `inventory:products`, `inventory:orders`, TTL 60 s); invalidate both on create supply/delivery/consumption.
+- Measured (domain, n=10, 2026-08-29): products/orders p50 hit **0.0 ms** (max ≈ miss 323 / 733 ms) vs Phase 2 baseline 152 / 364 ms.
+- Docs: `docs/audit/CACHING_REPORT.md` §2.2, §6–§7, checklist Phase 5 done.
+
+## Recently Completed (Caching milestone — Phase 4)
+- Backoffice: `InventoryOrdersList` — `orderSummary`, `filteredOrders`, `displayRows` via `useMemo` (deps on `orders` / `typeFilter` / `filteredOrders`).
+- UI: type filter chips + summary cards for inbound/outbound counts and quantities over the volume-seeded list.
+- Docs: `docs/audit/CACHING_REPORT.md` §5.1; checklist useMemo marked done.
+
+## Recently Completed (Caching milestone — Phase 3)
+- Website: `uis/website/components/lazy/lazyViewportSections.tsx` — Services, Impact, FinalCta, Footer.
+- Website home and `/application` — `next/dynamic` for below-fold sections and patient form.
+- Validation: `uis/website` `npm run build` OK.
+
+## Recently Completed (Caching milestone — Phase 2)
+- Middleware: `api.timing` HTTP logger in `services/app/main.py`.
+- Scripts: `scripts/seed_inventory_volume.py`, `scripts/measure_cache_candidates.py`.
+- Measured (2026-08-28): `/inventory/orders` p50 198→364 ms; `/inventory/products` p50 ~152 ms; `/suppliers` p50 1.31 ms (excluded).
+- Phase 5 cache targets: `GET /inventory/orders`, `GET /inventory/products`.
+
+## Recently Completed (Caching milestone — Phase 1)
+- Branch: `feature/caching-optimisation` (from `feature/performance-audit`).
+- Fix: `services/app/main.py` — removed duplicate `app = FastAPI()` that dropped `lifespan` (inventory init on startup restored).
+- Docs: `docs/audit/CACHING_REPORT.md` — methodology, backend/frontend inventory, HIPAA exclusions, trade-off framework.
+- Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `audit/REPORT.md` §4.2–§4.3.
 - Docker: prod-default (`docker compose up` / `npm run docker:up`); dev overlay via `docker-compose.dev.yml` (`npm run docker:dev`).
 
 ## Recently Completed (serialization audit — milestone close)
@@ -70,6 +106,10 @@
 - Docs sync: `docs/audit/AUDIT.md` P6/P7 + `docs/audit/REPORT.md` F5–F7 (post-`17b0d6e`).
 - KPI closure docs: `scripts/extract-lighthouse-kpis.mjs` + `scripts/README.md`; `docs/audit/final/README.md` (protocol post-P7); `docs/audit/AUDIT.md` §3 INP/KPI tables + §3.1 interpretation; `docs/audit/REPORT.md` §1.1 refactors, §4.3 dual-delta placeholders, §8 PR notes.
 - Final Lighthouse (2026-08-28): 6/6 HTML in `docs/audit/final/`; `docs/audit/AUDIT.md` §3.0.2 + `docs/audit/REPORT.md` §4.3 filled (dual delta vs before/after).
+- TODO: optional PNG in `docs/audit/after/`/`docs/audit/final/`; PR to `main`.
+- Docs sync: `audit/AUDIT.md` P6/P7 + `audit/REPORT.md` F5–F7 (post-`17b0d6e`).
+- KPI closure docs: `scripts/extract-lighthouse-kpis.mjs` + `scripts/README.md`; `audit/final/README.md` (protocol post-P7); `audit/AUDIT.md` §3 INP/KPI tables + §3.1 interpretation; `audit/REPORT.md` §1.1 refactors, §4.3 dual-delta placeholders, §8 PR notes.
+- Final Lighthouse (2026-08-28): 6/6 HTML in `audit/final/`; `audit/AUDIT.md` §3.0.2 + `audit/REPORT.md` §4.3 filled (dual delta vs before/after).
 - Merge `origin/main` (PR #19 Docker) resolved; prod-default + `docker-compose.dev.yml` overlay retained.
 - TODO: optional PNG in `docs/audit/after/`/`docs/audit/final/`; merge PR #21 to `main`.
 

@@ -26,6 +26,7 @@ dependencies = [
 [project.scripts]
 seed = "services.app.core.seed:run_seed"
 seed-inventory = "services.app.core.inventory_seed:run_inventory_seed"
+seed-inventory-volume = "scripts.seed_inventory_volume:main"
 seed-incidents = "scripts.seed_incidents:main"
 
 [tool.hatch.build]
