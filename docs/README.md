@@ -11,6 +11,14 @@ docs/
 ├── README.md
 ├── README.es.md
 │
+├── audit/                      ← technical audits (serialization API + frontend performance)
+│   ├── serialization-audit.md
+│   ├── AUDIT.md
+│   ├── REPORT.md
+│   ├── before/
+│   ├── after/
+│   └── final/
+│
 ├── architecture/
 │   ├── ARCHITECTURE_PROPOSAL.md
 │   └── ARCHITECTURE_PROPOSAL.es.md
@@ -35,6 +43,12 @@ docs/
 │   ├── telemetry-plan.md
 │   ├── telemetry-plan.es.md
 │   └── event-schemas.json
+├── audit/                      ← frontend performance audit (Lighthouse) + caching report
+│   ├── AUDIT.md
+│   ├── REPORT.md
+│   ├── CACHING_REPORT.md
+│   ├── before/ | after/ | final/
+│   └── README.md
 │
 ├── api/                  (futuro)
 │

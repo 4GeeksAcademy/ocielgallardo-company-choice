@@ -10,11 +10,11 @@
 
 | Paso | Estado |
 |------|--------|
-| Medición inicial (before) | Hecho — `audit/before/` (HTML + PNG) |
+| Medición inicial (before) | Hecho — `docs/audit/before/` (HTML + PNG) |
 | Análisis y causa raíz | Hecho — `AUDIT.md` |
 | Correcciones de código | Hecho — commits en esta rama |
 | Componente reutilizable | Hecho — ver §1.1 |
-| Remeición after | Hecho — `audit/after/` (6 HTML, Docker prod) |
+| Remeición after | Hecho — `docs/audit/after/` (6 HTML, Docker prod) |
 | Cierre con deltas medibles | Hecho — §4.2 (before→after pre-P7) + §4.3 (final post-P7) |
 
 ### 1.1 Componentes y hooks reutilizables (hito)
@@ -79,7 +79,7 @@
 
 ## 3. Puntuaciones baseline (before) — válidas
 
-Evidencia: `audit/before/` (HTML + capturas PNG). Entorno: `next dev`.
+Evidencia: `docs/audit/before/` (HTML + capturas PNG). Entorno: `next dev`.
 
 ### Website `/`
 
@@ -108,11 +108,11 @@ Evidencia: `audit/before/` (HTML + capturas PNG). Entorno: `next dev`.
 
 ### 4.1 Primera pasada (2026-08-25) — descartada
 
-Archivos en `audit/after/` de esa noche **no son evidencia oficial**: timeouts en móvil, IndexedDB/extensiones en desktop. Ver historial en `audit/after/README.md`.
+Archivos en `docs/audit/after/` de esa noche **no son evidencia oficial**: timeouts en móvil, IndexedDB/extensiones en desktop. Ver historial en `docs/audit/after/README.md`.
 
 ### 4.2 Mediciones válidas (2026-08-28) — Docker producción
 
-**Protocolo:** Chrome **Incógnito**, `docker compose up --build` (`next start` en UIs, uvicorn sin reload). Evidencia: `audit/after/*.html`.
+**Protocolo:** Chrome **Incógnito**, `docker compose up --build` (`next start` en UIs, uvicorn sin reload). Evidencia: `docs/audit/after/*.html`.
 
 **Caveat:** mediciones anteriores en `next dev` eran inestables (IndexedDB, `PROTOCOL_TIMEOUT`, scores &lt;49). Esta pasada completó las 6 corridas; si un valor parece anómalo, repetir en Incógnito limpio.
 
@@ -129,9 +129,9 @@ Archivos en `audit/after/` de esa noche **no son evidencia oficial**: timeouts e
 
 Corridas con perfil normal (aviso **IndexedDB**) o `PROTOCOL_TIMEOUT` deben descartarse; Incógnito + Docker prod reducen ese ruido.
 
-### 4.3 Final post-P7 (`audit/final/`) — 2026-08-28
+### 4.3 Final post-P7 (`docs/audit/final/`) — 2026-08-28
 
-**Protocolo:** Chrome Incógnito, `docker compose up --build` (rama con P7 lazy + fix lazy panels). Evidencia: `audit/final/*.html`.
+**Protocolo:** Chrome Incógnito, `docker compose up --build` (rama con P7 lazy + fix lazy panels). Evidencia: `docs/audit/final/*.html`.
 
 #### Tabla KPI
 
@@ -146,7 +146,7 @@ Corridas con perfil normal (aviso **IndexedDB**) o `PROTOCOL_TIMEOUT` deben desc
 
 \* INP: maxPotentialFID (lab proxy) — `interaction-to-next-paint` no presente en export LH 13.4.
 
-#### Δ vs baseline (`audit/before/`) — mejora total del hito
+#### Δ vs baseline (`docs/audit/before/`) — mejora total del hito
 
 | Superficie | Modo | Δ Perf | Δ LCP | Δ INP* | Δ TBT | Notas |
 |------------|------|--------|-------|--------|-------|-------|
@@ -157,7 +157,7 @@ Corridas con perfil normal (aviso **IndexedDB**) o `PROTOCOL_TIMEOUT` deben desc
 | Backoffice `/` | Mobile | **+48** | **−16.1 s** | **−2,290 ms** | **−2,290 ms** | F4 dynamic + prod |
 | Backoffice `/` | Desktop | **+42** | −2.8 s | −580 ms | −550 ms | |
 
-#### Δ vs after 2026-08-28 (`audit/after/`, pre-P7) — impacto F5–F7
+#### Δ vs after 2026-08-28 (`docs/audit/after/`, pre-P7) — impacto F5–F7
 
 | Superficie | Modo | Δ Perf | Δ LCP | Δ INP* | Δ TBT | Notas |
 |------------|------|--------|-------|--------|-------|-------|
@@ -186,7 +186,7 @@ Corridas con perfil normal (aviso **IndexedDB**) o `PROTOCOL_TIMEOUT` deben desc
 
 ## 6. Checklist restante
 
-1. Opcional: capturas PNG en `audit/after/` o `audit/final/` para el entregable visual.
+1. Opcional: capturas PNG en `docs/audit/after/` o `docs/audit/final/` para el entregable visual.
 2. Abrir PR de `feature/performance-audit` → `main` cuando lo pidas.
 3. Re-medir en Incógnito si alguna corrida futura falla o parece inconsistente.
 
@@ -196,7 +196,7 @@ Dev con hot reload: `npm run docker:dev`. Medición Lighthouse: `npm run docker:
 
 ## 8. Notas para PR
 
-Los fixes del hito se agruparon en commits por fase (baseline + correcciones core, stack Docker prod, UX/lazy + extracciones backoffice, documentación), no en el formato “un fix = un commit + Lighthouse cada vez”. La evidencia Lighthouse sigue el protocolo batch: baseline en `next dev` (`audit/before/`), remeición en Docker prod pre-P7 (`audit/after/`, 2026-08-28), y pasada **final** post-P7 en `audit/final/` (2026-08-28).
+Los fixes del hito se agruparon en commits por fase (baseline + correcciones core, stack Docker prod, UX/lazy + extracciones backoffice, documentación), no en el formato “un fix = un commit + Lighthouse cada vez”. La evidencia Lighthouse sigue el protocolo batch: baseline en `next dev` (`docs/audit/before/`), remeición en Docker prod pre-P7 (`docs/audit/after/`, 2026-08-28), y pasada **final** post-P7 en `docs/audit/final/` (2026-08-28).
 
 En el análisis se priorizan **KPIs de rendimiento** (TTFB → LCP → CLS → INP → TBT → Performance score) sobre categorías secundarias de Lighthouse (A11y/BP/SEO), que ya partían de puntuaciones altas. P1/P4/P5/P7 son KPI; P2/P3 son secundarias Lighthouse; P6 es UX fuera del alcance perf KPI.
 
@@ -213,5 +213,5 @@ Script de extracción: `scripts/extract-lighthouse-kpis.mjs`. Tablas maestras: `
 - `0affcaf` — HTML after + deltas Lighthouse en `REPORT.md`  
 - `17b0d6e` — form success website, extracciones backoffice, lazy viewport  
 - `24a6e0b` — docs P6/P7 + a11y lazy placeholders
-- `bf04703` — docs KPI/INP, `audit/final/`, script extracción Lighthouse
-- `e3a7ff3` — evidencia `audit/final/` + §4.3; fix lazy panels Docker build
+- `bf04703` — docs KPI/INP, `docs/audit/final/`, script extracción Lighthouse
+- `e3a7ff3` — evidencia `docs/audit/final/` + §4.3; fix lazy panels Docker build

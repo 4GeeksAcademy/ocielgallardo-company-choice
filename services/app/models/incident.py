@@ -67,8 +67,8 @@ class IncidentStatusUpdate(BaseModel):
     status: IncidentStatus
 
 
-class Incident(BaseModel):
-    """Incident returned by the API."""
+class IncidentListItem(BaseModel):
+    """Lean row for GET /api/incidents list (backoffice table columns)."""
 
     id: int
     title: str
@@ -77,15 +77,48 @@ class Incident(BaseModel):
     status: IncidentStatus
     origin: IncidentOrigin
     branch: IncidentBranch
+
+
+class Incident(IncidentListItem):
+    """Full incident returned by detail and write confirmations."""
+
     created_at: datetime | str
     updated_at: datetime | str
 
 
 class IncidentSummary(BaseModel):
-    """Aggregated incident metrics."""
+    """Aggregated incident metrics (manager store)."""
 
     by_status: dict[str, int]
     by_category: dict[str, int]
     by_origin: dict[str, int]
     by_branch: dict[str, int]
     total: int
+
+
+# --- CSV analysis summary (POST /api/incidents/analyze) ---
+# Must never include patient_id or other PHI.
+
+
+class CountPercentage(BaseModel):
+    count: int
+    percentage: float
+
+
+class SatisfactionSummary(BaseModel):
+    scored_cases: int
+    average: float | None
+    histogram: dict[int, int]
+
+
+class IncidentAnalysisSummary(BaseModel):
+    """Aggregate-only CSV analysis result. No row-level or patient fields."""
+
+    total: int
+    valid: int
+    invalid: int
+    invalid_breakdown: dict[str, int]
+    by_category: dict[str, CountPercentage]
+    by_status: dict[str, CountPercentage]
+    by_country: dict[str, CountPercentage]
+    satisfaction: SatisfactionSummary

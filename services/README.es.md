@@ -53,6 +53,7 @@ Notas de auth (AUTH-01 / AUTH-03):
 - JWT con `python-jose`; `SECRET_KEY` y `ACCESS_TOKEN_EXPIRE_MINUTES` en el `.env` de la raíz (ver `.env.example`).
 - User y Profile solo en TinyDB (no tablas de usuario en PostgreSQL/Supabase). Tokens de reset en tabla TinyDB `password_reset_tokens` (hash, TTL corto, un solo uso).
 - Todas las rutas `/suppliers` y las de `/users` no públicas requieren `Authorization: Bearer <token>` (401 sin él).
+- Serialización (hito completo en `feature/serialization-audit`): cada endpoint JSON declara un `response_model` Pydantic explícito. El registro devuelve `RegisterResponse` (sin email). Login solo token. `GET /auth/me` puede devolver el email del llamante. Checklist: [`docs/audit/serialization-audit.md`](../docs/audit/serialization-audit.md).
 - Recuperación de contraseña (AUTH-03, rama `feature/password-reset`):
   - `POST /auth/forgot-password` siempre 200 (anti-enumeración); email vía Resend si el usuario existe.
   - `POST /auth/reset-password` valida token/expiración/uso único; actualiza hash; invalida el token.

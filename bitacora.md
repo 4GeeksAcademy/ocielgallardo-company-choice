@@ -1102,3 +1102,29 @@ Completar las cuatro vistas autenticadas de inventario en `uis/backoffice` sobre
 ### Resultado
 
 Las cuatro vistas del hito de interfaz de inventario quedan en `feature/inventory`, autenticadas y cableadas a la API. Pendiente merge.
+
+## Actualizacion 2026-08-29 (Auditoria de serializacion del backend)
+
+### Objetivo
+
+Cerrar el hito de serializacion de la API FastAPI: ningun endpoint JSON sin `response_model` explicito; auth sin echo de password/email (salvo `GET /auth/me`).
+
+### Alcance realizado
+
+- Rama: `feature/serialization-audit` (desde `main`).
+- Auditoria: `docs/audit/serialization-audit.md` (31/31 Ya serializado; hito complete).
+- Evidencia de auditorias movida a `docs/audit/` (Lighthouse + serializacion).
+- Schemas: `AuthMeResponse`, `MessageResponse`, `DetailResponse`, `RegisterResponse`, `SupplierResponse`, `IncidentListItem`, `IncidentAnalysisSummary`, `InventoryOrderListItem`.
+- `UserCreate` ya no acepta `role` en registro publico.
+- Validacion: smoke Docker + Postman `GET /auth/me` con Bearer.
+
+### Como probar
+
+1. `docker compose up --build` (o uvicorn local con `PYTHONPATH=packages/shared`).
+2. `POST /users` → sin `email` en el body de respuesta.
+3. `POST /auth/login` → token; `GET /auth/me` con Bearer → email del llamante.
+4. Abrir `http://127.0.0.1:8000/docs` y revisar schemas.
+
+### Resultado
+
+Contrato de respuesta de la API documentado y aplicado. Pendiente PR/merge a `main`.

@@ -37,7 +37,7 @@ venv/
 
 # Logs and audit artifacts
 *.log
-audit/
+docs/audit/
 npm-debug.log*
 
 # OS

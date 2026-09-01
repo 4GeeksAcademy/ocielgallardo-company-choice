@@ -8,7 +8,7 @@ from services.app.core.deps import get_current_user
 from services.app.domain import inventory_service
 from services.app.models.user import UserPublic
 from services.app.schemas import (
-    InventoryOrderResponse,
+    InventoryOrderListItem,
     MedicalSupplyCreate,
     MedicalSupplyResponse,
     SupplyConsumptionCreate,
@@ -82,9 +82,9 @@ def create_outbound_order(
     )
 
 
-@router.get("/orders", response_model=list[InventoryOrderResponse])
+@router.get("/orders", response_model=list[InventoryOrderListItem])
 def list_orders(
     _: UserPublic = Depends(get_current_user),
     session: Session = Depends(get_db),
-) -> list[InventoryOrderResponse]:
+) -> list[InventoryOrderListItem]:
     return inventory_service.list_orders(session)

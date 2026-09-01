@@ -45,12 +45,9 @@
   - Auth: JWT via `python-jose`, passwords via `passlib`/`bcrypt`, TinyDB users/profiles, config from root `.env`
   - Inventory (Hito 5): SQLModel + Supabase PostgreSQL via `SUPABASE_DB_*` (or optional `DATABASE_URL`); TinyDB remains for auth only
   - Entities: `MedicalSupply`, `SupplyDelivery`, `SupplyConsumption` under `/inventory`
-  - Run: `uv run python -m uvicorn services.app.main:app --reload`
-  - `services/app/` (`main`, `core`, `models`, `domain`, `routers`)
-  - `services/incidents_analysis/` (CLI/API shared incident CSV pipeline; validator re-exports `healthcore_shared`)
+  - Serialization audit (**complete**): explicit `response_model` on all JSON routes; checklist `docs/audit/serialization-audit.md`
+  - Run: `PYTHONPATH=packages/shared uv run python -m uvicorn services.app.main:app --reload`
   - Incident manager: TinyDB `data/process/incidents/incidents.json`; CRUD + `/api/incidents/summary` + status lifecycle; seed via `scripts/seed_incidents.py`
-  - Auth (AUTH-01 complete): JWT via `python-jose`, passwords via `passlib`/`bcrypt`, config from root `.env`
-  - Run: `PYTHONPATH=packages/shared uv run uvicorn services.app.main:app --reload`
 
 ## Validation and Local Checks
 - Type validation command (documented):
@@ -62,6 +59,7 @@
 - `docs/telemetry/`: Telemetry Plan design docs (`telemetry-plan.md`, `event-schemas.json`); CONTEXT metrics in `CONTEXT-healthcore.md`.
 - `memory-bank/`: persistent AI-agent context and progress tracking.
 - `.agents/rules/`: behavior and contribution constraints for AI agents.
+- `docs/`: cross-cutting docs; milestone CONTEXTs and `docs/audit/` (Lighthouse evidence + `CACHING_REPORT.md`).
 - `src/`: core typed models and utility logic.
 - `uis/`: UI applications and interface-focused projects.
 - `services/`: backend/API and workers (future or partial, depending on milestone).
