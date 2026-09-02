@@ -1,0 +1,3279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://healthcore.local/schemas/telemetry/event-schemas.json",
+  "title": "HealthCore Telemetry Event Schemas",
+  "description": "JSON Schema catalog for HealthCore telemetry. Identifiers match CONTEXT-healthcore.md and telemetry-plan.md. No PHI in properties.",
+  "x-priority-index": {
+    "P0": [
+      "inbound_order_created",
+      "outbound_order_created",
+      "stock_threshold_triggered",
+      "direct_stock_edit_rejected",
+      "supply_expiry_flagged"
+    ],
+    "P1": [
+      "product_created",
+      "outbound_order_rejected",
+      "inbound_order_rejected",
+      "inventory_form_started",
+      "inventory_form_abandoned",
+      "login_succeeded",
+      "login_failed",
+      "logout_completed",
+      "user_registered",
+      "password_reset_requested",
+      "password_reset_completed",
+      "password_reset_failed",
+      "password_changed",
+      "session_unauthorized",
+      "page_viewed",
+      "form_abandoned",
+      "incident_created",
+      "incident_validation_failed",
+      "incident_status_changed",
+      "incident_status_rejected",
+      "incident_csv_analyzed",
+      "incident_csv_rejected",
+      "incident_results_exported",
+      "incident_summary_viewed",
+      "supplier_created",
+      "supplier_rate_updated",
+      "supplier_status_changed",
+      "supplier_deleted",
+      "http_request_failed",
+      "api_unhandled_error",
+      "email_send_failed",
+      "job_run_completed",
+      "session_expired",
+      "api_latency_recorded",
+      "frontend_error_captured"
+    ],
+    "P2": [
+      "talent_list_filtered",
+      "talent_record_created",
+      "talent_candidate_viewed",
+      "website_page_viewed",
+      "intake_form_started",
+      "intake_form_submitted",
+      "intake_form_validation_failed"
+    ]
+  },
+  "$defs": {
+    "iso8601": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "country": {
+      "type": "string",
+      "enum": [
+        "US",
+        "UK"
+      ]
+    },
+    "product_category": {
+      "type": "string",
+      "enum": [
+        "medication",
+        "ppe",
+        "consumable",
+        "equipment"
+      ]
+    },
+    "app_surface": {
+      "type": "string",
+      "enum": [
+        "backoffice",
+        "website"
+      ]
+    },
+    "envelope_fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "timestamp",
+        "sessionId",
+        "userId",
+        "event_type",
+        "schemaVersion",
+        "requestId",
+        "properties"
+      ],
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "$ref": "#/$defs/iso8601"
+        },
+        "sessionId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schemaVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "requestId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "properties": {
+          "type": "object"
+        }
+      }
+    },
+    "inbound_order_created": {
+      "title": "inbound_order_created",
+      "x-priority": "P0",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "inbound_order_created"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "clinic_id",
+                "country",
+                "product_id",
+                "product_category",
+                "quantity",
+                "vendor_name"
+              ],
+              "properties": {
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "product_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "product_category": {
+                  "$ref": "#/$defs/product_category"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "vendor_name": {
+                  "type": "string"
+                },
+                "sku": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "order_id": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-source": "mandatory",
+      "x-category": "business_inventory",
+      "x-gold-rule": "We capture inbound_order_created because we need to know how much and what supply is purchased by clinic and vendor, which lets us consolidate purchasing and negotiate better vendor terms.",
+      "x-allowlist": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity",
+        "vendor_name",
+        "sku",
+        "unit",
+        "order_id"
+      ],
+      "x-sensitive": "none"
+    },
+    "outbound_order_created": {
+      "title": "outbound_order_created",
+      "x-priority": "P0",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "outbound_order_created"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "clinic_id",
+                "country",
+                "product_id",
+                "product_category",
+                "quantity",
+                "department"
+              ],
+              "properties": {
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "product_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "product_category": {
+                  "$ref": "#/$defs/product_category"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "department": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Clinical service area; never a patient id"
+                },
+                "consumption_type": {
+                  "type": "string",
+                  "enum": [
+                    "clinical_use",
+                    "expiry_waste"
+                  ]
+                },
+                "sku": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "order_id": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-source": "mandatory",
+      "x-category": "business_inventory",
+      "x-gold-rule": "We capture outbound_order_created because we need to know which supplies are consumed most and at what rate by clinic and department, which lets us adjust automatic replenishment per clinic.",
+      "x-allowlist": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity",
+        "department",
+        "consumption_type",
+        "sku",
+        "unit",
+        "order_id"
+      ],
+      "x-sensitive": "none"
+    },
+    "stock_threshold_triggered": {
+      "title": "stock_threshold_triggered",
+      "x-priority": "P0",
+      "x-pipeline": "stream",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "stock_threshold_triggered"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "clinic_id",
+                "country",
+                "product_id",
+                "product_category",
+                "quantity",
+                "current_stock",
+                "min_stock_threshold",
+                "threshold_band"
+              ],
+              "properties": {
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "product_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "product_category": {
+                  "$ref": "#/$defs/product_category"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "current_stock": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "min_stock_threshold": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "threshold_band": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "critical"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-source": "mandatory",
+      "x-category": "business_inventory",
+      "x-gold-rule": "We capture stock_threshold_triggered because we need to know how often a clinic runs short of critical supply, which lets us prioritise urgent restocking and escalate to Marcus.",
+      "x-allowlist": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity",
+        "current_stock",
+        "min_stock_threshold",
+        "threshold_band"
+      ],
+      "x-sensitive": "none"
+    },
+    "direct_stock_edit_rejected": {
+      "title": "direct_stock_edit_rejected",
+      "x-priority": "P0",
+      "x-pipeline": "stream",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "direct_stock_edit_rejected"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "clinic_id",
+                "country",
+                "product_id",
+                "product_category",
+                "attempted_path",
+                "http_status",
+                "rejection_reason"
+              ],
+              "properties": {
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "product_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "product_category": {
+                  "$ref": "#/$defs/product_category"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "attempted_path": {
+                  "type": "string"
+                },
+                "http_status": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 599
+                },
+                "rejection_reason": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-source": "mandatory",
+      "x-category": "business_inventory",
+      "x-gold-rule": "We capture direct_stock_edit_rejected because we need to know if staff attempt to bypass traceability controls, which lets us reinforce training or permissions at the clinic where it happens most.",
+      "x-allowlist": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity",
+        "attempted_path",
+        "http_status",
+        "rejection_reason"
+      ],
+      "x-sensitive": "none"
+    },
+    "supply_expiry_flagged": {
+      "title": "supply_expiry_flagged",
+      "x-priority": "P0",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "supply_expiry_flagged"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "clinic_id",
+                "country",
+                "product_id",
+                "product_category",
+                "quantity",
+                "expiry_date",
+                "days_to_expiry"
+              ],
+              "properties": {
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "product_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "product_category": {
+                  "$ref": "#/$defs/product_category"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "expiry_date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "days_to_expiry": {
+                  "type": "integer"
+                },
+                "batch_id": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-source": "mandatory",
+      "x-category": "business_inventory",
+      "x-gold-rule": "We capture supply_expiry_flagged because we need to know which supplies are about to expire, which lets us prioritise use or controlled disposal before waste or compliance risk.",
+      "x-allowlist": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity",
+        "expiry_date",
+        "days_to_expiry",
+        "batch_id"
+      ],
+      "x-sensitive": "none"
+    },
+    "product_created": {
+      "title": "product_created",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "product_created"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "product_id",
+                "product_category",
+                "country",
+                "sku"
+              ],
+              "properties": {
+                "product_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "product_category": {
+                  "$ref": "#/$defs/product_category"
+                },
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "sku": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "const": 0
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "business_inventory",
+      "x-source": "identified",
+      "x-gold-rule": "We capture product_created because we need to know catalogue growth and category mix, which lets us plan stock coverage across clinics.",
+      "x-allowlist": [
+        "product_id",
+        "product_category",
+        "country",
+        "sku",
+        "unit",
+        "quantity"
+      ],
+      "x-sensitive": "none"
+    },
+    "outbound_order_rejected": {
+      "title": "outbound_order_rejected",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "outbound_order_rejected"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "http_status",
+                "error_code"
+              ],
+              "properties": {
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "product_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "product_category": {
+                  "$ref": "#/$defs/product_category"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "http_status": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 599
+                },
+                "error_code": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "business_inventory",
+      "x-source": "identified",
+      "x-gold-rule": "We capture outbound_order_rejected because we need to know stock and validation failures by product, which lets us fix UX and operator training.",
+      "x-allowlist": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity",
+        "http_status",
+        "error_code"
+      ],
+      "x-sensitive": "none"
+    },
+    "inbound_order_rejected": {
+      "title": "inbound_order_rejected",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "inbound_order_rejected"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "http_status",
+                "error_code"
+              ],
+              "properties": {
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "product_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "product_category": {
+                  "$ref": "#/$defs/product_category"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "http_status": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 599
+                },
+                "error_code": {
+                  "type": "string"
+                },
+                "vendor_name": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "business_inventory",
+      "x-source": "identified",
+      "x-gold-rule": "We capture inbound_order_rejected because we need to know bad inbound payloads, which lets us improve forms and vendor data quality.",
+      "x-allowlist": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity",
+        "http_status",
+        "error_code",
+        "vendor_name"
+      ],
+      "x-sensitive": "none"
+    },
+    "inventory_form_started": {
+      "title": "inventory_form_started",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "inventory_form_started"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "form_name",
+                "path"
+              ],
+              "properties": {
+                "form_name": {
+                  "type": "string",
+                  "enum": [
+                    "inbound",
+                    "outbound",
+                    "product_create"
+                  ]
+                },
+                "path": {
+                  "type": "string"
+                },
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "business_inventory",
+      "x-source": "identified",
+      "x-gold-rule": "We capture inventory_form_started because we need to know which inventory flows operators open, which lets us prioritise UX improvements.",
+      "x-allowlist": [
+        "form_name",
+        "path",
+        "clinic_id"
+      ],
+      "x-sensitive": "none"
+    },
+    "inventory_form_abandoned": {
+      "title": "inventory_form_abandoned",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "inventory_form_abandoned"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "form_name",
+                "path"
+              ],
+              "properties": {
+                "form_name": {
+                  "type": "string",
+                  "enum": [
+                    "inbound",
+                    "outbound",
+                    "product_create"
+                  ]
+                },
+                "path": {
+                  "type": "string"
+                },
+                "last_field": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "business_inventory",
+      "x-source": "identified",
+      "x-gold-rule": "We capture inventory_form_abandoned because we need to know mid-flow drop-off, which lets us simplify inventory forms.",
+      "x-allowlist": [
+        "form_name",
+        "path",
+        "last_field"
+      ],
+      "x-sensitive": "none"
+    },
+    "login_succeeded": {
+      "title": "login_succeeded",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "login_succeeded"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "role": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "authentication",
+      "x-source": "identified",
+      "x-gold-rule": "We capture login_succeeded because we need to know successful access volume, which lets us plan capacity and shift coverage.",
+      "x-allowlist": [
+        "role"
+      ],
+      "x-sensitive": "none"
+    },
+    "login_failed": {
+      "title": "login_failed",
+      "x-priority": "P1",
+      "x-pipeline": "stream",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "login_failed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "http_status"
+              ],
+              "properties": {
+                "http_status": {
+                  "type": "integer",
+                  "const": 401
+                },
+                "email_hash": {
+                  "type": "string",
+                  "description": "Optional hashed identifier; never raw password"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "authentication",
+      "x-source": "identified",
+      "x-gold-rule": "We capture login_failed because we need to know failed login attempts, which lets us detect brute force and fix auth UX.",
+      "x-allowlist": [
+        "http_status",
+        "email_hash"
+      ],
+      "x-sensitive": "staff_pii",
+      "x-sanitize": "Use email_hash only; never raw email."
+    },
+    "logout_completed": {
+      "title": "logout_completed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "logout_completed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "authentication",
+      "x-source": "identified",
+      "x-gold-rule": "We capture logout_completed because we need to know session endings, which lets us measure session hygiene.",
+      "x-allowlist": [
+        "path"
+      ],
+      "x-sensitive": "none"
+    },
+    "user_registered": {
+      "title": "user_registered",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "user_registered"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "role": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "authentication",
+      "x-source": "identified",
+      "x-gold-rule": "We capture user_registered because we need to know backoffice account growth, which lets us govern access.",
+      "x-allowlist": [
+        "role"
+      ],
+      "x-sensitive": "none"
+    },
+    "password_reset_requested": {
+      "title": "password_reset_requested",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "password_reset_requested"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "result": {
+                  "type": "string",
+                  "const": "accepted",
+                  "description": "Always accepted to avoid email enumeration"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "authentication",
+      "x-source": "identified",
+      "x-gold-rule": "We capture password_reset_requested because we need to know reset demand, which lets us size support without exposing emails.",
+      "x-allowlist": [
+        "result"
+      ],
+      "x-sensitive": "none"
+    },
+    "password_reset_completed": {
+      "title": "password_reset_completed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "password_reset_completed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {}
+            }
+          }
+        }
+      ],
+      "x-category": "authentication",
+      "x-source": "identified",
+      "x-gold-rule": "We capture password_reset_completed because we need to know reset completion rate, which lets us reduce token and email friction.",
+      "x-allowlist": [],
+      "x-sensitive": "none"
+    },
+    "password_reset_failed": {
+      "title": "password_reset_failed",
+      "x-priority": "P1",
+      "x-pipeline": "stream",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "password_reset_failed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "error_code"
+              ],
+              "properties": {
+                "error_code": {
+                  "type": "string",
+                  "enum": [
+                    "invalid_token",
+                    "expired_token",
+                    "used_token"
+                  ]
+                },
+                "http_status": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "authentication",
+      "x-source": "identified",
+      "x-gold-rule": "We capture password_reset_failed because we need to know invalid or expired tokens, which lets us tune TTL and messaging.",
+      "x-allowlist": [
+        "error_code",
+        "http_status"
+      ],
+      "x-sensitive": "none"
+    },
+    "password_changed": {
+      "title": "password_changed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "password_changed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {}
+            }
+          }
+        }
+      ],
+      "x-category": "authentication",
+      "x-source": "identified",
+      "x-gold-rule": "We capture password_changed because we need an audit trail of password changes, which lets us investigate account compromise.",
+      "x-allowlist": [],
+      "x-sensitive": "none"
+    },
+    "session_unauthorized": {
+      "title": "session_unauthorized",
+      "x-priority": "P1",
+      "x-pipeline": "stream",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "session_unauthorized"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "http_status"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "http_status": {
+                  "type": "integer",
+                  "const": 401
+                },
+                "method": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "authentication",
+      "x-source": "identified",
+      "x-gold-rule": "We capture session_unauthorized because we need to know expired tokens hitting APIs, which lets us improve session renewal UX.",
+      "x-allowlist": [
+        "path",
+        "http_status",
+        "method"
+      ],
+      "x-sensitive": "none"
+    },
+    "page_viewed": {
+      "title": "page_viewed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "page_viewed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "app"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "app": {
+                  "$ref": "#/$defs/app_surface"
+                },
+                "referrer_path": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "navigation",
+      "x-source": "identified",
+      "x-gold-rule": "We capture page_viewed because we need to know which backoffice sections operators visit, which lets us prioritise the product roadmap.",
+      "x-allowlist": [
+        "path",
+        "app",
+        "referrer_path"
+      ],
+      "x-sensitive": "none"
+    },
+    "form_abandoned": {
+      "title": "form_abandoned",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "form_abandoned"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "form_name",
+                "path",
+                "app"
+              ],
+              "properties": {
+                "form_name": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "app": {
+                  "$ref": "#/$defs/app_surface"
+                },
+                "last_field": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "navigation",
+      "x-source": "identified",
+      "x-gold-rule": "We capture form_abandoned because we need to know abandoned flows, which lets us reduce friction.",
+      "x-allowlist": [
+        "form_name",
+        "path",
+        "app",
+        "last_field"
+      ],
+      "x-sensitive": "none"
+    },
+    "incident_created": {
+      "title": "incident_created",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "incident_created"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "incident_id"
+              ],
+              "properties": {
+                "incident_id": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "string"
+                },
+                "origin": {
+                  "type": "string"
+                },
+                "branch": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "incidents",
+      "x-source": "identified",
+      "x-gold-rule": "We capture incident_created because we need incident volume by origin and category, which lets us staff operations appropriately.",
+      "x-allowlist": [
+        "incident_id",
+        "category",
+        "origin",
+        "branch",
+        "status"
+      ],
+      "x-sensitive": "none"
+    },
+    "incident_validation_failed": {
+      "title": "incident_validation_failed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "incident_validation_failed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "fields"
+              ],
+              "properties": {
+                "fields": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Failing field names only; never free-text values"
+                },
+                "http_status": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "incidents",
+      "x-source": "identified",
+      "x-gold-rule": "We capture incident_validation_failed because we need to know which fields fail, which lets us improve incident form validation.",
+      "x-allowlist": [
+        "fields",
+        "http_status"
+      ],
+      "x-sensitive": "none"
+    },
+    "incident_status_changed": {
+      "title": "incident_status_changed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "incident_status_changed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "incident_id",
+                "from_status",
+                "to_status"
+              ],
+              "properties": {
+                "incident_id": {
+                  "type": "string"
+                },
+                "from_status": {
+                  "type": "string"
+                },
+                "to_status": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "incidents",
+      "x-source": "identified",
+      "x-gold-rule": "We capture incident_status_changed because we need lifecycle throughput, which lets us manage SLAs and bottlenecks.",
+      "x-allowlist": [
+        "incident_id",
+        "from_status",
+        "to_status"
+      ],
+      "x-sensitive": "none"
+    },
+    "incident_status_rejected": {
+      "title": "incident_status_rejected",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "incident_status_rejected"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "incident_id",
+                "from_status",
+                "to_status"
+              ],
+              "properties": {
+                "incident_id": {
+                  "type": "string"
+                },
+                "from_status": {
+                  "type": "string"
+                },
+                "to_status": {
+                  "type": "string"
+                },
+                "http_status": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "incidents",
+      "x-source": "identified",
+      "x-gold-rule": "We capture incident_status_rejected because we need illegal transition patterns, which lets us improve UI guards and training.",
+      "x-allowlist": [
+        "incident_id",
+        "from_status",
+        "to_status",
+        "http_status"
+      ],
+      "x-sensitive": "none"
+    },
+    "incident_csv_analyzed": {
+      "title": "incident_csv_analyzed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "incident_csv_analyzed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "row_count": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "valid_count": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "invalid_count": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "incidents",
+      "x-source": "identified",
+      "x-gold-rule": "We capture incident_csv_analyzed because we need CSV analysis usage, which lets us invest in analyst tooling.",
+      "x-allowlist": [
+        "row_count",
+        "valid_count",
+        "invalid_count"
+      ],
+      "x-sensitive": "none"
+    },
+    "incident_csv_rejected": {
+      "title": "incident_csv_rejected",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "incident_csv_rejected"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "error_code"
+              ],
+              "properties": {
+                "error_code": {
+                  "type": "string"
+                },
+                "http_status": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "incidents",
+      "x-source": "identified",
+      "x-gold-rule": "We capture incident_csv_rejected because we need malformed upload patterns, which lets us improve CSV templates and docs.",
+      "x-allowlist": [
+        "error_code",
+        "http_status"
+      ],
+      "x-sensitive": "none"
+    },
+    "incident_results_exported": {
+      "title": "incident_results_exported",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "incident_results_exported"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "format": {
+                  "type": "string",
+                  "const": "csv"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "incidents",
+      "x-source": "identified",
+      "x-gold-rule": "We capture incident_results_exported because we need export demand, which lets us manage results retention.",
+      "x-allowlist": [
+        "format"
+      ],
+      "x-sensitive": "none"
+    },
+    "incident_summary_viewed": {
+      "title": "incident_summary_viewed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "incident_summary_viewed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "incidents",
+      "x-source": "identified",
+      "x-gold-rule": "We capture incident_summary_viewed because we need summary dashboard usage, which lets us keep the summary actionable.",
+      "x-allowlist": [
+        "path"
+      ],
+      "x-sensitive": "none"
+    },
+    "supplier_created": {
+      "title": "supplier_created",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "supplier_created"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "supplier_id"
+              ],
+              "properties": {
+                "supplier_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "category": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "suppliers",
+      "x-source": "identified",
+      "x-gold-rule": "We capture supplier_created because we need directory growth, which lets us ensure procurement coverage.",
+      "x-allowlist": [
+        "supplier_id",
+        "country",
+        "category"
+      ],
+      "x-sensitive": "none"
+    },
+    "supplier_rate_updated": {
+      "title": "supplier_rate_updated",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "supplier_rate_updated"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "supplier_id"
+              ],
+              "properties": {
+                "supplier_id": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "suppliers",
+      "x-source": "identified",
+      "x-gold-rule": "We capture supplier_rate_updated because we need rate change patterns, which lets us negotiate with inbound purchase data.",
+      "x-allowlist": [
+        "supplier_id"
+      ],
+      "x-sensitive": "none"
+    },
+    "supplier_status_changed": {
+      "title": "supplier_status_changed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "supplier_status_changed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "supplier_id",
+                "to_status"
+              ],
+              "properties": {
+                "supplier_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "from_status": {
+                  "type": "string"
+                },
+                "to_status": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "suppliers",
+      "x-source": "identified",
+      "x-gold-rule": "We capture supplier_status_changed because we need activation and suspension patterns, which lets us manage vendor risk.",
+      "x-allowlist": [
+        "supplier_id",
+        "from_status",
+        "to_status"
+      ],
+      "x-sensitive": "none"
+    },
+    "supplier_deleted": {
+      "title": "supplier_deleted",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "supplier_deleted"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "supplier_id"
+              ],
+              "properties": {
+                "supplier_id": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "suppliers",
+      "x-source": "identified",
+      "x-gold-rule": "We capture supplier_deleted because we need directory removals, which lets us audit procurement hygiene.",
+      "x-allowlist": [
+        "supplier_id"
+      ],
+      "x-sensitive": "none"
+    },
+    "talent_list_filtered": {
+      "title": "talent_list_filtered",
+      "x-priority": "P2",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "talent_list_filtered"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "status": {
+                  "type": "string"
+                },
+                "stage": {
+                  "type": "string"
+                },
+                "has_query": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "talent",
+      "x-source": "identified",
+      "x-gold-rule": "We capture talent_list_filtered because we need recruiter filter patterns, which lets us improve hiring UX.",
+      "x-allowlist": [
+        "status",
+        "stage",
+        "has_query"
+      ],
+      "x-sensitive": "none"
+    },
+    "talent_record_created": {
+      "title": "talent_record_created",
+      "x-priority": "P2",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "talent_record_created"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "record_id"
+              ],
+              "properties": {
+                "record_id": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "stage": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "talent",
+      "x-source": "identified",
+      "x-gold-rule": "We capture talent_record_created because we need pipeline intake volume, which lets Diane track time-to-hire KPIs.",
+      "x-allowlist": [
+        "record_id",
+        "status",
+        "stage"
+      ],
+      "x-sensitive": "none"
+    },
+    "talent_candidate_viewed": {
+      "title": "talent_candidate_viewed",
+      "x-priority": "P2",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "talent_candidate_viewed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "record_id"
+              ],
+              "properties": {
+                "record_id": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "talent",
+      "x-source": "identified",
+      "x-gold-rule": "We capture talent_candidate_viewed because we need attention per candidate, which lets us find pipeline bottlenecks.",
+      "x-allowlist": [
+        "record_id"
+      ],
+      "x-sensitive": "none"
+    },
+    "website_page_viewed": {
+      "title": "website_page_viewed",
+      "x-priority": "P2",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "website_page_viewed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "referrer_path": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "website",
+      "x-source": "identified",
+      "x-gold-rule": "We capture website_page_viewed because we need public traffic patterns, which lets us invest in patient access channels.",
+      "x-allowlist": [
+        "path",
+        "referrer_path"
+      ],
+      "x-sensitive": "none"
+    },
+    "intake_form_started": {
+      "title": "intake_form_started",
+      "x-priority": "P2",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "intake_form_started"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "const": "/application"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "website",
+      "x-source": "identified",
+      "x-gold-rule": "We capture intake_form_started because we need intake funnel starts, which lets us measure conversion.",
+      "x-allowlist": [
+        "path"
+      ],
+      "x-sensitive": "none"
+    },
+    "intake_form_submitted": {
+      "title": "intake_form_submitted",
+      "x-priority": "P2",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "intake_form_submitted"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Codes only — no name, email, phone, or reason",
+              "properties": {
+                "country": {
+                  "$ref": "#/$defs/country"
+                },
+                "clinic_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "consent_given": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "website",
+      "x-source": "identified",
+      "x-gold-rule": "We capture intake_form_submitted because we need submit volume by country and clinic code, which lets us forecast patient access demand without storing PHI.",
+      "x-allowlist": [
+        "country",
+        "clinic_id",
+        "consent_given"
+      ],
+      "x-sensitive": "none",
+      "x-sanitize": "No name, email, phone, or reason."
+    },
+    "intake_form_validation_failed": {
+      "title": "intake_form_validation_failed",
+      "x-priority": "P2",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "intake_form_validation_failed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "fields"
+              ],
+              "properties": {
+                "fields": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Field names only; never field values"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "website",
+      "x-source": "identified",
+      "x-gold-rule": "We capture intake_form_validation_failed because we need blocking field patterns, which lets us fix the public form UX.",
+      "x-allowlist": [
+        "fields"
+      ],
+      "x-sensitive": "none"
+    },
+    "http_request_failed": {
+      "title": "http_request_failed",
+      "x-priority": "P1",
+      "x-pipeline": "stream",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "http_request_failed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "method",
+                "http_status"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "method": {
+                  "type": "string"
+                },
+                "http_status": {
+                  "type": "integer",
+                  "minimum": 400,
+                  "maximum": 599
+                },
+                "duration_ms": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "errors",
+      "x-source": "identified",
+      "x-gold-rule": "We capture http_request_failed because we need error rates by route, which lets us fix reliability before clinics call.",
+      "x-allowlist": [
+        "path",
+        "method",
+        "http_status",
+        "duration_ms"
+      ],
+      "x-sensitive": "none"
+    },
+    "api_unhandled_error": {
+      "title": "api_unhandled_error",
+      "x-priority": "P1",
+      "x-pipeline": "stream",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "api_unhandled_error"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "method"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "method": {
+                  "type": "string"
+                },
+                "error_class": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "errors",
+      "x-source": "identified",
+      "x-gold-rule": "We capture api_unhandled_error because we need unexpected 500s, which lets us page on-call before widespread failure.",
+      "x-allowlist": [
+        "path",
+        "method",
+        "error_class"
+      ],
+      "x-sensitive": "none"
+    },
+    "email_send_failed": {
+      "title": "email_send_failed",
+      "x-priority": "P1",
+      "x-pipeline": "stream",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "email_send_failed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "purpose",
+                "error_code"
+              ],
+              "properties": {
+                "purpose": {
+                  "type": "string",
+                  "enum": [
+                    "password_reset"
+                  ]
+                },
+                "error_code": {
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string",
+                  "const": "resend"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "platform",
+      "x-source": "identified",
+      "x-gold-rule": "We capture email_send_failed because we need password-reset email failures, which lets us fix delivery without logging addresses.",
+      "x-allowlist": [
+        "purpose",
+        "error_code",
+        "provider"
+      ],
+      "x-sensitive": "none"
+    },
+    "job_run_completed": {
+      "title": "job_run_completed",
+      "x-priority": "P1",
+      "x-pipeline": "batch",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "job_run_completed"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "job_name",
+                "status",
+                "duration_ms"
+              ],
+              "properties": {
+                "job_name": {
+                  "type": "string",
+                  "enum": [
+                    "inventory_seed",
+                    "supplier_seed",
+                    "incident_seed",
+                    "supply_expiry_scan"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "success",
+                    "failure",
+                    "skipped"
+                  ]
+                },
+                "duration_ms": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "records_processed": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-category": "platform",
+      "x-source": "identified",
+      "x-gold-rule": "We capture job_run_completed because we need seed and scan job health, which lets operations trust automated inventory maintenance.",
+      "x-allowlist": [
+        "job_name",
+        "status",
+        "duration_ms",
+        "records_processed"
+      ],
+      "x-sensitive": "none"
+    },
+    "session_expired": {
+      "title": "session_expired",
+      "x-source": "identified",
+      "x-category": "authentication",
+      "x-pipeline": "stream",
+      "x-gold-rule": "We capture session_expired because we need to know when operators lose session before completing inventory tasks, which lets us improve re-login UX and reduce abandoned orders.",
+      "x-allowlist": [
+        "path",
+        "app",
+        "idle_ms"
+      ],
+      "x-sensitive": "none",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "session_expired"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "app"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "app": {
+                  "$ref": "#/$defs/app_surface"
+                },
+                "idle_ms": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "api_latency_recorded": {
+      "title": "api_latency_recorded",
+      "x-source": "identified",
+      "x-category": "performance",
+      "x-pipeline": "batch",
+      "x-gold-rule": "We capture api_latency_recorded because we need to know which API routes are slow for operators, which lets us fix performance before clinics report the system as broken.",
+      "x-allowlist": [
+        "path",
+        "method",
+        "duration_ms",
+        "http_status"
+      ],
+      "x-sensitive": "none",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "api_latency_recorded"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "method",
+                "duration_ms",
+                "http_status"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "method": {
+                  "type": "string"
+                },
+                "duration_ms": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "http_status": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 599
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "frontend_error_captured": {
+      "title": "frontend_error_captured",
+      "x-source": "identified",
+      "x-category": "errors",
+      "x-pipeline": "stream",
+      "x-gold-rule": "We capture frontend_error_captured because we need to know uncaught UI errors by route, which lets us fix broken flows before operators lose inventory work.",
+      "x-allowlist": [
+        "path",
+        "error_name",
+        "component"
+      ],
+      "x-sensitive": "none",
+      "x-sanitize": "Never include error message text that may contain user input or PHI.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "const": "frontend_error_captured"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "error_name"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "error_name": {
+                  "type": "string"
+                },
+                "component": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "inventory_field_types": {
+      "clinic_id": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 12
+      },
+      "country": {
+        "$ref": "#/$defs/country"
+      },
+      "product_id": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "product_category": {
+        "$ref": "#/$defs/product_category"
+      },
+      "quantity": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "department": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Clinical service area; never a patient id"
+      },
+      "sku": {
+        "type": "string"
+      },
+      "unit": {
+        "type": "string"
+      },
+      "order_id": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "vendor_name": {
+        "type": "string"
+      },
+      "consumption_type": {
+        "type": "string",
+        "enum": [
+          "clinical_use",
+          "expiry_waste"
+        ]
+      },
+      "current_stock": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "min_stock_threshold": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "threshold_band": {
+        "type": "string",
+        "enum": [
+          "low",
+          "critical"
+        ]
+      },
+      "attempted_path": {
+        "type": "string"
+      },
+      "http_status": {
+        "type": "integer",
+        "minimum": 100,
+        "maximum": 599
+      },
+      "rejection_reason": {
+        "type": "string"
+      },
+      "expiry_date": {
+        "type": "string",
+        "format": "date"
+      },
+      "days_to_expiry": {
+        "type": "integer"
+      },
+      "batch_id": {
+        "type": "string"
+      },
+      "form_name": {
+        "type": "string",
+        "enum": [
+          "inbound",
+          "outbound",
+          "product_create"
+        ]
+      },
+      "error_code": {
+        "type": "string"
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/inbound_order_created"
+    },
+    {
+      "$ref": "#/$defs/outbound_order_created"
+    },
+    {
+      "$ref": "#/$defs/stock_threshold_triggered"
+    },
+    {
+      "$ref": "#/$defs/direct_stock_edit_rejected"
+    },
+    {
+      "$ref": "#/$defs/supply_expiry_flagged"
+    },
+    {
+      "$ref": "#/$defs/product_created"
+    },
+    {
+      "$ref": "#/$defs/outbound_order_rejected"
+    },
+    {
+      "$ref": "#/$defs/inbound_order_rejected"
+    },
+    {
+      "$ref": "#/$defs/inventory_form_started"
+    },
+    {
+      "$ref": "#/$defs/inventory_form_abandoned"
+    },
+    {
+      "$ref": "#/$defs/login_succeeded"
+    },
+    {
+      "$ref": "#/$defs/login_failed"
+    },
+    {
+      "$ref": "#/$defs/logout_completed"
+    },
+    {
+      "$ref": "#/$defs/user_registered"
+    },
+    {
+      "$ref": "#/$defs/password_reset_requested"
+    },
+    {
+      "$ref": "#/$defs/password_reset_completed"
+    },
+    {
+      "$ref": "#/$defs/password_reset_failed"
+    },
+    {
+      "$ref": "#/$defs/password_changed"
+    },
+    {
+      "$ref": "#/$defs/session_unauthorized"
+    },
+    {
+      "$ref": "#/$defs/page_viewed"
+    },
+    {
+      "$ref": "#/$defs/form_abandoned"
+    },
+    {
+      "$ref": "#/$defs/incident_created"
+    },
+    {
+      "$ref": "#/$defs/incident_validation_failed"
+    },
+    {
+      "$ref": "#/$defs/incident_status_changed"
+    },
+    {
+      "$ref": "#/$defs/incident_status_rejected"
+    },
+    {
+      "$ref": "#/$defs/incident_csv_analyzed"
+    },
+    {
+      "$ref": "#/$defs/incident_csv_rejected"
+    },
+    {
+      "$ref": "#/$defs/incident_results_exported"
+    },
+    {
+      "$ref": "#/$defs/incident_summary_viewed"
+    },
+    {
+      "$ref": "#/$defs/supplier_created"
+    },
+    {
+      "$ref": "#/$defs/supplier_rate_updated"
+    },
+    {
+      "$ref": "#/$defs/supplier_status_changed"
+    },
+    {
+      "$ref": "#/$defs/supplier_deleted"
+    },
+    {
+      "$ref": "#/$defs/talent_list_filtered"
+    },
+    {
+      "$ref": "#/$defs/talent_record_created"
+    },
+    {
+      "$ref": "#/$defs/talent_candidate_viewed"
+    },
+    {
+      "$ref": "#/$defs/website_page_viewed"
+    },
+    {
+      "$ref": "#/$defs/intake_form_started"
+    },
+    {
+      "$ref": "#/$defs/intake_form_submitted"
+    },
+    {
+      "$ref": "#/$defs/intake_form_validation_failed"
+    },
+    {
+      "$ref": "#/$defs/http_request_failed"
+    },
+    {
+      "$ref": "#/$defs/api_unhandled_error"
+    },
+    {
+      "$ref": "#/$defs/email_send_failed"
+    },
+    {
+      "$ref": "#/$defs/job_run_completed"
+    },
+    {
+      "$ref": "#/$defs/session_expired"
+    },
+    {
+      "$ref": "#/$defs/api_latency_recorded"
+    },
+    {
+      "$ref": "#/$defs/frontend_error_captured"
+    }
+  ],
+  "x-catalogue": [
+    {
+      "event_type": "inbound_order_created",
+      "source": "mandatory",
+      "category": "business_inventory",
+      "pipeline": "batch",
+      "gold_rule": "We capture inbound_order_created because we need to know how much and what supply is purchased by clinic and vendor, which lets us consolidate purchasing and negotiate better vendor terms.",
+      "allowlist": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity",
+        "vendor_name",
+        "sku",
+        "unit",
+        "order_id"
+      ]
+    },
+    {
+      "event_type": "outbound_order_created",
+      "source": "mandatory",
+      "category": "business_inventory",
+      "pipeline": "batch",
+      "gold_rule": "We capture outbound_order_created because we need to know which supplies are consumed most and at what rate by clinic and department, which lets us adjust automatic replenishment per clinic.",
+      "allowlist": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity",
+        "department",
+        "consumption_type",
+        "sku",
+        "unit",
+        "order_id"
+      ]
+    },
+    {
+      "event_type": "stock_threshold_triggered",
+      "source": "mandatory",
+      "category": "business_inventory",
+      "pipeline": "stream",
+      "gold_rule": "We capture stock_threshold_triggered because we need to know how often a clinic runs short of critical supply, which lets us prioritise urgent restocking and escalate to Marcus.",
+      "allowlist": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity",
+        "current_stock",
+        "min_stock_threshold",
+        "threshold_band"
+      ]
+    },
+    {
+      "event_type": "direct_stock_edit_rejected",
+      "source": "mandatory",
+      "category": "business_inventory",
+      "pipeline": "stream",
+      "gold_rule": "We capture direct_stock_edit_rejected because we need to know if staff attempt to bypass traceability controls, which lets us reinforce training or permissions at the clinic where it happens most.",
+      "allowlist": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity",
+        "attempted_path",
+        "http_status",
+        "rejection_reason"
+      ]
+    },
+    {
+      "event_type": "supply_expiry_flagged",
+      "source": "mandatory",
+      "category": "business_inventory",
+      "pipeline": "batch",
+      "gold_rule": "We capture supply_expiry_flagged because we need to know which supplies are about to expire, which lets us prioritise use or controlled disposal before waste or compliance risk.",
+      "allowlist": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity",
+        "expiry_date",
+        "days_to_expiry",
+        "batch_id"
+      ]
+    },
+    {
+      "event_type": "product_created",
+      "source": "identified",
+      "category": "business_inventory",
+      "pipeline": "batch",
+      "gold_rule": "We capture product_created because we need to know catalogue growth and category mix, which lets us plan stock coverage across clinics.",
+      "allowlist": [
+        "product_id",
+        "product_category",
+        "country",
+        "sku",
+        "unit",
+        "quantity"
+      ]
+    },
+    {
+      "event_type": "outbound_order_rejected",
+      "source": "identified",
+      "category": "business_inventory",
+      "pipeline": "batch",
+      "gold_rule": "We capture outbound_order_rejected because we need to know stock and validation failures by product, which lets us fix UX and operator training.",
+      "allowlist": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity",
+        "http_status",
+        "error_code"
+      ]
+    },
+    {
+      "event_type": "inbound_order_rejected",
+      "source": "identified",
+      "category": "business_inventory",
+      "pipeline": "batch",
+      "gold_rule": "We capture inbound_order_rejected because we need to know bad inbound payloads, which lets us improve forms and vendor data quality.",
+      "allowlist": [
+        "clinic_id",
+        "country",
+        "product_id",
+        "product_category",
+        "quantity",
+        "http_status",
+        "error_code",
+        "vendor_name"
+      ]
+    },
+    {
+      "event_type": "inventory_form_started",
+      "source": "identified",
+      "category": "business_inventory",
+      "pipeline": "batch",
+      "gold_rule": "We capture inventory_form_started because we need to know which inventory flows operators open, which lets us prioritise UX improvements.",
+      "allowlist": [
+        "form_name",
+        "path",
+        "clinic_id"
+      ]
+    },
+    {
+      "event_type": "inventory_form_abandoned",
+      "source": "identified",
+      "category": "business_inventory",
+      "pipeline": "batch",
+      "gold_rule": "We capture inventory_form_abandoned because we need to know mid-flow drop-off, which lets us simplify inventory forms.",
+      "allowlist": [
+        "form_name",
+        "path",
+        "last_field"
+      ]
+    },
+    {
+      "event_type": "login_succeeded",
+      "source": "identified",
+      "category": "authentication",
+      "pipeline": "batch",
+      "gold_rule": "We capture login_succeeded because we need to know successful access volume, which lets us plan capacity and shift coverage.",
+      "allowlist": [
+        "role"
+      ]
+    },
+    {
+      "event_type": "login_failed",
+      "source": "identified",
+      "category": "authentication",
+      "pipeline": "stream",
+      "gold_rule": "We capture login_failed because we need to know failed login attempts, which lets us detect brute force and fix auth UX.",
+      "allowlist": [
+        "http_status",
+        "email_hash"
+      ]
+    },
+    {
+      "event_type": "logout_completed",
+      "source": "identified",
+      "category": "authentication",
+      "pipeline": "batch",
+      "gold_rule": "We capture logout_completed because we need to know session endings, which lets us measure session hygiene.",
+      "allowlist": [
+        "path"
+      ]
+    },
+    {
+      "event_type": "user_registered",
+      "source": "identified",
+      "category": "authentication",
+      "pipeline": "batch",
+      "gold_rule": "We capture user_registered because we need to know backoffice account growth, which lets us govern access.",
+      "allowlist": [
+        "role"
+      ]
+    },
+    {
+      "event_type": "password_reset_requested",
+      "source": "identified",
+      "category": "authentication",
+      "pipeline": "batch",
+      "gold_rule": "We capture password_reset_requested because we need to know reset demand, which lets us size support without exposing emails.",
+      "allowlist": [
+        "result"
+      ]
+    },
+    {
+      "event_type": "password_reset_completed",
+      "source": "identified",
+      "category": "authentication",
+      "pipeline": "batch",
+      "gold_rule": "We capture password_reset_completed because we need to know reset completion rate, which lets us reduce token and email friction.",
+      "allowlist": []
+    },
+    {
+      "event_type": "password_reset_failed",
+      "source": "identified",
+      "category": "authentication",
+      "pipeline": "stream",
+      "gold_rule": "We capture password_reset_failed because we need to know invalid or expired tokens, which lets us tune TTL and messaging.",
+      "allowlist": [
+        "error_code",
+        "http_status"
+      ]
+    },
+    {
+      "event_type": "password_changed",
+      "source": "identified",
+      "category": "authentication",
+      "pipeline": "batch",
+      "gold_rule": "We capture password_changed because we need an audit trail of password changes, which lets us investigate account compromise.",
+      "allowlist": []
+    },
+    {
+      "event_type": "session_unauthorized",
+      "source": "identified",
+      "category": "authentication",
+      "pipeline": "stream",
+      "gold_rule": "We capture session_unauthorized because we need to know expired tokens hitting APIs, which lets us improve session renewal UX.",
+      "allowlist": [
+        "path",
+        "http_status",
+        "method"
+      ]
+    },
+    {
+      "event_type": "page_viewed",
+      "source": "identified",
+      "category": "navigation",
+      "pipeline": "batch",
+      "gold_rule": "We capture page_viewed because we need to know which backoffice sections operators visit, which lets us prioritise the product roadmap.",
+      "allowlist": [
+        "path",
+        "app",
+        "referrer_path"
+      ]
+    },
+    {
+      "event_type": "form_abandoned",
+      "source": "identified",
+      "category": "navigation",
+      "pipeline": "batch",
+      "gold_rule": "We capture form_abandoned because we need to know abandoned flows, which lets us reduce friction.",
+      "allowlist": [
+        "form_name",
+        "path",
+        "app",
+        "last_field"
+      ]
+    },
+    {
+      "event_type": "incident_created",
+      "source": "identified",
+      "category": "incidents",
+      "pipeline": "batch",
+      "gold_rule": "We capture incident_created because we need incident volume by origin and category, which lets us staff operations appropriately.",
+      "allowlist": [
+        "incident_id",
+        "category",
+        "origin",
+        "branch",
+        "status"
+      ]
+    },
+    {
+      "event_type": "incident_validation_failed",
+      "source": "identified",
+      "category": "incidents",
+      "pipeline": "batch",
+      "gold_rule": "We capture incident_validation_failed because we need to know which fields fail, which lets us improve incident form validation.",
+      "allowlist": [
+        "fields",
+        "http_status"
+      ]
+    },
+    {
+      "event_type": "incident_status_changed",
+      "source": "identified",
+      "category": "incidents",
+      "pipeline": "batch",
+      "gold_rule": "We capture incident_status_changed because we need lifecycle throughput, which lets us manage SLAs and bottlenecks.",
+      "allowlist": [
+        "incident_id",
+        "from_status",
+        "to_status"
+      ]
+    },
+    {
+      "event_type": "incident_status_rejected",
+      "source": "identified",
+      "category": "incidents",
+      "pipeline": "batch",
+      "gold_rule": "We capture incident_status_rejected because we need illegal transition patterns, which lets us improve UI guards and training.",
+      "allowlist": [
+        "incident_id",
+        "from_status",
+        "to_status",
+        "http_status"
+      ]
+    },
+    {
+      "event_type": "incident_csv_analyzed",
+      "source": "identified",
+      "category": "incidents",
+      "pipeline": "batch",
+      "gold_rule": "We capture incident_csv_analyzed because we need CSV analysis usage, which lets us invest in analyst tooling.",
+      "allowlist": [
+        "row_count",
+        "valid_count",
+        "invalid_count"
+      ]
+    },
+    {
+      "event_type": "incident_csv_rejected",
+      "source": "identified",
+      "category": "incidents",
+      "pipeline": "batch",
+      "gold_rule": "We capture incident_csv_rejected because we need malformed upload patterns, which lets us improve CSV templates and docs.",
+      "allowlist": [
+        "error_code",
+        "http_status"
+      ]
+    },
+    {
+      "event_type": "incident_results_exported",
+      "source": "identified",
+      "category": "incidents",
+      "pipeline": "batch",
+      "gold_rule": "We capture incident_results_exported because we need export demand, which lets us manage results retention.",
+      "allowlist": [
+        "format"
+      ]
+    },
+    {
+      "event_type": "incident_summary_viewed",
+      "source": "identified",
+      "category": "incidents",
+      "pipeline": "batch",
+      "gold_rule": "We capture incident_summary_viewed because we need summary dashboard usage, which lets us keep the summary actionable.",
+      "allowlist": [
+        "path"
+      ]
+    },
+    {
+      "event_type": "supplier_created",
+      "source": "identified",
+      "category": "suppliers",
+      "pipeline": "batch",
+      "gold_rule": "We capture supplier_created because we need directory growth, which lets us ensure procurement coverage.",
+      "allowlist": [
+        "supplier_id",
+        "country",
+        "category"
+      ]
+    },
+    {
+      "event_type": "supplier_rate_updated",
+      "source": "identified",
+      "category": "suppliers",
+      "pipeline": "batch",
+      "gold_rule": "We capture supplier_rate_updated because we need rate change patterns, which lets us negotiate with inbound purchase data.",
+      "allowlist": [
+        "supplier_id"
+      ]
+    },
+    {
+      "event_type": "supplier_status_changed",
+      "source": "identified",
+      "category": "suppliers",
+      "pipeline": "batch",
+      "gold_rule": "We capture supplier_status_changed because we need activation and suspension patterns, which lets us manage vendor risk.",
+      "allowlist": [
+        "supplier_id",
+        "from_status",
+        "to_status"
+      ]
+    },
+    {
+      "event_type": "supplier_deleted",
+      "source": "identified",
+      "category": "suppliers",
+      "pipeline": "batch",
+      "gold_rule": "We capture supplier_deleted because we need directory removals, which lets us audit procurement hygiene.",
+      "allowlist": [
+        "supplier_id"
+      ]
+    },
+    {
+      "event_type": "talent_list_filtered",
+      "source": "identified",
+      "category": "talent",
+      "pipeline": "batch",
+      "gold_rule": "We capture talent_list_filtered because we need recruiter filter patterns, which lets us improve hiring UX.",
+      "allowlist": [
+        "status",
+        "stage",
+        "has_query"
+      ]
+    },
+    {
+      "event_type": "talent_record_created",
+      "source": "identified",
+      "category": "talent",
+      "pipeline": "batch",
+      "gold_rule": "We capture talent_record_created because we need pipeline intake volume, which lets Diane track time-to-hire KPIs.",
+      "allowlist": [
+        "record_id",
+        "status",
+        "stage"
+      ]
+    },
+    {
+      "event_type": "talent_candidate_viewed",
+      "source": "identified",
+      "category": "talent",
+      "pipeline": "batch",
+      "gold_rule": "We capture talent_candidate_viewed because we need attention per candidate, which lets us find pipeline bottlenecks.",
+      "allowlist": [
+        "record_id"
+      ]
+    },
+    {
+      "event_type": "website_page_viewed",
+      "source": "identified",
+      "category": "website",
+      "pipeline": "batch",
+      "gold_rule": "We capture website_page_viewed because we need public traffic patterns, which lets us invest in patient access channels.",
+      "allowlist": [
+        "path",
+        "referrer_path"
+      ]
+    },
+    {
+      "event_type": "intake_form_started",
+      "source": "identified",
+      "category": "website",
+      "pipeline": "batch",
+      "gold_rule": "We capture intake_form_started because we need intake funnel starts, which lets us measure conversion.",
+      "allowlist": [
+        "path"
+      ]
+    },
+    {
+      "event_type": "intake_form_submitted",
+      "source": "identified",
+      "category": "website",
+      "pipeline": "batch",
+      "gold_rule": "We capture intake_form_submitted because we need submit volume by country and clinic code, which lets us forecast patient access demand without storing PHI.",
+      "allowlist": [
+        "country",
+        "clinic_id",
+        "consent_given"
+      ]
+    },
+    {
+      "event_type": "intake_form_validation_failed",
+      "source": "identified",
+      "category": "website",
+      "pipeline": "batch",
+      "gold_rule": "We capture intake_form_validation_failed because we need blocking field patterns, which lets us fix the public form UX.",
+      "allowlist": [
+        "fields"
+      ]
+    },
+    {
+      "event_type": "http_request_failed",
+      "source": "identified",
+      "category": "errors",
+      "pipeline": "stream",
+      "gold_rule": "We capture http_request_failed because we need error rates by route, which lets us fix reliability before clinics call.",
+      "allowlist": [
+        "path",
+        "method",
+        "http_status",
+        "duration_ms"
+      ]
+    },
+    {
+      "event_type": "api_unhandled_error",
+      "source": "identified",
+      "category": "errors",
+      "pipeline": "stream",
+      "gold_rule": "We capture api_unhandled_error because we need unexpected 500s, which lets us page on-call before widespread failure.",
+      "allowlist": [
+        "path",
+        "method",
+        "error_class"
+      ]
+    },
+    {
+      "event_type": "email_send_failed",
+      "source": "identified",
+      "category": "platform",
+      "pipeline": "stream",
+      "gold_rule": "We capture email_send_failed because we need password-reset email failures, which lets us fix delivery without logging addresses.",
+      "allowlist": [
+        "purpose",
+        "error_code",
+        "provider"
+      ]
+    },
+    {
+      "event_type": "job_run_completed",
+      "source": "identified",
+      "category": "platform",
+      "pipeline": "batch",
+      "gold_rule": "We capture job_run_completed because we need seed and scan job health, which lets operations trust automated inventory maintenance.",
+      "allowlist": [
+        "job_name",
+        "status",
+        "duration_ms",
+        "records_processed"
+      ]
+    },
+    {
+      "event_type": "session_expired",
+      "source": "identified",
+      "category": "authentication",
+      "pipeline": "stream",
+      "gold_rule": "We capture session_expired because we need to know when operators lose session before completing inventory tasks, which lets us improve re-login UX and reduce abandoned orders.",
+      "allowlist": [
+        "path",
+        "app",
+        "idle_ms"
+      ]
+    },
+    {
+      "event_type": "api_latency_recorded",
+      "source": "identified",
+      "category": "performance",
+      "pipeline": "batch",
+      "gold_rule": "We capture api_latency_recorded because we need to know which API routes are slow for operators, which lets us fix performance before clinics report the system as broken.",
+      "allowlist": [
+        "path",
+        "method",
+        "duration_ms",
+        "http_status"
+      ]
+    },
+    {
+      "event_type": "frontend_error_captured",
+      "source": "identified",
+      "category": "errors",
+      "pipeline": "stream",
+      "gold_rule": "We capture frontend_error_captured because we need to know uncaught UI errors by route, which lets us fix broken flows before operators lose inventory work.",
+      "allowlist": [
+        "path",
+        "error_name",
+        "component"
+      ]
+    }
+  ],
+  "x-summary": {
+    "total_events": 47,
+    "mandatory_count": 5,
+    "identified_count": 42,
+    "categories": [
+      "authentication",
+      "business_inventory",
+      "errors",
+      "incidents",
+      "navigation",
+      "performance",
+      "platform",
+      "suppliers",
+      "talent",
+      "website"
+    ],
+    "json_schema_draft": "2020-12 (draft-07 compatible validators)"
+  }
+}

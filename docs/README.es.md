@@ -36,6 +36,12 @@ docs/
 │   ├── CONTEXT-HealthCore.md
 │   └── CONTEXT-HealthCore.es.md
 │
+├── telemetry/                  ← plan de telemetría (solo diseño; aún sin captura)
+│   ├── CONTEXT-healthcore.md
+│   ├── CONTEXT-healthcore.es.md
+│   ├── telemetry-plan.md
+│   ├── telemetry-plan.es.md
+│   └── event-schemas.json
 ├── audit/                      ← auditoría de rendimiento (Lighthouse) + informe de caching
 │   ├── AUDIT.md
 │   ├── REPORT.md

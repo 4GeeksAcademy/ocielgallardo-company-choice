@@ -3,7 +3,8 @@
 ## Current Status Snapshot
 
 - Business context source established in `CONTEXT.md`.
-- Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`, `audit`).
+- Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`, `telemetry`, `audit`).
+- Telemetry Plan (design only) delivered under `docs/telemetry/` — 47 events (5 mandatory + 42 identified), full course rubric; no capture code yet.
 - Centralized incident manager implemented (shared validation, seed, API, backoffice UI).
 - Web deliverables for Milestone 1 are implemented.
 - Core TypeScript domain/utilities for Milestone 2 are implemented.
@@ -51,6 +52,17 @@
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `audit/REPORT.md` §4.2–§4.3.
 - Docker: prod-default (`docker compose up` / `npm run docker:up`); dev overlay via `docker-compose.dev.yml` (`npm run docker:dev`).
 
+## Recently Completed (Telemetry Plan — allowlist fix)
+- Refactored `event-schemas.json`: removed shared `inventory_core`; 6 inventory events now have per-event `properties` aligned with `x-allowlist`.
+- Added `$defs/inventory_field_types` as field-type reference only (not composable payload).
+- Updated `telemetry-plan.md` / `.es.md` §2.3; validated all 47 events: allowlist keys match schema properties.
+
+## Recently Completed (Telemetry Plan — rubric pass)
+- Expanded `docs/telemetry/telemetry-plan.md` and `.es.md`: inventory flow (10 points), mandatory vs identified, allowlists, PII, stream/batch, throttle, risks/exclusions.
+- Enriched `event-schemas.json`: 47 events, `x-catalogue`, `x-gold-rule` all events; added `session_expired`, `api_latency_recorded`, `frontend_error_captured`.
+- Categories: business_inventory, authentication, navigation, performance, errors, incidents, suppliers, talent, website, platform.
+- Validation: JSON parse OK; documentation-only.
+- TODO: Capture/Storage/Report; PR `docs: telemetry design plan` when ready.
 ## Recently Completed (serialization audit — milestone close)
 - Milestone marked **complete** in `docs/audit/serialization-audit.md` (31/31 Ya serializado; 0 partial; 0 unserialized).
 - Verification notes: Docker smoke + Postman `GET /auth/me` after Bearer login.
