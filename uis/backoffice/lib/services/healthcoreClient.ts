@@ -136,12 +136,36 @@ export async function healthcoreRequest<T>(
     }
   }
 
+  const startMs = performance.now();
   const response = await fetch(`${HEALTHCORE_API_BASE_URL}${path}`, {
     ...rest,
     headers,
   });
+  const durationMs = Math.round(performance.now() - startMs);
+  const httpMethod = (rest.method ?? "GET").toUpperCase();
+
+  // Lazy import avoids circular dep (telemetry → healthcoreClient)
+  if (typeof window !== "undefined" && !path.startsWith("/telemetry")) {
+    void import("@/lib/services/telemetry").then(({ track }) => {
+      track("api_latency_recorded", {
+        path,
+        method: httpMethod,
+        duration_ms: durationMs,
+        http_status: response.status,
+      });
+    });
+  }
 
   if (response.status === 401 && auth) {
+    if (typeof window !== "undefined") {
+      void import("@/lib/services/telemetry").then(({ track }) => {
+        track("session_expired", {
+          path: window.location.pathname,
+          app: "backoffice",
+          idle_ms: 0,
+        });
+      });
+    }
     clearSessionAndRedirectToLogin();
     throw new HealthcoreApiError("Sesión expirada o no válida.", 401);
   }
@@ -156,6 +180,7 @@ export async function healthcoreRequest<T>(
     : null;
 
   if (!response.ok) {
+    detectDirectStockEditRejected(path, rest, response.status);
     throw new HealthcoreApiError(
       extractDetail(body, `Error ${response.status}`),
       response.status,
@@ -164,6 +189,39 @@ export async function healthcoreRequest<T>(
   }
 
   return body as T;
+}
+
+/**
+ * Emit `direct_stock_edit_rejected` when a PUT/PATCH to an inventory product
+ * route is rejected and the body tried to set `current_stock`.
+ * Uses dynamic import to avoid circular dependency (telemetry → healthcoreClient).
+ */
+function detectDirectStockEditRejected(
+  path: string,
+  opts: RequestInit,
+  status: number
+): void {
+  const method = (opts.method ?? "GET").toUpperCase();
+  if (
+    (method === "PUT" || method === "PATCH") &&
+    /^\/inventory\/products/.test(path) &&
+    typeof opts.body === "string"
+  ) {
+    try {
+      const parsed = JSON.parse(opts.body);
+      if ("current_stock" in parsed || "stock" in parsed) {
+        void import("@/lib/services/telemetry").then(({ track }) => {
+          track("direct_stock_edit_rejected", {
+            attempted_path: path,
+            http_status: status,
+            rejection_reason: "direct_stock_field_in_body",
+          });
+        });
+      }
+    } catch {
+      // body not JSON — skip
+    }
+  }
 }
 
 export async function healthcoreRequestBlob(
