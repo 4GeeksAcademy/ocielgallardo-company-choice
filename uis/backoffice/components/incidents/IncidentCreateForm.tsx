@@ -12,6 +12,7 @@ import {
   createIncident,
   friendlyIncidentError,
 } from "@/lib/services/incidentsManagerApi";
+import { track } from "@/lib/services/telemetry";
 import type {
   IncidentBranch,
   IncidentCategory,
@@ -105,6 +106,11 @@ export function IncidentCreateForm() {
     setIsSubmitting(true);
     try {
       const created = await createIncident(payload);
+      track("incident_created", {
+        category: payload.category,
+        origin: payload.origin,
+        branch: payload.branch,
+      });
       setValues(initialState);
       setErrors({});
       setSuccessMessage(
