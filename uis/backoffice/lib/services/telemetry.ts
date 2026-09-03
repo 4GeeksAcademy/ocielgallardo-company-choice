@@ -23,7 +23,8 @@ const TELEMETRY_ENDPOINT =
 
 const SCHEMA_VERSION = "1.0.0";
 const BATCH_SIZE = 20;
-const FLUSH_INTERVAL_MS = 10_000;
+/** Flush every 3s locally so DevTools shows batches quickly (plan default was 10s). */
+const FLUSH_INTERVAL_MS = 3_000;
 const MAX_RETRIES = 3;
 const BASE_RETRY_MS = 1_000;
 
