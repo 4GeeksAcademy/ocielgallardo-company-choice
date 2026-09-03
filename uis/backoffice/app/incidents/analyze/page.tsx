@@ -13,6 +13,7 @@ import {
   exportIncidentsResults,
   HealthcoreApiError,
 } from "@/lib/services/healthcoreApi";
+import { track } from "@/lib/services/telemetry";
 import type { IncidentAnalysisSummary } from "@/types/incidents";
 
 const IncidentAnalysisSummaryView = dynamic(
@@ -46,6 +47,7 @@ export default function IncidentsAnalyzePage() {
     try {
       const result = await analyzeIncidents(pendingFile);
       setSummary(result);
+      track("incident_csv_analyzed", { row_count: result?.total ?? 0 });
     } catch (err) {
       setSummary(null);
       if (err instanceof HealthcoreApiError) {

@@ -1,20 +1,19 @@
 import logging
 import time
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-
 from services.app.routers.incidents import router as incidents_router
 from services.app.routers.suppliers import router as suppliers_router
 from services.app.routers.users import router as users_router
 from services.app.routers.auth import router as auth_router
 from services.app.routers.profiles import router as profiles_router
 from services.app.routers.inventory import router as inventory_router
+from services.app.routers.telemetry import router as telemetry_router
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 timing_logger = logging.getLogger("api.timing")
@@ -105,3 +104,4 @@ app.include_router(users_router)
 app.include_router(auth_router)
 app.include_router(profiles_router)
 app.include_router(inventory_router)
+app.include_router(telemetry_router)
