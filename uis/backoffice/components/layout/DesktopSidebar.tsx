@@ -93,10 +93,10 @@ export function DesktopSidebar() {
           HC
         </span>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300 dark:text-blue-400">
+          <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
             HealthCore
           </p>
-          <p className="text-sm font-semibold text-slate-900 dark:text-slate-50 dark:text-slate-100">Backoffice</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Backoffice</p>
         </div>
       </div>
 
