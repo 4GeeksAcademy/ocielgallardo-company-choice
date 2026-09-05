@@ -18,10 +18,12 @@
 - UI applications:
   - `uis/website` (public Next.js website)
   - `uis/backoffice` (internal Next.js workspace)
-- Telemetry capture service:
+- Telemetry capture + storage:
   - `uis/backoffice/lib/services/telemetry.ts` — queue, batch, sendBeacon, retry, `track()`
   - `uis/backoffice/components/WebVitalsReporter.tsx` — Core Web Vitals via PerformanceObserver
-  - Backend stub: `services/app/routers/telemetry.py` — `POST /telemetry/events` (validation only, no persistence)
+  - Backend ingest: `services/app/routers/telemetry.py` — `POST /telemetry/events` (per-event Pydantic validate + bulk insert)
+  - Domain: `services/app/domain/telemetry_service.py` — allowlist `tags` from `docs/telemetry/event-schemas.json`
+  - Table: `telemetry_events` (SQLModel `services/app/models/telemetry.py`; DDL `docs/telemetry/telemetry-events.sql`)
 - Backoffice auth client (AUTH-02 complete):
   - Token key `healthcore_access_token` in `localStorage` via `uis/backoffice/lib/services/healthcoreClient.ts`
   - Pages `/login`, `/register`, `/account/profile`; successful auth redirects to `/`

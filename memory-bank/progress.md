@@ -6,6 +6,7 @@
 - Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`, `telemetry`, `audit`).
 - Telemetry Plan (design only) delivered under `docs/telemetry/` — 47 events (5 mandatory + 42 identified), full course rubric.
 - Telemetry Capture (frontend) implemented on branch `feature/telemetria-frontend` — TelemetryService + track() + 24 events instrumented across 7 categories.
+- Telemetry Storage: stub replaced by real `POST /telemetry/events` with per-event validation, allowlisted `tags`, and bulk insert into Supabase `telemetry_events`.
 - Centralized incident manager implemented (shared validation, seed, API, backoffice UI).
 - Web deliverables for Milestone 1 are implemented.
 - Core TypeScript domain/utilities for Milestone 2 are implemented.
@@ -18,6 +19,13 @@
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `docs/audit/REPORT.md` §4.2–§4.3.
 - Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
 - Caching optimisation milestone: **Phase 5 complete** — in-memory TTL cache + invalidation on inventory list endpoints; report closed.
+
+## Recently Completed (telemetry storage)
+- Replaced stub `POST /telemetry/events` with real ingest: loose `{ events: [...] }` body, per-item `TelemetryEvent.model_validate`, partial acceptance.
+- Bulk-insert valid rows into Supabase `telemetry_events` (append-only; indexes on `timestamp`, `event_type`, GIN on `tags`).
+- `tags` filtered by `x-allowlist` from `event-schemas.json` (HealthCore dimensions e.g. `clinic_id`, `country`, `department` on outbound).
+- Response `{ received, stored, rejected }`; frontend unchanged (same URL).
+- DDL reference: `docs/telemetry/telemetry-events.sql`. Verified mixed curl batch (200 + stored/rejected) and ≥5 rows in Supabase.
 
 ## Recently Completed (telemetry capture)
 - Created `uis/backoffice/lib/services/telemetry.ts` — TelemetryService with in-memory queue, batch flush (20 events / 10 s), `sendBeacon`, exponential-backoff retry (1 s/2 s/4 s), and a single `track()` public API.

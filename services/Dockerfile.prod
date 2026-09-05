@@ -13,6 +13,8 @@ COPY packages/shared ./packages/shared
 COPY services ./services
 COPY scripts ./scripts
 COPY data ./data
+# Telemetry allowlists (event-schemas.json) loaded at ingest time
+COPY docs/telemetry ./docs/telemetry
 
 RUN uv pip install --system .
 
