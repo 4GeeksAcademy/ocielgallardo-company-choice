@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -13,8 +13,9 @@ import {
   fetchMedicalSupplies,
   friendlyInventoryError,
 } from "@/lib/services/inventoryApi";
+import { track } from "@/lib/services/telemetry";
 import type { ConsumptionType, MedicalSupply } from "@/types/inventory";
-import { CONSUMPTION_TYPE_OPTIONS } from "@/types/inventory";
+import { CONSUMPTION_TYPE_OPTIONS, STOCK_LOW_BELOW } from "@/types/inventory";
 
 interface FormState {
   supply_id: string;
@@ -87,6 +88,23 @@ export function OutboundOrderForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const submittedRef = useRef(false);
+
+  /* ── inventory_form_started / abandoned ──────────────────────── */
+  useEffect(() => {
+    track("inventory_form_started", { form_name: "outbound" });
+    return () => {
+      if (!submittedRef.current) {
+        const filled = Object.values(values).filter((v) => v.trim() !== "").length;
+        track("inventory_form_abandoned", {
+          form_name: "outbound",
+          fields_filled: filled,
+        });
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadSupplies = useCallback(async () => {
     setIsLoadingSupplies(true);
@@ -173,18 +191,52 @@ export function OutboundOrderForm() {
     }
 
     setIsSubmitting(true);
+    const qty = Number(values.quantity);
+    const clinicId = Number(values.clinic_id);
+    const productId = Number(values.supply_id);
     try {
       await createOutboundOrder({
-        supply_id: Number(values.supply_id),
-        quantity: Number(values.quantity),
+        supply_id: productId,
+        quantity: qty,
         consumption_type: values.consumption_type,
-        clinic_id: Number(values.clinic_id),
+        clinic_id: clinicId,
       });
+
+      submittedRef.current = true;
+      track("outbound_order_created", {
+        clinic_id: clinicId,
+        country: selectedSupply?.country ?? "US",
+        product_id: productId,
+        product_category: selectedSupply?.category ?? "consumables",
+        quantity: qty,
+        department: values.consumption_type,
+        consumption_type: values.consumption_type,
+      });
+
+      if (selectedSupply) {
+        const remainingStock = selectedSupply.current_stock - qty;
+        if (remainingStock < STOCK_LOW_BELOW) {
+          track("stock_threshold_triggered", {
+            clinic_id: clinicId,
+            country: selectedSupply.country,
+            product_id: productId,
+            product_category: selectedSupply.category,
+            quantity: remainingStock,
+            current_stock: remainingStock,
+            min_stock_threshold: STOCK_LOW_BELOW,
+          });
+        }
+      }
+
       setValues(emptyForm);
       setErrors({});
       setSuccessMessage("Consumo registrado correctamente.");
       await loadSupplies();
     } catch (err) {
+      track("outbound_order_rejected", {
+        http_status: err instanceof InventoryApiError ? err.status : 0,
+        rejection_reason: friendlyInventoryError(err, "unknown"),
+      });
       const message = friendlyInventoryError(
         err,
         "No se pudo registrar el consumo. Revisa los datos e inténtalo de nuevo."
