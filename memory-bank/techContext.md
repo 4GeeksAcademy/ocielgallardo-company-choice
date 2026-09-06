@@ -22,8 +22,9 @@
   - `uis/backoffice/lib/services/telemetry.ts` — queue, batch, sendBeacon, retry, `track()`
   - `uis/backoffice/components/WebVitalsReporter.tsx` — Core Web Vitals via PerformanceObserver
   - Backend ingest: `services/app/routers/telemetry.py` — `POST /telemetry/events` (per-event Pydantic validate + bulk insert)
-  - Operational report: `GET /telemetry/report` (optional ISO `start_date`/`end_date`, default 7 days UTC; 60s TTL cache)
+  - Operational report: `GET /telemetry/report` (optional ISO `start_date`/`end_date`, default 7 days UTC; 60s TTL cache; metrics include `auth_failure_rate`)
   - Domain: `services/app/domain/telemetry_service.py` (ingest) + `telemetry_analysis.py` (Pandas metrics)
+  - Backoffice: `uis/backoffice/app/telemetry/page.tsx` + `TelemetryReportPanel` (HTML tables)
   - Table: `telemetry_events` (SQLModel `services/app/models/telemetry.py`; DDL `docs/telemetry/telemetry-events.sql`)
   - Dependency: `pandas>=2.2` for report aggregation
 - Backoffice auth client (AUTH-02 complete):

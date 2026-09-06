@@ -31,7 +31,7 @@ Esta carpeta define los límites de servicios backend dentro de la arquitectura 
 		- `auth.py` → `POST /auth/login`, `GET /auth/me` (JWT)
 		- `profiles.py` → `GET/PUT /profiles/me` (JWT)
 		- `inventory.py` → `/inventory/*` suministros médicos + entregas/consumos (**requiere Bearer**)
-		- `telemetry.py` → `POST /telemetry/events` (ingesta) + `GET /telemetry/report` (métricas operacionales, cache TTL 60s; `start_date`/`end_date` opcionales, por defecto últimos 7 días UTC)
+		- `telemetry.py` → `POST /telemetry/events` (ingesta) + `GET /telemetry/report` (métricas operacionales incl. `auth_failure_rate`, cache TTL 60s; `start_date`/`end_date` opcionales, por defecto últimos 7 días UTC)
 
 Notas de auth (AUTH-01, rama `feature/auth`):
   - `core/` — TinyDB (`database.py`: suppliers, auth, **incidents**), seed de proveedores (`seed.py`), helpers JWT/password (`security.py`), `deps.py` (`get_current_user`)
