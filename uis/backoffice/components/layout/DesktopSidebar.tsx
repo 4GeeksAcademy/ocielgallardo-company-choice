@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,17 +12,17 @@ import {
   type NavGroup,
 } from "@/components/layout/navConfig";
 
-function NavGroupSection({ group }: { group: NavGroup }) {
+function NavGroupSectionInner({
+  group,
+  groupActive,
+}: {
+  group: NavGroup;
+  groupActive: boolean;
+}) {
   const pathname = usePathname();
-  const groupActive = isGroupActive(pathname, group);
   const hasChildren = group.items.length > 0;
+  // Initial open state follows route; remount via parent key when groupActive flips.
   const [expanded, setExpanded] = useState(groupActive);
-
-  useEffect(() => {
-    if (groupActive) {
-      setExpanded(true);
-    }
-  }, [groupActive]);
 
   if (!hasChildren && group.href) {
     const active = isPathActive(pathname, group.href);
@@ -44,7 +44,7 @@ function NavGroupSection({ group }: { group: NavGroup }) {
         className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-medium transition ${
           groupActive
             ? "text-blue-700 dark:text-blue-300"
-            : "text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            : "text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
         }`}
         aria-expanded={expanded}
         onClick={() => setExpanded((value) => !value)}
@@ -73,6 +73,19 @@ function NavGroupSection({ group }: { group: NavGroup }) {
         </ul>
       ) : null}
     </div>
+  );
+}
+
+function NavGroupSection({ group }: { group: NavGroup }) {
+  const pathname = usePathname();
+  const groupActive = isGroupActive(pathname, group);
+  // Remount when active flag changes so expanded defaults without an effect.
+  return (
+    <NavGroupSectionInner
+      key={`${group.id}-${groupActive ? "on" : "off"}`}
+      group={group}
+      groupActive={groupActive}
+    />
   );
 }
 
