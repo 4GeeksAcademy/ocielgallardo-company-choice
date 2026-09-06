@@ -137,6 +137,7 @@ class TelemetryReportMetrics(BaseModel):
     events_per_day: list[dict[str, object]]
     error_rate_by_type: list[dict[str, object]]
     avg_latency_by_path: list[dict[str, object]]
+    auth_failure_rate: list[dict[str, object]]
 
 
 class TelemetryReportResponse(BaseModel):

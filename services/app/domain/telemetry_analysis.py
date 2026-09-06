@@ -161,6 +161,51 @@ def avg_latency_by_path(
     return grouped.to_dict(orient="records")
 
 
+def auth_failure_rate(
+    conn: Connection | Engine,
+    start_date: datetime,
+    end_date: datetime,
+) -> list[dict[str, Any]]:
+    """Daily login failure rate: failed / (failed + succeeded).
+
+    Loads both auth event types in one SQL query so the denominator exists.
+    """
+    sql = f"""
+        SELECT timestamp, event_type
+        FROM telemetry_events
+        WHERE {_WINDOW_PARAMS}
+          AND event_type IN ('login_failed', 'login_succeeded')
+    """
+    df = _read_events(conn, sql, {"start": start_date, "end": end_date})
+    if df.empty:
+        return []
+
+    df = _with_utc_date(df)
+    counts = (
+        df.groupby(["date", "event_type"], as_index=False)
+        .size()
+        .rename(columns={"size": "count"})
+    )
+    pivot = (
+        counts.pivot(index="date", columns="event_type", values="count")
+        .fillna(0)
+        .reset_index()
+    )
+    if "login_failed" not in pivot.columns:
+        pivot["login_failed"] = 0
+    if "login_succeeded" not in pivot.columns:
+        pivot["login_succeeded"] = 0
+
+    pivot["failed"] = pivot["login_failed"].astype(int)
+    pivot["succeeded"] = pivot["login_succeeded"].astype(int)
+    pivot["total_attempts"] = pivot["failed"] + pivot["succeeded"]
+    pivot["rate"] = (pivot["failed"] / pivot["total_attempts"]).round(6)
+    pivot["date"] = _date_str(pivot["date"])
+    return pivot[
+        ["date", "failed", "succeeded", "total_attempts", "rate"]
+    ].to_dict(orient="records")
+
+
 def build_report(
     conn: Connection | Engine,
     start_date: datetime,
@@ -176,5 +221,6 @@ def build_report(
             "events_per_day": events_per_day(conn, start_date, end_date),
             "error_rate_by_type": error_rate_by_type(conn, start_date, end_date),
             "avg_latency_by_path": avg_latency_by_path(conn, start_date, end_date),
+            "auth_failure_rate": auth_failure_rate(conn, start_date, end_date),
         },
     }
