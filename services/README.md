@@ -23,7 +23,7 @@ This folder contains backend service boundaries for the monorepo architecture.
   - `core/` — TinyDB + SQLModel engine (`database.py`), seeds, JWT/password helpers (`security.py`), `deps.py` (`get_current_user`)
   - `models/` — Pydantic (`supplier`, `user`, `profile`) and SQLModel inventory ORM (`inventory.py`)
   - `schemas.py` — Pydantic request/response for inventory (separate from ORM)
-  - `domain/` — business orchestration (`supplier_service`, `incident_service`, `user_service`, `profile_service`, `inventory_service`)
+  - `domain/` — business orchestration (`supplier_service`, `incident_service`, `user_service`, `profile_service`, `inventory_service`, `telemetry_service`, `telemetry_analysis`)
   - `routers/` — HTTP only:
     - `incidents.py` → CSV analyze/export **and** manager CRUD:
       - `POST /api/incidents/analyze`, `GET /api/incidents/results/export` (public)
@@ -33,6 +33,7 @@ This folder contains backend service boundaries for the monorepo architecture.
 		- `auth.py` → `POST /auth/login`, `GET /auth/me`, `POST /auth/forgot-password`, `POST /auth/reset-password`, `POST /auth/change-password`
 		- `profiles.py` → `GET/PUT /profiles/me` (JWT)
 		- `inventory.py` → `/inventory/*` medical supplies + deliveries/consumptions (**Bearer required**)
+		- `telemetry.py` → `POST /telemetry/events` (ingest) + `GET /telemetry/report` (operational metrics, 60s TTL cache; optional `start_date`/`end_date`, default last 7 days UTC)
 
 Shared validation/constants: `packages/shared/healthcore_shared` (see `packages/shared/README.md`). Seed historical incidents: `PYTHONPATH=packages/shared uv run python scripts/seed_incidents.py`.
 

@@ -122,3 +122,23 @@ class TelemetryIngestResponse(BaseModel):
     received: int
     stored: int
     rejected: int
+
+
+class TelemetryReportPeriod(BaseModel):
+    """Inclusive start / exclusive end window resolved by the report endpoint."""
+
+    model_config = {"populate_by_name": True, "serialize_by_alias": True}
+
+    from_: str = Field(alias="from", serialization_alias="from")
+    to: str
+
+
+class TelemetryReportMetrics(BaseModel):
+    events_per_day: list[dict[str, object]]
+    error_rate_by_type: list[dict[str, object]]
+    avg_latency_by_path: list[dict[str, object]]
+
+
+class TelemetryReportResponse(BaseModel):
+    period: TelemetryReportPeriod
+    metrics: TelemetryReportMetrics

@@ -7,6 +7,7 @@
 - Telemetry Plan (design only) delivered under `docs/telemetry/` — 47 events (5 mandatory + 42 identified), full course rubric.
 - Telemetry Capture (frontend) implemented on branch `feature/telemetria-frontend` — TelemetryService + track() + 24 events instrumented across 7 categories.
 - Telemetry Storage: **complete** on `feature/telemetry-storage` (PR #26) — real `POST /telemetry/events`, allowlisted `tags`, bulk insert into Supabase `telemetry_events`.
+- Telemetry technical report: **in progress** on `feature/telemetry-technical-report` — Pandas pipeline + `GET /telemetry/report` with 60s TTL cache.
 - Centralized incident manager implemented (shared validation, seed, API, backoffice UI).
 - Web deliverables for Milestone 1 are implemented.
 - Core TypeScript domain/utilities for Milestone 2 are implemented.
@@ -19,6 +20,13 @@
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `docs/audit/REPORT.md` §4.2–§4.3.
 - Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
 - Caching optimisation milestone: **Phase 5 complete** — in-memory TTL cache + invalidation on inventory list endpoints; report closed.
+
+## Recently Completed (telemetry technical report)
+- Branch: `feature/telemetry-technical-report`.
+- Dependency: `pandas>=2.2` in `pyproject.toml`.
+- Pipeline: `services/app/domain/telemetry_analysis.py` — pure functions `events_per_day`, `error_rate_by_type`, `avg_latency_by_path` + `build_report` (SQL window → Pandas UTC timestamps → groupby/agg → `list[dict]`).
+- Endpoint: `GET /telemetry/report` — optional `start_date`/`end_date` (default last 7 days UTC); in-memory `telemetry_report_cache` TTL 60s; response `{ period, metrics }`.
+- Out of scope this pass: `auth_failure_rate`, backoffice `/telemetry` dashboard page.
 
 ## Recently Completed (telemetry storage)
 - Replaced stub `POST /telemetry/events` with real ingest: loose `{ events: [...] }` body, per-item `TelemetryEvent.model_validate`, partial acceptance.
