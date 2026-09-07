@@ -5,7 +5,7 @@
 - Domain and utilities: TypeScript (typed models and utility modules).
 - Package tooling: npm scripts via `packages/shared/package.json`.
 - Shared Python package: `packages/shared/healthcore_shared` (CSV validation + incident-manager constants/maps). Import via `PYTHONPATH=packages/shared` or hatch `dev-mode-dirs`.
-- Local Docker Compose (`#infra-40`): `uis` (website `:3000` + backoffice `:3001`) and `backend` (`:8000`) on `healthcore_dev_network`. Start from repo root: `docker compose up`. Browser API URL: `NEXT_PUBLIC_HEALTHCORE_API_URL=http://localhost:8000`; in-network hostname: `backend`.
+- Local Docker Compose (`#infra-40`): `uis` (website `:3000` + backoffice `:3001`) and `backend` (`:8000`) on `healthcore_dev_network`. Start from repo root: `docker compose up`. Browser API URL: `NEXT_PUBLIC_HEALTHCORE_API_URL=http://localhost:8000`; in-network hostname: `backend`. Telemetry browser URL: `NEXT_PUBLIC_TELEMETRY_ENDPOINT=http://localhost:8000/telemetry/events` (root `.env` / compose must not point at `playground.4geeks.com` for local storage verification).
 
 ## Verified Technical Areas
 - TypeScript domain package in `src/`:
@@ -18,10 +18,12 @@
 - UI applications:
   - `uis/website` (public Next.js website)
   - `uis/backoffice` (internal Next.js workspace)
-- Telemetry capture service:
+- Telemetry capture + storage:
   - `uis/backoffice/lib/services/telemetry.ts` — queue, batch, sendBeacon, retry, `track()`
   - `uis/backoffice/components/WebVitalsReporter.tsx` — Core Web Vitals via PerformanceObserver
-  - Backend stub: `services/app/routers/telemetry.py` — `POST /telemetry/events` (validation only, no persistence)
+  - Backend ingest: `services/app/routers/telemetry.py` — `POST /telemetry/events` (per-event Pydantic validate + bulk insert)
+  - Domain: `services/app/domain/telemetry_service.py` — allowlist `tags` from `docs/telemetry/event-schemas.json`
+  - Table: `telemetry_events` (SQLModel `services/app/models/telemetry.py`; DDL `docs/telemetry/telemetry-events.sql`)
 - Backoffice auth client (AUTH-02 complete):
   - Token key `healthcore_access_token` in `localStorage` via `uis/backoffice/lib/services/healthcoreClient.ts`
   - Pages `/login`, `/register`, `/account/profile`; successful auth redirects to `/`

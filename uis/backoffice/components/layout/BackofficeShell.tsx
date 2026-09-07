@@ -19,7 +19,7 @@ export function BackofficeShell({ children }: BackofficeShellProps) {
   const closeOffice = useCallback(() => setOfficeOpen(false), []);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-50 dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <DesktopSidebar />
 
       <div className="md:pl-60">
@@ -33,10 +33,10 @@ export function BackofficeShell({ children }: BackofficeShellProps) {
                 HC
               </span>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300 dark:text-blue-400">
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
                   HealthCore
                 </p>
-                <h1 className="text-sm font-semibold text-slate-900 dark:text-slate-50 dark:text-slate-100">
+                <h1 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   Internal Backoffice
                 </h1>
               </div>

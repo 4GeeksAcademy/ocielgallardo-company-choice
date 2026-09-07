@@ -9,6 +9,7 @@ services:
       NODE_ENV: development
       NEXT_PUBLIC_HEALTHCORE_API_URL: ${NEXT_PUBLIC_HEALTHCORE_API_URL:-http://localhost:8000}
       NEXT_PUBLIC_TRACKER_API_URL: ${NEXT_PUBLIC_TRACKER_API_URL}
+      NEXT_PUBLIC_TELEMETRY_ENDPOINT: ${NEXT_PUBLIC_TELEMETRY_ENDPOINT:-http://localhost:8000/telemetry/events}
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
     command: >
