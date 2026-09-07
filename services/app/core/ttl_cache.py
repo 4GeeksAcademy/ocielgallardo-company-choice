@@ -41,3 +41,6 @@ class TtlCache(Generic[T]):
 
 # Shared instance for inventory list endpoints (org-wide catalogs, not per-user).
 inventory_list_cache: TtlCache[Any] = TtlCache()
+
+# Telemetry operational report keyed by resolved period (start|end ISO).
+telemetry_report_cache: TtlCache[Any] = TtlCache()

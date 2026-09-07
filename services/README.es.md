@@ -23,7 +23,7 @@ Esta carpeta define los límites de servicios backend dentro de la arquitectura 
 	- `core/` — TinyDB + motor SQLModel (`database.py`), seeds, helpers JWT/password (`security.py`), `deps.py` (`get_current_user`)
 	- `models/` — Pydantic (`supplier`, `user`, `profile`) y ORM de inventario SQLModel (`inventory.py`)
 	- `schemas.py` — request/response Pydantic de inventario (separado del ORM)
-	- `domain/` — orquestación de negocio (`supplier_service`, `incident_service`, `user_service`, `profile_service`, `inventory_service`)
+	- `domain/` — orquestación de negocio (`supplier_service`, `incident_service`, `user_service`, `profile_service`, `inventory_service`, `telemetry_service`, `telemetry_analysis`)
 	- `routers/` — solo HTTP:
 		- `incidents.py` → `POST /api/incidents/analyze`, `GET /api/incidents/results/export`
 		- `suppliers.py` → CRUD + filtros + rate/status del directorio de proveedores (**requiere Bearer**)
@@ -31,6 +31,7 @@ Esta carpeta define los límites de servicios backend dentro de la arquitectura 
 		- `auth.py` → `POST /auth/login`, `GET /auth/me` (JWT)
 		- `profiles.py` → `GET/PUT /profiles/me` (JWT)
 		- `inventory.py` → `/inventory/*` suministros médicos + entregas/consumos (**requiere Bearer**)
+		- `telemetry.py` → `POST /telemetry/events` (ingesta) + `GET /telemetry/report` (métricas operacionales incl. `auth_failure_rate`, cache TTL 60s; `start_date`/`end_date` opcionales, por defecto últimos 7 días UTC)
 
 Notas de auth (AUTH-01, rama `feature/auth`):
   - `core/` — TinyDB (`database.py`: suppliers, auth, **incidents**), seed de proveedores (`seed.py`), helpers JWT/password (`security.py`), `deps.py` (`get_current_user`)

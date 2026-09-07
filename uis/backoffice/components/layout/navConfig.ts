@@ -41,6 +41,12 @@ export const WORK_NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    id: "telemetry",
+    label: "Telemetry",
+    href: "/telemetry",
+    items: [],
+  },
+  {
     id: "people-talent",
     label: "People & Talent",
     href: "/applications",
