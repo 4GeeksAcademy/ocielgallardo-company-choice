@@ -3,6 +3,8 @@
 Business performance pipeline for HealthCore (design only — Part 1).  
 Orchestration code, DDL application, and `services/reporting/` implementation belong to Parts 2–3.
 
+_These instructions are [available in Spanish](./PIPELINE_DESIGN.es.md)._
+
 **Source of truth:** [`docs/data-pipelines/CONTEXT-healthcore.md`](../../docs/data-pipelines/CONTEXT-healthcore.md)  
 **Telemetry floor:** [`docs/telemetry/CONTEXT-healthcore.md`](../../docs/telemetry/CONTEXT-healthcore.md)
 
