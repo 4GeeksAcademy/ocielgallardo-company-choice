@@ -10,6 +10,7 @@ import {
   healthcoreRequest,
   setAccessToken,
 } from "@/lib/services/healthcoreClient";
+import { track } from "@/lib/services/telemetry";
 
 export async function forgotPassword(email: string): Promise<{ message: string }> {
   return healthcoreRequest<{ message: string }>("/auth/forgot-password", {
@@ -57,6 +58,7 @@ export async function login(credentials: LoginCredentials): Promise<TokenRespons
     }),
   });
   setAccessToken(token.access_token);
+  track("login_succeeded", {});
   return token;
 }
 

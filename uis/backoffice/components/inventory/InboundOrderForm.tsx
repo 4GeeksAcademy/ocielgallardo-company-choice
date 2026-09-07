@@ -1,16 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import {
+  InventoryApiError,
   createInboundOrder,
   fetchMedicalSupplies,
   friendlyInventoryError,
 } from "@/lib/services/inventoryApi";
+import { track } from "@/lib/services/telemetry";
 import type { MedicalSupply } from "@/types/inventory";
 
 interface FormState {
@@ -79,6 +81,23 @@ export function InboundOrderForm() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const submittedRef = useRef(false);
+
+  /* ── inventory_form_started / abandoned ──────────────────────── */
+  useEffect(() => {
+    track("inventory_form_started", { form_name: "inbound" });
+    return () => {
+      if (!submittedRef.current) {
+        const filled = Object.values(values).filter((v) => v.trim() !== "").length;
+        track("inventory_form_abandoned", {
+          form_name: "inbound",
+          fields_filled: filled,
+        });
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const loadSupplies = useCallback(async () => {
     setIsLoadingSupplies(true);
     setLoadError(null);
@@ -137,6 +156,9 @@ export function InboundOrderForm() {
     }
 
     setIsSubmitting(true);
+    const selectedSupply = supplies.find(
+      (s) => String(s.id) === values.supply_id
+    );
     try {
       await createInboundOrder({
         supply_id: Number(values.supply_id),
@@ -144,10 +166,25 @@ export function InboundOrderForm() {
         vendor_name: values.vendor_name.trim(),
         clinic_id: Number(values.clinic_id),
       });
+
+      submittedRef.current = true;
+      track("inbound_order_created", {
+        clinic_id: Number(values.clinic_id),
+        country: selectedSupply?.country ?? "US",
+        product_id: Number(values.supply_id),
+        product_category: selectedSupply?.category ?? "consumables",
+        quantity: Number(values.quantity),
+        vendor_name: values.vendor_name.trim(),
+      });
+
       setValues(emptyForm);
       setErrors({});
       setSuccessMessage("Entrega registrada correctamente.");
     } catch (err) {
+      track("inbound_order_rejected", {
+        http_status: err instanceof InventoryApiError ? err.status : 0,
+        rejection_reason: friendlyInventoryError(err, "unknown"),
+      });
       setSubmitError(
         friendlyInventoryError(
           err,

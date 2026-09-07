@@ -8,6 +8,7 @@ import { OfficeMenu } from "@/components/layout/OfficeMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/Button";
 import { clearSessionAndRedirectToLogin } from "@/lib/services/healthcoreClient";
+import { track } from "@/lib/services/telemetry";
 
 interface BackofficeShellProps {
   children: React.ReactNode;
@@ -52,7 +53,10 @@ export function BackofficeShell({ children }: BackofficeShellProps) {
                 type="button"
                 variant="primary"
                 className="shrink-0 text-xs"
-                onClick={() => clearSessionAndRedirectToLogin()}
+                onClick={() => {
+                  track("logout_completed", { path: window.location.pathname });
+                  clearSessionAndRedirectToLogin();
+                }}
               >
                 Cerrar sesión
               </Button>

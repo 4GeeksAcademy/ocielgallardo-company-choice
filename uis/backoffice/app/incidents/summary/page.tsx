@@ -1,9 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect } from "react";
 import Link from "next/link";
 import { LazyWhenVisible } from "@/components/ui/LazyWhenVisible";
 import { PanelPlaceholder } from "@/components/ui/PanelPlaceholder";
+import { track } from "@/lib/services/telemetry";
 
 const IncidentSummaryPanel = dynamic(
   () =>
@@ -18,6 +20,10 @@ const IncidentSummaryPanel = dynamic(
 );
 
 export default function IncidentSummaryPage() {
+  useEffect(() => {
+    track("incident_summary_viewed", {});
+  }, []);
+
   return (
     <div className="space-y-6">
       <header className="space-y-2">

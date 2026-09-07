@@ -98,3 +98,23 @@ class InventoryOrderListItem(BaseModel):
     quantity: int
     created_at: datetime
     user_uuid: str
+
+class TelemetryEvent(BaseModel):
+    """Standard event envelope from the HealthCore telemetry plan (Phase 1)."""
+
+    eventId: str
+    timestamp: datetime
+    sessionId: str | None
+    userId: str
+    event_type: str
+    schemaVersion: str
+    requestId: str | None
+    properties: dict[str, object]
+
+
+class TelemetryBatch(BaseModel):
+    events: list[TelemetryEvent]
+
+
+class TelemetryIngestResponse(BaseModel):
+    received: int

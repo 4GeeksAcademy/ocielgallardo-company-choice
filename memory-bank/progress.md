@@ -4,7 +4,8 @@
 
 - Business context source established in `CONTEXT.md`.
 - Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`, `telemetry`, `audit`).
-- Telemetry Plan (design only) delivered under `docs/telemetry/` — 47 events (5 mandatory + 42 identified), full course rubric; no capture code yet.
+- Telemetry Plan (design only) delivered under `docs/telemetry/` — 47 events (5 mandatory + 42 identified), full course rubric.
+- Telemetry Capture (frontend) implemented on branch `feature/telemetria-frontend` — TelemetryService + track() + 24 events instrumented across 7 categories.
 - Centralized incident manager implemented (shared validation, seed, API, backoffice UI).
 - Web deliverables for Milestone 1 are implemented.
 - Core TypeScript domain/utilities for Milestone 2 are implemented.
@@ -17,6 +18,17 @@
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `docs/audit/REPORT.md` §4.2–§4.3.
 - Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
 - Caching optimisation milestone: **Phase 5 complete** — in-memory TTL cache + invalidation on inventory list endpoints; report closed.
+
+## Recently Completed (telemetry capture)
+- Created `uis/backoffice/lib/services/telemetry.ts` — TelemetryService with in-memory queue, batch flush (20 events / 10 s), `sendBeacon`, exponential-backoff retry (1 s/2 s/4 s), and a single `track()` public API.
+- Instrumented 5 P0 mandatory events: `inbound_order_created`, `outbound_order_created`, `stock_threshold_triggered`, `direct_stock_edit_rejected`, `supply_expiry_flagged`.
+- Instrumented 3 technical-floor events: `frontend_error_captured`, `api_latency_recorded`, `page_viewed`.
+- Instrumented 4 auth events: `login_succeeded`, `login_failed`, `logout_completed`, `session_expired`.
+- Instrumented 4 inventory-identified events: `inventory_form_started`, `inventory_form_abandoned`, `inbound_order_rejected`, `outbound_order_rejected`.
+- Instrumented 3 incident events: `incident_created`, `incident_csv_analyzed`, `incident_summary_viewed`.
+- Instrumented 2 supplier events: `supplier_created`, `supplier_status_changed`.
+- Added Web Vitals reporter (LCP, FCP, CLS via PerformanceObserver) in `WebVitalsReporter.tsx`.
+- Cleaned `.env.local` and `.env.example` files for telemetry endpoint.
 
 ## Recently Completed (docs — audit under docs/)
 - Moved repo-root `audit/` → `docs/audit/` (Lighthouse evidence + AUDIT/REPORT).

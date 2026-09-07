@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { useFormSubmit } from "@/hooks/useFormSubmit";
 import { login } from "@/lib/services/authApi";
 import { HealthcoreApiError } from "@/lib/services/healthcoreClient";
+import { track } from "@/lib/services/telemetry";
 
 export function LoginForm() {
   const router = useRouter();
@@ -29,6 +30,10 @@ export function LoginForm() {
         await login({ email: email.trim(), password });
         router.replace("/");
       } catch (err) {
+        const status = err instanceof HealthcoreApiError ? err.status : 0;
+        track("login_failed", {
+          http_status: status,
+        });
         if (err instanceof HealthcoreApiError) {
           setError(
             err.status === 401

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { AsyncRequestPanel } from "@/components/ui/AsyncRequestPanel";
@@ -11,6 +11,7 @@ import {
   fetchMedicalSupplies,
   friendlyInventoryError,
 } from "@/lib/services/inventoryApi";
+import { track } from "@/lib/services/telemetry";
 import type { MedicalSupply } from "@/types/inventory";
 import {
   categoryLabel,
@@ -37,6 +38,37 @@ export function MedicalSuppliesList() {
   });
 
   const items = supplies ?? [];
+
+  /* ── supply_expiry_flagged ────────────────────────────────────────
+   * When the product model gains `expiry_date`, this fires for items
+   * expiring within 30 days. Until then it checks for the field and
+   * only emits when data is available. (Documented plan gap.)
+   */
+  const expiryChecked = useRef(false);
+  useEffect(() => {
+    if (status !== "success" || items.length === 0 || expiryChecked.current) return;
+    expiryChecked.current = true;
+    const now = Date.now();
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    for (const supply of items) {
+      const raw = (supply as Record<string, unknown>)["expiry_date"];
+      if (typeof raw === "string") {
+        const expiry = new Date(raw).getTime();
+        const daysToExpiry = Math.ceil((expiry - now) / (24 * 60 * 60 * 1000));
+        if (expiry - now <= THIRTY_DAYS_MS && daysToExpiry >= 0) {
+          track("supply_expiry_flagged", {
+            clinic_id: 1,
+            country: supply.country ?? "US",
+            product_id: supply.id,
+            product_category: supply.category,
+            quantity: supply.current_stock,
+            expiry_date: raw,
+            days_to_expiry: daysToExpiry,
+          });
+        }
+      }
+    }
+  }, [items, status]);
 
   return (
     <section className="space-y-4">

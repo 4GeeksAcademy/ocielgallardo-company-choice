@@ -13,6 +13,7 @@ import {
   updateSupplierRate,
   updateSupplierStatus,
 } from "@/lib/services/suppliersApi";
+import { track } from "@/lib/services/telemetry";
 import {
   SUPPLIER_CATEGORY_LABELS,
   SUPPLIER_CATEGORY_OPTIONS,
@@ -64,6 +65,10 @@ export function SuppliersWorkspace() {
     setActionFeedback(null);
     try {
       const created = await createSupplier(input);
+      track("supplier_created", {
+        country: created.country,
+        category: created.categories?.[0] ?? "",
+      });
       setSuppliers((current) => [created, ...current]);
       setShowCreateForm(false);
       setActionFeedback("Supplier created successfully.");
@@ -102,6 +107,11 @@ export function SuppliersWorkspace() {
 
     try {
       const updated = await updateSupplierStatus(supplier.id, { status: draft });
+      track("supplier_status_changed", {
+        supplier_id: supplier.id,
+        old_status: supplier.status,
+        new_status: updated.status,
+      });
       setSuppliers((current) =>
         current.map((item) => (item.id === supplier.id ? updated : item))
       );
