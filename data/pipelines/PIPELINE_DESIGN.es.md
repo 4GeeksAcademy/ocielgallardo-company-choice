@@ -41,7 +41,7 @@ El reporte técnico responde preguntas de **ingeniería** (volumen, errores, lat
 
 > Para cada una de las 12 clínicas, en un mes calendario dado, ¿cuál fue el gasto en insumos, la actividad de consumo, la frecuencia de quiebre crítico y el conteo de alertas de riesgo de vencimiento — separado por EE.UU. (`USD`) y Reino Unido (`GBP`), sin conversión FX y sin PHI?
 
-Ese entregable es el **Reporte mensual de desempeño de insumos por clínica** (*Monthly Clinic Supply Performance Report*). Cerrar la brecha requiere un ETL dedicado hacia `reporting.monthly_clinic_supply_performance`, expuesto por un nuevo módulo `services/reporting/` — no una extensión de `GET /telemetry/report`.
+Ese entregable es el **Reporte mensual de desempeño de insumos por clínica** (_Monthly Clinic Supply Performance Report_). Cerrar la brecha requiere un ETL dedicado hacia `reporting.monthly_clinic_supply_performance`, expuesto por un nuevo módulo `services/reporting/` — no una extensión de `GET /telemetry/report`.
 
 ### 1.3 Hueco conocido en ingesta (a cerrar en Parte 2)
 
