@@ -19,6 +19,7 @@ interface FormState {
   supply_id: string;
   quantity: string;
   vendor_name: string;
+  unit_cost: string;
   clinic_id: string;
 }
 
@@ -26,6 +27,7 @@ interface FormErrors {
   supply_id?: string;
   quantity?: string;
   vendor_name?: string;
+  unit_cost?: string;
   clinic_id?: string;
 }
 
@@ -33,6 +35,7 @@ const emptyForm: FormState = {
   supply_id: "",
   quantity: "",
   vendor_name: "",
+  unit_cost: "",
   clinic_id: "",
 };
 
@@ -54,6 +57,12 @@ function validate(values: FormState): FormErrors {
   }
   if (!values.vendor_name.trim()) {
     errors.vendor_name = "El nombre del proveedor es obligatorio.";
+  }
+  const unitCost = Number(values.unit_cost);
+  if (!values.unit_cost.trim()) {
+    errors.unit_cost = "El costo unitario es obligatorio.";
+  } else if (!Number.isFinite(unitCost) || unitCost < 0) {
+    errors.unit_cost = "Introduce un costo unitario mayor o igual a 0.";
   }
   const clinicId = Number(values.clinic_id);
   if (!values.clinic_id) {
@@ -175,6 +184,7 @@ export function InboundOrderForm() {
         product_category: selectedSupply?.category ?? "consumables",
         quantity: Number(values.quantity),
         vendor_name: values.vendor_name.trim(),
+        unit_cost: Number(values.unit_cost),
       });
 
       setValues(emptyForm);
@@ -274,6 +284,19 @@ export function InboundOrderForm() {
           onChange={(event) => updateField("vendor_name", event.target.value)}
           error={errors.vendor_name}
           placeholder="Ej. MedLine Industries"
+          required
+        />
+
+        <Input
+          label="Costo unitario"
+          name="unit_cost"
+          type="number"
+          min={0}
+          step="0.01"
+          value={values.unit_cost}
+          onChange={(event) => updateField("unit_cost", event.target.value)}
+          error={errors.unit_cost}
+          placeholder="Ej. 12.50 (USD o GBP según clínica)"
           required
         />
 

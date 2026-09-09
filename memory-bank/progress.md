@@ -2,8 +2,10 @@
 
 ## Current Status Snapshot
 
+- Business performance pipeline Part 1 (**design**): `data/pipelines/PIPELINE_DESIGN.md` — Monthly Clinic Supply Performance Report for Dr. Okonkwo / Claire; KPIs from mandatory inventory telemetry; destination `reporting.monthly_clinic_supply_performance`; Prefect + `services/reporting/` designed only (no orchestration code yet).
+- Additive telemetry for supply cost: `unit_cost` on `inbound_order_created` (`event-schemas.json` allowlist + inbound form capture).
 - Business context source established in `CONTEXT.md`.
-- Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`, `telemetry`, `audit`).
+- Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`, `telemetry`, `audit`, `data-pipelines`).
 - Telemetry Plan (design only) delivered under `docs/telemetry/` — 47 events (5 mandatory + 42 identified), full course rubric.
 - Telemetry Capture (frontend) implemented on branch `feature/telemetria-frontend` — TelemetryService + track() + 24 events instrumented across 7 categories.
 - Telemetry Storage: **complete** on `feature/telemetry-storage` (PR #26) — real `POST /telemetry/events`, allowlisted `tags`, bulk insert into Supabase `telemetry_events`.
@@ -20,6 +22,14 @@
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `docs/audit/REPORT.md` §4.2–§4.3.
 - Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
 - Caching optimisation milestone: **Phase 5 complete** — in-memory TTL cache + invalidation on inventory list endpoints; report closed.
+
+## Recently Completed (business performance pipeline — Part 1 design)
+
+- Branch: `feature/pipeline-desing`.
+- Deliverable: `data/pipelines/PIPELINE_DESIGN.md` — Current State gap, purpose naming Monthly Clinic Supply Performance Report + four CONTEXT KPIs, ETL mermaid, idempotency/observability/recoverability scenarios, Prefect flow/tasks mapping, three `services/reporting/` endpoints importing from `data/pipelines/`.
+- Destination (design): `reporting.monthly_clinic_supply_performance`; source remains `telemetry_events` (read-only). Technical path `telemetry_analysis.py` / `GET /telemetry/report` unchanged.
+- Additive schema: `unit_cost` required on `inbound_order_created` in `docs/telemetry/event-schemas.json` (+ catalogue allowlist); `InboundOrderForm` captures and tracks `unit_cost`.
+- Out of scope this pass: Prefect code, DDL apply, `services/reporting/` implementation, dashboard (Parts 2–3).
 
 ## Recently Completed (telemetry technical report)
 - Branch: `feature/telemetry-technical-report`.

@@ -164,11 +164,12 @@ Inventory floor from CONTEXT: `clinic_id`, `country`, `product_id`, `product_cat
 | `product_category` | enum | yes | no | Map from code category |
 | `quantity` | integer ≥ 0 | yes | no | — |
 | `vendor_name` | string | yes | no | Vendor org name only |
+| `unit_cost` | number ≥ 0 | yes | no | Unit purchase cost in clinic currency (USD/GBP); supply cost only — never PHI |
 | `sku` | string | optional | no | — |
 | `unit` | string | optional | no | — |
 | `order_id` | integer | optional | no | — |
 
-**Allowlist:** `clinic_id`, `country`, `product_id`, `product_category`, `quantity`, `vendor_name`, `sku`, `unit`, `order_id`. No `department`.
+**Allowlist:** `clinic_id`, `country`, `product_id`, `product_category`, `quantity`, `vendor_name`, `unit_cost`, `sku`, `unit`, `order_id`. No `department`.
 
 #### `outbound_order_created` — Mandatory
 
