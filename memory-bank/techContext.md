@@ -30,7 +30,7 @@
   - Additive payload (business pipeline): `unit_cost` on `inbound_order_created` (schema allowlist + inbound form) for Supply Cost per Clinic KPI
 - Business performance pipeline (Part 1 design only):
   - Design doc: `data/pipelines/PIPELINE_DESIGN.md`
-  - CONTEXT: `docs/data-pipelines/CONTEXT-healthcore.md`
+  - CONTEXT: `docs/data-pipelines/CONTEXT-healthcore-phase-1.md`
   - Planned destination: `reporting.monthly_clinic_supply_performance`; planned module: `services/reporting/` (not implemented yet)
 - Backoffice auth client (AUTH-02 complete):
   - Token key `healthcore_access_token` in `localStorage` via `uis/backoffice/lib/services/healthcoreClient.ts`

@@ -5,7 +5,7 @@ El código de orquestación, la aplicación del DDL y la implementación de `ser
 
 _Esta documentación está [disponible en inglés](./PIPELINE_DESIGN.md)._
 
-**Fuente de verdad:** [`docs/data-pipelines/CONTEXT-healthcore.md`](../../docs/data-pipelines/CONTEXT-healthcore.md)  
+**Fuente de verdad:** [`docs/data-pipelines/CONTEXT-healthcore-phase-1.md`](../../docs/data-pipelines/CONTEXT-healthcore-phase-1.md)  
 **Piso de telemetría:** [`docs/telemetry/CONTEXT-healthcore.md`](../../docs/telemetry/CONTEXT-healthcore.md)
 
 **Fuera de alcance de este pipeline (no modificar):**

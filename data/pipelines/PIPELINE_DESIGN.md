@@ -5,7 +5,7 @@ Orchestration code, DDL application, and `services/reporting/` implementation be
 
 _These instructions are [available in Spanish](./PIPELINE_DESIGN.es.md)._
 
-**Source of truth:** [`docs/data-pipelines/CONTEXT-healthcore.md`](../../docs/data-pipelines/CONTEXT-healthcore.md)  
+**Source of truth:** [`docs/data-pipelines/CONTEXT-healthcore-phase-1.md`](../../docs/data-pipelines/CONTEXT-healthcore-phase-1.md)  
 **Telemetry floor:** [`docs/telemetry/CONTEXT-healthcore.md`](../../docs/telemetry/CONTEXT-healthcore.md)
 
 **Out of scope for this pipeline (do not modify):**
