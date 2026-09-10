@@ -6,6 +6,8 @@
 - Business performance pipeline Part 2 **Phase 1** (flows/tasks): `data/pipelines/pipeline.py` — Prefect `@flow` + extract/transform/load + optional `write_eval_snapshot`.
 - Business performance pipeline Part 2 **Phase 2** (resilience): DB tasks `retries=3` / `retry_delay_seconds=10`; transform `cache_key_fn=task_input_hash` + `cache_expiration=1h`; flow handles load + eval snapshot via `return_state=True`.
 - Business performance pipeline Part 2 **Phase 3** (idempotency + audit): upsert on `(clinic_id, month_start)`; each run logged in `reporting.pipeline_runs` (`started_at`, `finished_at`, `status`, `records_processed`, `error_message`, …); `get_latest_pipeline_run()` helper.
+- Business performance pipeline Part 2 **Phase 4** (polish): CLI + monthly cadence documented in `PIPELINE_DESIGN` §6.3.
+- Business performance pipeline Part 2 **Phase 5** (reporting API): `services/reporting/` with three Bearer-authenticated endpoints mounted in `services/app/main.py`.
 - Additive telemetry for supply cost: `unit_cost` on `inbound_order_created` (`event-schemas.json` allowlist + inbound form capture).
 - Business context source established in `CONTEXT.md`.
 - Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`, `telemetry`, `audit`, `data-pipelines`).
@@ -26,6 +28,13 @@
 - Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
 - Docker backend image installs `pandas` via `services/requirements.txt` (dev) / `pyproject.toml` (prod). Dev/prod Dockerfiles use OS TLS + `ca-certificates`, with an insecure-host fallback if PyPI SSL fails on Docker Desktop. `GET /telemetry/report` lazy-imports the Pandas pipeline so auth/inventory still boot if that import fails.
 - Caching optimisation milestone: **Phase 5 complete** — in-memory TTL cache + invalidation on inventory list endpoints; report closed.
+
+## Recently Completed (business performance pipeline — Part 2 Phases 4–5)
+
+- Phase 4 docs: `PIPELINE_DESIGN.md` / `.es.md` §6.3 — CLI + monthly cadence marked implemented.
+- Phase 5 API: `services/reporting/` (`schemas.py`, `router.py`) — `GET /reporting/pipeline-runs/latest`, `POST /reporting/pipeline-runs`, `GET /reporting/monthly-clinic-supply-performance`; all use `Depends(get_current_user)`.
+- Pipeline helpers: `query_monthly_clinic_supply_performance`, `trigger_monthly_clinic_supply_performance_run` in `data/pipelines/pipeline.py` (no ETL in services).
+- Router mounted in `services/app/main.py`; OpenAPI tag `reporting`. Telemetry report path untouched.
 
 ## Recently Completed (business performance pipeline — Part 2 Phase 3)
 

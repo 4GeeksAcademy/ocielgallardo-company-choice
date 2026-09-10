@@ -28,14 +28,14 @@
   - Table: `telemetry_events` (SQLModel `services/app/models/telemetry.py`; DDL `docs/telemetry/telemetry-events.sql`)
   - Dependency: `pandas>=2.2` for report aggregation
   - Additive payload (business pipeline): `unit_cost` on `inbound_order_created` (schema allowlist + inbound form) for Supply Cost per Clinic KPI
-- Business performance pipeline (Part 1 design + Part 2 Phase 1):
+- Business performance pipeline (Part 1 design + Part 2 Phases 1–5):
   - Design doc: `data/pipelines/PIPELINE_DESIGN.md`
   - CONTEXT: `docs/data-pipelines/CONTEXT-healthcore-phase-1.md` / `CONTEXT-healthcore-phase-2.md`
-  - Orchestration: `data/pipelines/pipeline.py` (Prefect `@flow` + extract/transform/load + optional eval snapshot)
+  - Orchestration: `data/pipelines/pipeline.py` (Prefect `@flow` + extract/transform/load + optional eval snapshot; query/trigger helpers for API)
   - Transform helper: `data/process/reporting/monthly_clinic_kpis.py`
-  - DDL: `data/pipelines/reporting_schema.sql` → `reporting.monthly_clinic_supply_performance`
+  - DDL: `data/pipelines/reporting_schema.sql` → `reporting.monthly_clinic_supply_performance` + `reporting.pipeline_runs`
   - Dependency: `prefect>=3`
-  - Planned module (later): `services/reporting/` endpoints
+  - Reporting API: `services/reporting/` — Bearer endpoints under `/reporting/*` (latest run, trigger, monthly KPIs)
 - Backoffice auth client (AUTH-02 complete):
   - Token key `healthcore_access_token` in `localStorage` via `uis/backoffice/lib/services/healthcoreClient.ts`
   - Pages `/login`, `/register`, `/account/profile`; successful auth redirects to `/`

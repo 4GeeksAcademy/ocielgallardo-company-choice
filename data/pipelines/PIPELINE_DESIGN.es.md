@@ -393,6 +393,25 @@ Nota: el dominio del monorepo usa ids de clínica numéricos `1`–`12` (seriali
 - **Tabla de auditoría:** `reporting.pipeline_runs` guarda al menos `run_id`, `started_at`, `finished_at`, `status`, `records_processed`, más `phase`, `records_extracted`, `error_message`, `month_start` y ventana.
 - **Helper:** `get_latest_pipeline_run()` lee la última corrida para el futuro `GET /reporting/pipeline-runs/latest`.
 
+### 6.3 Parte 2 Fase 4 — polish (implementada)
+
+- **CLI:** `PYTHONPATH=. uv run python data/pipelines/pipeline.py` — ejecuta el ETL vía `task.fn()` cuando no hay `PREFECT_API_URL` (compatible con Windows).
+- **Cadencia:** mensual, listo el primer día hábil del mes (UTC); `month_start` por defecto es el mes calendario anterior.
+
+### 6.4 Parte 2 Fase 5 — API de reporting (implementada)
+
+Módulo `services/reporting/` (auth Bearer vía `get_current_user`). Los routers importan helpers de `data/pipelines/pipeline.py` — sin ETL inline en services.
+
+| Método | Ruta | Helper del pipeline |
+| --- | --- | --- |
+| GET | `/reporting/pipeline-runs/latest` | `get_latest_pipeline_run` |
+| POST | `/reporting/pipeline-runs` | `trigger_monthly_clinic_supply_performance_run` |
+| GET | `/reporting/monthly-clinic-supply-performance` | `query_monthly_clinic_supply_performance` |
+
+Montado en `services/app/main.py`. Tag OpenAPI: `reporting`. La ruta técnica `GET /telemetry/report` no cambia.
+
+**Nota de auth:** reporting usa Bearer como inventario porque expone KPIs de negocio y puede disparar el ETL (`POST /pipeline-runs`). La telemetría (ingesta/report) sigue sin auth para que la captura del browser (`track` / `sendBeacon`, incluidos eventos de fallo de sesión) no se rompa — no “corregir” esa asimetría en este hito.
+
 ---
 
 ## 7. Checklist de trazabilidad

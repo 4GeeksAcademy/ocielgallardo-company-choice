@@ -3,6 +3,8 @@
 Phase 1: extract → transform → load + optional eval snapshot.
 Phase 2: retries on DB tasks, transform cache (1h), explicit optional failure handling.
 Phase 3: idempotent upsert load + reporting.pipeline_runs execution log.
+Phase 4: CLI + monthly cadence (documented in PIPELINE_DESIGN §6.3).
+Phase 5: query/trigger helpers for services/reporting endpoints.
 
 Run from the repo root (requires SUPABASE_DB_* or DATABASE_URL):
 
@@ -261,6 +263,79 @@ def get_latest_pipeline_run(
     if data.get("run_id") is not None:
         data["run_id"] = str(data["run_id"])
     return data
+
+
+def query_monthly_clinic_supply_performance(
+    month_start: date | None = None,
+) -> dict[str, Any]:
+    """Read KPI rows for one month (defaults to the latest computed month)."""
+    if not is_inventory_db_configured():
+        raise RuntimeError(
+            "Database not configured. Set DATABASE_URL or SUPABASE_DB_* in .env"
+        )
+    _ensure_reporting_schema()
+    engine = get_engine()
+    with engine.connect() as conn:
+        resolved = month_start
+        if resolved is None:
+            latest = conn.execute(
+                text(
+                    """
+                    SELECT MAX(month_start) AS month_start
+                    FROM reporting.monthly_clinic_supply_performance
+                    """
+                )
+            ).mappings().first()
+            if latest is None or latest["month_start"] is None:
+                return {"month_start": None, "clinics": []}
+            resolved = latest["month_start"]
+            if isinstance(resolved, datetime):
+                resolved = resolved.date()
+
+        rows = conn.execute(
+            text(
+                """
+                SELECT
+                    clinic_id,
+                    country,
+                    total_supply_cost,
+                    supply_consumption_count,
+                    critical_stockout_count,
+                    expiry_risk_count,
+                    currency
+                FROM reporting.monthly_clinic_supply_performance
+                WHERE month_start = :month_start
+                ORDER BY clinic_id ASC
+                """
+            ),
+            {"month_start": resolved},
+        ).mappings().all()
+
+    clinics: list[dict[str, Any]] = []
+    for row in rows:
+        clinics.append(
+            {
+                "clinic_id": str(row["clinic_id"]),
+                "country": row["country"],
+                "total_supply_cost": float(row["total_supply_cost"] or 0),
+                "supply_consumption_count": int(row["supply_consumption_count"] or 0),
+                "critical_stockout_count": int(row["critical_stockout_count"] or 0),
+                "expiry_risk_count": int(row["expiry_risk_count"] or 0),
+                "currency": row["currency"],
+            }
+        )
+
+    month_iso = (
+        resolved.isoformat() if hasattr(resolved, "isoformat") else str(resolved)
+    )
+    return {"month_start": month_iso, "clinics": clinics}
+
+
+def trigger_monthly_clinic_supply_performance_run(
+    month_start: date | None = None,
+) -> dict[str, Any]:
+    """Manual trigger entry-point for POST /reporting/pipeline-runs (no ETL in services)."""
+    return run_monthly_clinic_supply_performance(month_start=month_start)
 
 
 @task(
