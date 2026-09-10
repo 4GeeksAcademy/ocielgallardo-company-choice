@@ -2,6 +2,7 @@
 
 Phase 1: extract → transform → load + optional eval snapshot.
 Phase 2: retries on DB tasks, transform cache (1h), explicit optional failure handling.
+Phase 3: idempotent upsert load + reporting.pipeline_runs execution log.
 
 Run from the repo root (requires SUPABASE_DB_* or DATABASE_URL):
 
@@ -25,7 +26,7 @@ import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from prefect import flow, task
 from prefect.tasks import task_input_hash
@@ -105,15 +106,161 @@ def _build_result(
     records_extracted: int,
     records_processed: int,
     eval_snapshot_ok: bool,
+    status: str = "completed",
+    error_message: str | None = None,
 ) -> dict[str, Any]:
-    return {
+    out: dict[str, Any] = {
         "run_id": run_id,
         "month_start": month_start.isoformat(),
         "records_extracted": records_extracted,
         "records_processed": records_processed,
         "eval_snapshot_ok": eval_snapshot_ok,
-        "status": "completed",
+        "status": status,
     }
+    if error_message:
+        out["error_message"] = error_message
+    return out
+
+
+def _start_pipeline_run(run_id: UUID, month_start: date) -> datetime:
+    """Insert a running row into reporting.pipeline_runs (audit log)."""
+    _ensure_reporting_schema()
+    started_at = datetime.now(timezone.utc)
+    window_start, window_end = _month_window(month_start)
+    with get_engine().begin() as conn:
+        conn.execute(
+            text(
+                """
+                INSERT INTO reporting.pipeline_runs (
+                    run_id,
+                    pipeline_name,
+                    month_start,
+                    started_at,
+                    status,
+                    phase,
+                    records_processed,
+                    window_start,
+                    window_end
+                ) VALUES (
+                    :run_id,
+                    :pipeline_name,
+                    :month_start,
+                    :started_at,
+                    'running',
+                    'extract',
+                    0,
+                    :window_start,
+                    :window_end
+                )
+                """
+            ),
+            {
+                "run_id": str(run_id),
+                "pipeline_name": PIPELINE_NAME,
+                "month_start": month_start,
+                "started_at": started_at,
+                "window_start": window_start,
+                "window_end": window_end,
+            },
+        )
+    return started_at
+
+
+def _finish_pipeline_run(
+    run_id: UUID,
+    *,
+    status: str,
+    phase: str,
+    records_extracted: int | None = None,
+    records_processed: int = 0,
+    error_message: str | None = None,
+) -> None:
+    """Finalize pipeline_runs with finished_at, status, counts, and optional error."""
+    finished_at = datetime.now(timezone.utc)
+    with get_engine().begin() as conn:
+        conn.execute(
+            text(
+                """
+                UPDATE reporting.pipeline_runs
+                SET
+                    finished_at = :finished_at,
+                    status = :status,
+                    phase = :phase,
+                    records_extracted = COALESCE(:records_extracted, records_extracted),
+                    records_processed = :records_processed,
+                    error_message = :error_message,
+                    computed_at = now()
+                WHERE run_id = :run_id
+                """
+            ),
+            {
+                "run_id": str(run_id),
+                "finished_at": finished_at,
+                "status": status,
+                "phase": phase,
+                "records_extracted": records_extracted,
+                "records_processed": records_processed,
+                "error_message": error_message,
+            },
+        )
+
+
+def _set_pipeline_phase(run_id: UUID, phase: str) -> None:
+    with get_engine().begin() as conn:
+        conn.execute(
+            text(
+                """
+                UPDATE reporting.pipeline_runs
+                SET phase = :phase, computed_at = now()
+                WHERE run_id = :run_id
+                """
+            ),
+            {"run_id": str(run_id), "phase": phase},
+        )
+
+
+def get_latest_pipeline_run(
+    pipeline_name: str = PIPELINE_NAME,
+) -> dict[str, Any] | None:
+    """Return the most recent pipeline_runs row (for reporting endpoints)."""
+    if not is_inventory_db_configured():
+        return None
+    _ensure_reporting_schema()
+    with get_engine().connect() as conn:
+        row = conn.execute(
+            text(
+                """
+                SELECT
+                    run_id,
+                    pipeline_name,
+                    month_start,
+                    started_at,
+                    finished_at,
+                    status,
+                    phase,
+                    records_processed,
+                    records_extracted,
+                    window_start,
+                    window_end,
+                    error_message
+                FROM reporting.pipeline_runs
+                WHERE pipeline_name = :pipeline_name
+                ORDER BY started_at DESC
+                LIMIT 1
+                """
+            ),
+            {"pipeline_name": pipeline_name},
+        ).mappings().first()
+    if row is None:
+        return None
+    data = dict(row)
+    for key in ("started_at", "finished_at", "window_start", "window_end", "month_start"):
+        value = data.get(key)
+        if hasattr(value, "isoformat"):
+            data[key] = value.isoformat()
+    if data.get("run_id") is not None:
+        data["run_id"] = str(data["run_id"])
+    return data
 
 
 @task(
@@ -196,7 +343,11 @@ def load_monthly_clinic_supply_performance(
     rows: list[dict[str, Any]],
     month_start: date,
 ) -> dict[str, Any]:
-    """Upsert KPI rows into reporting.monthly_clinic_supply_performance."""
+    """Idempotent upsert into reporting.monthly_clinic_supply_performance.
+
+    Natural key UNIQUE (clinic_id, month_start): a second run with the same
+    aggregates overwrites the same rows — no duplicates, same KPI result.
+    """
     if not is_inventory_db_configured():
         raise RuntimeError(
             "Database not configured. Set DATABASE_URL or SUPABASE_DB_* in .env"
@@ -295,35 +446,69 @@ def run_monthly_clinic_supply_performance(
 ) -> dict[str, Any]:
     """Run ETL by calling task functions directly (no Prefect API required)."""
     resolved_month = month_start or _previous_month_start()
-    run_id = str(uuid4())
+    run_uuid = uuid4()
+    run_id = str(run_uuid)
+    records_extracted = 0
+    records_processed = 0
     logger.info(
         "run_monthly_clinic_supply_performance start run_id=%s month_start=%s",
         run_id,
         resolved_month.isoformat(),
     )
 
-    events = extract_supply_telemetry.fn(resolved_month)
-    kpi_rows = transform_monthly_clinic_kpis.fn(events, resolved_month)
-    load_result = load_monthly_clinic_supply_performance.fn(kpi_rows, resolved_month)
-
-    # Mirror optional-task semantics when not using the Prefect engine.
-    eval_snapshot_ok = True
     try:
-        write_eval_snapshot.fn(kpi_rows, resolved_month)
-    except Exception as exc:  # noqa: BLE001 — optional step must not fail the ETL
-        eval_snapshot_ok = False
-        logger.warning(
-            "write_eval_snapshot failed (non-critical); KPI load already committed: %s",
-            exc,
-        )
+        _start_pipeline_run(run_uuid, resolved_month)
 
-    return _build_result(
-        run_id=run_id,
-        month_start=resolved_month,
-        records_extracted=len(events),
-        records_processed=load_result["records_processed"],
-        eval_snapshot_ok=eval_snapshot_ok,
-    )
+        events = extract_supply_telemetry.fn(resolved_month)
+        records_extracted = len(events)
+        _set_pipeline_phase(run_uuid, "transform")
+
+        kpi_rows = transform_monthly_clinic_kpis.fn(events, resolved_month)
+        _set_pipeline_phase(run_uuid, "load")
+
+        load_result = load_monthly_clinic_supply_performance.fn(
+            kpi_rows, resolved_month
+        )
+        records_processed = load_result["records_processed"]
+
+        eval_snapshot_ok = True
+        try:
+            write_eval_snapshot.fn(kpi_rows, resolved_month)
+        except Exception as exc:  # noqa: BLE001 — optional step must not fail the ETL
+            eval_snapshot_ok = False
+            logger.warning(
+                "write_eval_snapshot failed (non-critical); KPI load already committed: %s",
+                exc,
+            )
+
+        _finish_pipeline_run(
+            run_uuid,
+            status="completed",
+            phase="load",
+            records_extracted=records_extracted,
+            records_processed=records_processed,
+        )
+        return _build_result(
+            run_id=run_id,
+            month_start=resolved_month,
+            records_extracted=records_extracted,
+            records_processed=records_processed,
+            eval_snapshot_ok=eval_snapshot_ok,
+        )
+    except Exception as exc:
+        logger.exception("pipeline failed run_id=%s", run_id)
+        try:
+            _finish_pipeline_run(
+                run_uuid,
+                status="failed",
+                phase="failed",
+                records_extracted=records_extracted,
+                records_processed=records_processed,
+                error_message=str(exc)[:2000],
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("could not persist failed pipeline_runs row")
+        raise
 
 
 @flow(name="monthly_clinic_supply_performance_flow")
@@ -332,42 +517,74 @@ def monthly_clinic_supply_performance_flow(
 ) -> dict[str, Any]:
     """Main ETL flow: extract → transform → load; eval snapshot is optional."""
     resolved_month = month_start or _previous_month_start()
-    run_id = str(uuid4())
+    run_uuid = uuid4()
+    run_id = str(run_uuid)
+    records_extracted = 0
+    records_processed = 0
     logger.info(
         "monthly_clinic_supply_performance_flow start run_id=%s month_start=%s",
         run_id,
         resolved_month.isoformat(),
     )
 
-    events = extract_supply_telemetry(resolved_month)
-    kpi_rows = transform_monthly_clinic_kpis(events, resolved_month)
+    try:
+        _start_pipeline_run(run_uuid, resolved_month)
 
-    # Critical load: inspect state explicitly instead of only relying on raise.
-    load_state = load_monthly_clinic_supply_performance(
-        kpi_rows, resolved_month, return_state=True
-    )
-    if load_state is None or not load_state.is_completed():
-        raise RuntimeError(
-            f"load_monthly_clinic_supply_performance failed: {load_state}"
+        events = extract_supply_telemetry(resolved_month)
+        records_extracted = len(events)
+        _set_pipeline_phase(run_uuid, "transform")
+
+        kpi_rows = transform_monthly_clinic_kpis(events, resolved_month)
+        _set_pipeline_phase(run_uuid, "load")
+
+        load_state = load_monthly_clinic_supply_performance(
+            kpi_rows, resolved_month, return_state=True
         )
-    load_result = load_state.result()
+        if load_state is None or not load_state.is_completed():
+            raise RuntimeError(
+                f"load_monthly_clinic_supply_performance failed: {load_state}"
+            )
+        load_result = load_state.result()
+        records_processed = load_result["records_processed"]
 
-    # Optional / non-critical: failure must not abort a successful load.
-    snapshot_state = write_eval_snapshot(kpi_rows, resolved_month, return_state=True)
-    snapshot_ok = snapshot_state is not None and snapshot_state.is_completed()
-    if not snapshot_ok:
-        logger.warning(
-            "write_eval_snapshot failed (non-critical); KPI load already committed. state=%s",
-            snapshot_state,
+        snapshot_state = write_eval_snapshot(
+            kpi_rows, resolved_month, return_state=True
         )
+        snapshot_ok = snapshot_state is not None and snapshot_state.is_completed()
+        if not snapshot_ok:
+            logger.warning(
+                "write_eval_snapshot failed (non-critical); KPI load already committed. state=%s",
+                snapshot_state,
+            )
 
-    return _build_result(
-        run_id=run_id,
-        month_start=resolved_month,
-        records_extracted=len(events),
-        records_processed=load_result["records_processed"],
-        eval_snapshot_ok=snapshot_ok,
-    )
+        _finish_pipeline_run(
+            run_uuid,
+            status="completed",
+            phase="load",
+            records_extracted=records_extracted,
+            records_processed=records_processed,
+        )
+        return _build_result(
+            run_id=run_id,
+            month_start=resolved_month,
+            records_extracted=records_extracted,
+            records_processed=records_processed,
+            eval_snapshot_ok=snapshot_ok,
+        )
+    except Exception as exc:
+        logger.exception("pipeline flow failed run_id=%s", run_id)
+        try:
+            _finish_pipeline_run(
+                run_uuid,
+                status="failed",
+                phase="failed",
+                records_extracted=records_extracted,
+                records_processed=records_processed,
+                error_message=str(exc)[:2000],
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("could not persist failed pipeline_runs row")
+        raise
 
 
 if __name__ == "__main__":

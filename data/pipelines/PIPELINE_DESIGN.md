@@ -387,6 +387,12 @@ Note: monorepo domain uses numeric clinic ids `1`–`12` (serialized as text in 
 **Cadence:** monthly (first working day UTC).  
 **CLI:** `PYTHONPATH=. uv run python data/pipelines/pipeline.py`
 
+### 6.2 Part 2 Phase 3 — idempotency + run log (implemented)
+
+- **Load:** `INSERT … ON CONFLICT (clinic_id, month_start) DO UPDATE` — two runs over the same month leave one row per clinic with the same KPI values.
+- **Audit table:** `reporting.pipeline_runs` stores at least `run_id`, `started_at`, `finished_at`, `status`, `records_processed`, plus `phase`, `records_extracted`, `error_message`, `month_start`, window bounds.
+- **Helper:** `get_latest_pipeline_run()` reads the newest run for upcoming `GET /reporting/pipeline-runs/latest`.
+
 ---
 
 ## 7. Traceability checklist
