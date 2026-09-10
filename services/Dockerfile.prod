@@ -3,10 +3,16 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/packages/shared
+ENV UV_NATIVE_TLS=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir uv
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir --trusted-host pypi.org --trusted-host files.pythonhosted.org uv
 
 COPY pyproject.toml ./
 COPY packages/shared ./packages/shared
@@ -16,7 +22,11 @@ COPY data ./data
 # Telemetry allowlists (event-schemas.json) loaded at ingest time
 COPY docs/telemetry ./docs/telemetry
 
-RUN uv pip install --system .
+RUN uv pip install --system --native-tls . \
+    || uv pip install --system --native-tls \
+         --allow-insecure-host pypi.org \
+         --allow-insecure-host files.pythonhosted.org \
+         .
 
 EXPOSE 8000
 

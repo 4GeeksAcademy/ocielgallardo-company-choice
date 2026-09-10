@@ -2,7 +2,9 @@
 
 ## Current Status Snapshot
 
-- Business performance pipeline Part 1 (**design**): `data/pipelines/PIPELINE_DESIGN.md` — Monthly Clinic Supply Performance Report for Dr. Okonkwo / Claire; KPIs from mandatory inventory telemetry; destination `reporting.monthly_clinic_supply_performance`; Prefect + `services/reporting/` designed only (no orchestration code yet).
+- Business performance pipeline Part 1 (**design**): `data/pipelines/PIPELINE_DESIGN.md` — Monthly Clinic Supply Performance Report for Dr. Okonkwo / Claire; KPIs from mandatory inventory telemetry; destination `reporting.monthly_clinic_supply_performance`.
+- Business performance pipeline Part 2 **Phase 1** (flows/tasks): `data/pipelines/pipeline.py` — Prefect `@flow` + extract/transform/load + optional `write_eval_snapshot`.
+- Business performance pipeline Part 2 **Phase 2** (resilience): DB tasks `retries=3` / `retry_delay_seconds=10`; transform `cache_key_fn=task_input_hash` + `cache_expiration=1h`; flow handles load + eval snapshot via `return_state=True`.
 - Additive telemetry for supply cost: `unit_cost` on `inbound_order_created` (`event-schemas.json` allowlist + inbound form capture).
 - Business context source established in `CONTEXT.md`.
 - Docs layout: milestone CONTEXTs live in topic folders under `docs/` (`data-contract`, `supplier-directory`, `incident-manager`, `telemetry`, `audit`, `data-pipelines`).
@@ -21,7 +23,29 @@
 - Backoffice shell is mobile-first: desktop fixed sidebar with collapsible groups; mobile Dashboard + Office bottom bar; account via avatar menu.
 - Frontend performance audit milestone: **complete** — before/after/final Lighthouse HTML; deltas in `docs/audit/REPORT.md` §4.2–§4.3.
 - Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
+- Docker backend image installs `pandas` via `services/requirements.txt` (dev) / `pyproject.toml` (prod). Dev/prod Dockerfiles use OS TLS + `ca-certificates`, with an insecure-host fallback if PyPI SSL fails on Docker Desktop. `GET /telemetry/report` lazy-imports the Pandas pipeline so auth/inventory still boot if that import fails.
 - Caching optimisation milestone: **Phase 5 complete** — in-memory TTL cache + invalidation on inventory list endpoints; report closed.
+
+## Recently Completed (business performance pipeline — Part 2 Phase 2)
+
+- Resilience on `data/pipelines/pipeline.py`: extract/load `retries=3`, `retry_delay_seconds=10` (transient Supabase); transform cache via `task_input_hash` for 1 hour; flow uses `return_state=True` for load (critical check) and `write_eval_snapshot` (non-critical continue).
+- Docs: `PIPELINE_DESIGN.md` / `.es.md` §6.1 notes cadence + CLI command.
+- Verified: `PYTHONPATH=. uv run python data/pipelines/pipeline.py` → `status: completed`.
+
+## Recently Completed (business performance pipeline — Part 2 Phase 1)
+
+- Entry: `data/pipelines/pipeline.py` — flow + 3 critical tasks + optional `write_eval_snapshot` with `return_state=True`.
+- Transform: `data/process/reporting/monthly_clinic_kpis.py` (dedupe `event_id`, four CONTEXT KPIs, USD/GBP by country).
+- DDL: `data/pipelines/reporting_schema.sql` (`reporting.monthly_clinic_supply_performance` + `reporting.pipeline_runs`).
+- CLI: `PYTHONPATH=. uv run python data/pipelines/pipeline.py` (uses `task.fn()` when `PREFECT_API_URL` unset — ephemeral Prefect API breaks on Windows paths with spaces).
+- Dependency: `prefect>=3` via `uv add`.
+- Out of scope this phase: retries/cache (Phase 2), full run logging/idempotency hardening (Phase 3), `services/reporting/` endpoints (Phase 5).
+
+## Recently Completed (Docker backend — pandas image)
+
+- Rebuilt `healthcore-backend` with `pandas>=2.2` in `services/requirements.txt` (verified `GET /docs` 200 and `GET /telemetry/report` 200).
+- `services/Dockerfile` and `services/Dockerfile.prod`: install CA certs, `UV_NATIVE_TLS=1`, pip `--trusted-host`, and `uv pip install` fallback `--allow-insecure-host` for local PyPI SSL failures.
+- `services/app/routers/telemetry.py`: import `build_report` inside `GET /telemetry/report` so a missing Pandas does not crash the whole API.
 
 ## Recently Completed (business performance pipeline — Part 1 design)
 

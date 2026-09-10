@@ -51,7 +51,7 @@ export function MedicalSuppliesList() {
     const now = Date.now();
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
     for (const supply of items) {
-      const raw = (supply as Record<string, unknown>)["expiry_date"];
+      const raw = (supply as unknown as Record<string, unknown>)["expiry_date"];
       if (typeof raw === "string") {
         const expiry = new Date(raw).getTime();
         const daysToExpiry = Math.ceil((expiry - now) / (24 * 60 * 60 * 1000));

@@ -376,6 +376,17 @@ Nota: el dominio del monorepo usa ids de clínica numéricos `1`–`12` (seriali
 | Parte 2 | Flow/tasks Prefect, DDL, upsert de ingesta por `event_id`, endpoints `services/reporting/` |
 | Parte 3 | Subflows, tests, dashboard backoffice consumiendo `GET /reporting/monthly-clinic-supply-performance` |
 
+### 6.1 Parte 2 Fase 2 — resiliencia (implementada)
+
+| Mecanismo | Dónde | Notas |
+| --- | --- | --- |
+| Reintentos | `extract_supply_telemetry`, `load_monthly_clinic_supply_performance` | `retries=3`, `retry_delay_seconds=10` — fallos transitorios de Supabase/red |
+| Caché | `transform_monthly_clinic_kpis` | `cache_key_fn=task_input_hash` (eventos + `month_start`); `cache_expiration=1 hora` |
+| Manejo explícito de fallos | Flow | `load_…(return_state=True)` falla el flow si no completa; `write_eval_snapshot(return_state=True)` es no crítico |
+
+**Frecuencia:** mensual (primer día hábil UTC).  
+**CLI:** `PYTHONPATH=. uv run python data/pipelines/pipeline.py`
+
 ---
 
 ## 7. Checklist de trazabilidad

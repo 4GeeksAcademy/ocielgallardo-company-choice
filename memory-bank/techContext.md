@@ -5,7 +5,7 @@
 - Domain and utilities: TypeScript (typed models and utility modules).
 - Package tooling: npm scripts via `packages/shared/package.json`.
 - Shared Python package: `packages/shared/healthcore_shared` (CSV validation + incident-manager constants/maps). Import via `PYTHONPATH=packages/shared` or hatch `dev-mode-dirs`.
-- Local Docker Compose (`#infra-40`): `uis` (website `:3000` + backoffice `:3001`) and `backend` (`:8000`) on `healthcore_dev_network`. Start from repo root: `docker compose up`. Browser API URL: `NEXT_PUBLIC_HEALTHCORE_API_URL=http://localhost:8000`; in-network hostname: `backend`. Telemetry browser URL: `NEXT_PUBLIC_TELEMETRY_ENDPOINT=http://localhost:8000/telemetry/events` (root `.env` / compose must not point at `playground.4geeks.com` for local storage verification).
+- Local Docker Compose (`#infra-40`): `uis` (website `:3000` + backoffice `:3001`) and `backend` (`:8000`) on `healthcore_dev_network`. Start from repo root: `docker compose up`. Dev overlay: `npm run docker:dev`. Browser API URL: `NEXT_PUBLIC_HEALTHCORE_API_URL=http://localhost:8000`; in-network hostname: `backend`. Telemetry browser URL: `NEXT_PUBLIC_TELEMETRY_ENDPOINT=http://localhost:8000/telemetry/events` (root `.env` / compose must not point at `playground.4geeks.com` for local storage verification). Backend image must include `pandas` (`services/requirements.txt` for the dev Dockerfile; `pyproject.toml` for prod) or uvicorn crash-loops on `import pandas`.
 
 ## Verified Technical Areas
 - TypeScript domain package in `src/`:
@@ -28,10 +28,14 @@
   - Table: `telemetry_events` (SQLModel `services/app/models/telemetry.py`; DDL `docs/telemetry/telemetry-events.sql`)
   - Dependency: `pandas>=2.2` for report aggregation
   - Additive payload (business pipeline): `unit_cost` on `inbound_order_created` (schema allowlist + inbound form) for Supply Cost per Clinic KPI
-- Business performance pipeline (Part 1 design only):
+- Business performance pipeline (Part 1 design + Part 2 Phase 1):
   - Design doc: `data/pipelines/PIPELINE_DESIGN.md`
-  - CONTEXT: `docs/data-pipelines/CONTEXT-healthcore-phase-1.md`
-  - Planned destination: `reporting.monthly_clinic_supply_performance`; planned module: `services/reporting/` (not implemented yet)
+  - CONTEXT: `docs/data-pipelines/CONTEXT-healthcore-phase-1.md` / `CONTEXT-healthcore-phase-2.md`
+  - Orchestration: `data/pipelines/pipeline.py` (Prefect `@flow` + extract/transform/load + optional eval snapshot)
+  - Transform helper: `data/process/reporting/monthly_clinic_kpis.py`
+  - DDL: `data/pipelines/reporting_schema.sql` → `reporting.monthly_clinic_supply_performance`
+  - Dependency: `prefect>=3`
+  - Planned module (later): `services/reporting/` endpoints
 - Backoffice auth client (AUTH-02 complete):
   - Token key `healthcore_access_token` in `localStorage` via `uis/backoffice/lib/services/healthcoreClient.ts`
   - Pages `/login`, `/register`, `/account/profile`; successful auth redirects to `/`

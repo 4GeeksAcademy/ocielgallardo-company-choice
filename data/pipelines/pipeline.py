@@ -1,0 +1,387 @@
+"""HealthCore Monthly Clinic Supply Performance pipeline (Prefect).
+
+Phase 1: extract → transform → load + optional eval snapshot.
+Phase 2: retries on DB tasks, transform cache (1h), explicit optional failure handling.
+
+Run from the repo root (requires SUPABASE_DB_* or DATABASE_URL):
+
+    PYTHONPATH=. uv run python data/pipelines/pipeline.py
+
+When PREFECT_API_URL is set (local Prefect server or Cloud), the CLI invokes the
+@flow engine. Otherwise it runs the same tasks via ``.fn()`` so the ETL works
+even if the ephemeral Prefect API cannot start (common on Windows paths with
+spaces).
+
+Cadence (CONTEXT): monthly — ready by the first working day of the month (UTC).
+Default month_start is the previous calendar month UTC.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+import sys
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any
+from uuid import uuid4
+
+from prefect import flow, task
+from prefect.tasks import task_input_hash
+from sqlalchemy import bindparam, text
+
+# Ensure repo root is importable when run as a script.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from data.process.reporting.monthly_clinic_kpis import (  # noqa: E402
+    SUPPLY_EVENT_TYPES,
+    aggregate_monthly_clinic_kpis,
+)
+from services.app.core.database import (  # noqa: E402
+    get_engine,
+    is_inventory_db_configured,
+)
+
+logger = logging.getLogger(__name__)
+
+PIPELINE_NAME = "monthly_clinic_supply_performance"
+SCHEMA_SQL_PATH = Path(__file__).resolve().parent / "reporting_schema.sql"
+EVAL_DIR = _REPO_ROOT / "data" / "eval"
+
+# Transient Supabase / network blips usually clear within ~30s; 3 attempts × 10s
+# covers typical pooler timeouts without stalling a monthly board run for minutes.
+_DB_TASK_RETRIES = 3
+_DB_RETRY_DELAY_SECONDS = 10
+
+# Board pack is monthly; within one hour a re-run (manual retry / overlapping click)
+# should reuse the same transform result for identical inputs.
+_TRANSFORM_CACHE_EXPIRATION = timedelta(hours=1)
+
+
+def _previous_month_start(today: date | None = None) -> date:
+    """First day of the previous calendar month (UTC date)."""
+    base = today or datetime.now(timezone.utc).date()
+    first_this_month = base.replace(day=1)
+    last_prev = first_this_month - timedelta(days=1)
+    return last_prev.replace(day=1)
+
+
+def _month_window(month_start: date) -> tuple[datetime, datetime]:
+    start = datetime(month_start.year, month_start.month, 1, tzinfo=timezone.utc)
+    if month_start.month == 12:
+        end = datetime(month_start.year + 1, 1, 1, tzinfo=timezone.utc)
+    else:
+        end = datetime(month_start.year, month_start.month + 1, 1, tzinfo=timezone.utc)
+    return start, end
+
+
+def _ensure_reporting_schema() -> None:
+    sql = SCHEMA_SQL_PATH.read_text(encoding="utf-8")
+    engine = get_engine()
+    with engine.begin() as conn:
+        conn.execute(text(sql))
+
+
+def _serialize_row(row: Any) -> dict[str, Any]:
+    mapping = dict(row._mapping)
+    ts = mapping.get("timestamp")
+    if isinstance(ts, datetime):
+        mapping["timestamp"] = ts.isoformat()
+    tags = mapping.get("tags")
+    if tags is None:
+        mapping["tags"] = {}
+    elif not isinstance(tags, dict):
+        mapping["tags"] = dict(tags) if hasattr(tags, "keys") else {}
+    return mapping
+
+
+def _build_result(
+    *,
+    run_id: str,
+    month_start: date,
+    records_extracted: int,
+    records_processed: int,
+    eval_snapshot_ok: bool,
+) -> dict[str, Any]:
+    return {
+        "run_id": run_id,
+        "month_start": month_start.isoformat(),
+        "records_extracted": records_extracted,
+        "records_processed": records_processed,
+        "eval_snapshot_ok": eval_snapshot_ok,
+        "status": "completed",
+    }
+
+
+@task(
+    name="extract_supply_telemetry",
+    # Retries=3: absorbs transient Supabase pooler disconnects / TLS blips on read.
+    retries=_DB_TASK_RETRIES,
+    retry_delay_seconds=_DB_RETRY_DELAY_SECONDS,
+)
+def extract_supply_telemetry(month_start: date) -> list[dict[str, Any]]:
+    """Read-only extract of mandatory supply events for one calendar month."""
+    if not is_inventory_db_configured():
+        raise RuntimeError(
+            "Database not configured. Set DATABASE_URL or SUPABASE_DB_* in .env"
+        )
+
+    window_start, window_end = _month_window(month_start)
+    event_types = sorted(SUPPLY_EVENT_TYPES)
+    sql = text(
+        """
+        SELECT event_id, timestamp, event_type, tags
+        FROM telemetry_events
+        WHERE event_type IN :event_types
+          AND timestamp >= :window_start
+          AND timestamp < :window_end
+        ORDER BY timestamp ASC
+        """
+    ).bindparams(bindparam("event_types", expanding=True))
+
+    engine = get_engine()
+    with engine.connect() as conn:
+        result = conn.execute(
+            sql,
+            {
+                "event_types": event_types,
+                "window_start": window_start,
+                "window_end": window_end,
+            },
+        )
+        rows = [_serialize_row(row) for row in result]
+
+    logger.info(
+        "extract_supply_telemetry month_start=%s events=%s window=[%s, %s)",
+        month_start.isoformat(),
+        len(rows),
+        window_start.isoformat(),
+        window_end.isoformat(),
+    )
+    return rows
+
+
+@task(
+    name="transform_monthly_clinic_kpis",
+    # Cache key = hash of task inputs (events payload + month_start) via task_input_hash.
+    # Expiration = 1 hour so a successful transform is not recomputed on a near-term re-run
+    # of the same month with identical extracted events (brief: skip unnecessary repeat).
+    cache_key_fn=task_input_hash,
+    cache_expiration=_TRANSFORM_CACHE_EXPIRATION,
+)
+def transform_monthly_clinic_kpis(
+    events: list[dict[str, Any]],
+    month_start: date,
+) -> list[dict[str, Any]]:
+    """Aggregate extracted events into per-clinic KPI rows."""
+    rows = aggregate_monthly_clinic_kpis(events, month_start)
+    logger.info(
+        "transform_monthly_clinic_kpis month_start=%s clinics=%s",
+        month_start.isoformat(),
+        len(rows),
+    )
+    return rows
+
+
+@task(
+    name="load_monthly_clinic_supply_performance",
+    # Retries=3: write path is most exposed to statement timeouts; short backoff retries.
+    retries=_DB_TASK_RETRIES,
+    retry_delay_seconds=_DB_RETRY_DELAY_SECONDS,
+)
+def load_monthly_clinic_supply_performance(
+    rows: list[dict[str, Any]],
+    month_start: date,
+) -> dict[str, Any]:
+    """Upsert KPI rows into reporting.monthly_clinic_supply_performance."""
+    if not is_inventory_db_configured():
+        raise RuntimeError(
+            "Database not configured. Set DATABASE_URL or SUPABASE_DB_* in .env"
+        )
+
+    _ensure_reporting_schema()
+    engine = get_engine()
+    upsert = text(
+        """
+        INSERT INTO reporting.monthly_clinic_supply_performance (
+            clinic_id,
+            country,
+            month_start,
+            total_supply_cost,
+            supply_consumption_count,
+            critical_stockout_count,
+            expiry_risk_count,
+            currency,
+            computed_at
+        ) VALUES (
+            :clinic_id,
+            :country,
+            :month_start,
+            :total_supply_cost,
+            :supply_consumption_count,
+            :critical_stockout_count,
+            :expiry_risk_count,
+            :currency,
+            now()
+        )
+        ON CONFLICT (clinic_id, month_start) DO UPDATE SET
+            country = EXCLUDED.country,
+            total_supply_cost = EXCLUDED.total_supply_cost,
+            supply_consumption_count = EXCLUDED.supply_consumption_count,
+            critical_stockout_count = EXCLUDED.critical_stockout_count,
+            expiry_risk_count = EXCLUDED.expiry_risk_count,
+            currency = EXCLUDED.currency,
+            computed_at = now()
+        """
+    )
+
+    payload = [
+        {
+            "clinic_id": row["clinic_id"],
+            "country": row["country"],
+            "month_start": month_start,
+            "total_supply_cost": row["total_supply_cost"],
+            "supply_consumption_count": row["supply_consumption_count"],
+            "critical_stockout_count": row["critical_stockout_count"],
+            "expiry_risk_count": row["expiry_risk_count"],
+            "currency": row["currency"],
+        }
+        for row in rows
+    ]
+
+    with engine.begin() as conn:
+        if payload:
+            conn.execute(upsert, payload)
+
+    result = {
+        "records_processed": len(payload),
+        "month_start": month_start.isoformat(),
+        "pipeline_name": PIPELINE_NAME,
+    }
+    logger.info(
+        "load_monthly_clinic_supply_performance month_start=%s records=%s",
+        month_start.isoformat(),
+        len(payload),
+    )
+    return result
+
+
+@task(name="write_eval_snapshot")
+def write_eval_snapshot(
+    rows: list[dict[str, Any]],
+    month_start: date,
+) -> str:
+    """Optional non-critical step: persist KPI rows under data/eval/ for validation."""
+    EVAL_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = (
+        EVAL_DIR / f"monthly_clinic_supply_performance_{month_start.isoformat()}.json"
+    )
+    payload = {
+        "month_start": month_start.isoformat(),
+        "pipeline_name": PIPELINE_NAME,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "clinics": rows,
+    }
+    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    logger.info("write_eval_snapshot path=%s clinics=%s", out_path, len(rows))
+    return str(out_path)
+
+
+def run_monthly_clinic_supply_performance(
+    month_start: date | None = None,
+) -> dict[str, Any]:
+    """Run ETL by calling task functions directly (no Prefect API required)."""
+    resolved_month = month_start or _previous_month_start()
+    run_id = str(uuid4())
+    logger.info(
+        "run_monthly_clinic_supply_performance start run_id=%s month_start=%s",
+        run_id,
+        resolved_month.isoformat(),
+    )
+
+    events = extract_supply_telemetry.fn(resolved_month)
+    kpi_rows = transform_monthly_clinic_kpis.fn(events, resolved_month)
+    load_result = load_monthly_clinic_supply_performance.fn(kpi_rows, resolved_month)
+
+    # Mirror optional-task semantics when not using the Prefect engine.
+    eval_snapshot_ok = True
+    try:
+        write_eval_snapshot.fn(kpi_rows, resolved_month)
+    except Exception as exc:  # noqa: BLE001 — optional step must not fail the ETL
+        eval_snapshot_ok = False
+        logger.warning(
+            "write_eval_snapshot failed (non-critical); KPI load already committed: %s",
+            exc,
+        )
+
+    return _build_result(
+        run_id=run_id,
+        month_start=resolved_month,
+        records_extracted=len(events),
+        records_processed=load_result["records_processed"],
+        eval_snapshot_ok=eval_snapshot_ok,
+    )
+
+
+@flow(name="monthly_clinic_supply_performance_flow")
+def monthly_clinic_supply_performance_flow(
+    month_start: date | None = None,
+) -> dict[str, Any]:
+    """Main ETL flow: extract → transform → load; eval snapshot is optional."""
+    resolved_month = month_start or _previous_month_start()
+    run_id = str(uuid4())
+    logger.info(
+        "monthly_clinic_supply_performance_flow start run_id=%s month_start=%s",
+        run_id,
+        resolved_month.isoformat(),
+    )
+
+    events = extract_supply_telemetry(resolved_month)
+    kpi_rows = transform_monthly_clinic_kpis(events, resolved_month)
+
+    # Critical load: inspect state explicitly instead of only relying on raise.
+    load_state = load_monthly_clinic_supply_performance(
+        kpi_rows, resolved_month, return_state=True
+    )
+    if load_state is None or not load_state.is_completed():
+        raise RuntimeError(
+            f"load_monthly_clinic_supply_performance failed: {load_state}"
+        )
+    load_result = load_state.result()
+
+    # Optional / non-critical: failure must not abort a successful load.
+    snapshot_state = write_eval_snapshot(kpi_rows, resolved_month, return_state=True)
+    snapshot_ok = snapshot_state is not None and snapshot_state.is_completed()
+    if not snapshot_ok:
+        logger.warning(
+            "write_eval_snapshot failed (non-critical); KPI load already committed. state=%s",
+            snapshot_state,
+        )
+
+    return _build_result(
+        run_id=run_id,
+        month_start=resolved_month,
+        records_extracted=len(events),
+        records_processed=load_result["records_processed"],
+        eval_snapshot_ok=snapshot_ok,
+    )
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s %(name)s: %(message)s",
+    )
+    # CLI: PYTHONPATH=. uv run python data/pipelines/pipeline.py
+    if os.getenv("PREFECT_API_URL"):
+        result = monthly_clinic_supply_performance_flow()
+    else:
+        logger.info(
+            "PREFECT_API_URL unset — running via task.fn() "
+            "(set PREFECT_API_URL to use the Prefect flow engine)"
+        )
+        result = run_monthly_clinic_supply_performance()
+    print(json.dumps(result, indent=2))
