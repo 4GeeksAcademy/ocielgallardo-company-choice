@@ -10,7 +10,6 @@ from sqlmodel import Session
 from services.app.core.database import get_engine, is_inventory_db_configured
 from services.app.core.ttl_cache import telemetry_report_cache
 from services.app.domain import telemetry_service
-from services.app.domain.telemetry_analysis import build_report
 from services.app.schemas import (
     TelemetryBatch,
     TelemetryIngestResponse,
@@ -88,6 +87,15 @@ def get_telemetry_report(
     cached = telemetry_report_cache.get(cache_key)
     if cached is not None:
         return TelemetryReportResponse.model_validate(cached)
+
+    try:
+        from services.app.domain.telemetry_analysis import build_report
+    except ModuleNotFoundError as exc:
+        logger.exception("Telemetry report unavailable: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Telemetry report requires pandas. Rebuild the backend image.",
+        ) from exc
 
     report = build_report(session.get_bind(), start, end)
     telemetry_report_cache.set(cache_key, report, REPORT_CACHE_TTL_SECONDS)

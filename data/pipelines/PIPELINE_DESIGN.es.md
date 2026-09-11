@@ -5,7 +5,7 @@ El código de orquestación, la aplicación del DDL y la implementación de `ser
 
 _Esta documentación está [disponible en inglés](./PIPELINE_DESIGN.md)._
 
-**Fuente de verdad:** [`docs/data-pipelines/CONTEXT-healthcore.md`](../../docs/data-pipelines/CONTEXT-healthcore.md)  
+**Fuente de verdad:** [`docs/data-pipelines/CONTEXT-healthcore-phase-1.md`](../../docs/data-pipelines/CONTEXT-healthcore-phase-1.md)  
 **Piso de telemetría:** [`docs/telemetry/CONTEXT-healthcore.md`](../../docs/telemetry/CONTEXT-healthcore.md)
 
 **Fuera de alcance de este pipeline (no modificar):**
@@ -375,6 +375,42 @@ Nota: el dominio del monorepo usa ids de clínica numéricos `1`–`12` (seriali
 | Parte 1 (este doc) | Diseño + `unit_cost` aditivo en `inbound_order_created` |
 | Parte 2 | Flow/tasks Prefect, DDL, upsert de ingesta por `event_id`, endpoints `services/reporting/` |
 | Parte 3 | Subflows, tests, dashboard backoffice consumiendo `GET /reporting/monthly-clinic-supply-performance` |
+
+### 6.1 Parte 2 Fase 2 — resiliencia (implementada)
+
+| Mecanismo | Dónde | Notas |
+| --- | --- | --- |
+| Reintentos | `extract_supply_telemetry`, `load_monthly_clinic_supply_performance` | `retries=3`, `retry_delay_seconds=10` — fallos transitorios de Supabase/red |
+| Caché | `transform_monthly_clinic_kpis` | `cache_key_fn=task_input_hash` (eventos + `month_start`); `cache_expiration=1 hora` |
+| Manejo explícito de fallos | Flow | `load_…(return_state=True)` falla el flow si no completa; `write_eval_snapshot(return_state=True)` es no crítico |
+
+**Frecuencia:** mensual (primer día hábil UTC).  
+**CLI:** `PYTHONPATH=. uv run python data/pipelines/pipeline.py`
+
+### 6.2 Parte 2 Fase 3 — idempotencia + log de corrida (implementada)
+
+- **Carga:** `INSERT … ON CONFLICT (clinic_id, month_start) DO UPDATE` — dos corridas del mismo mes dejan una fila por clínica con los mismos KPIs.
+- **Tabla de auditoría:** `reporting.pipeline_runs` guarda al menos `run_id`, `started_at`, `finished_at`, `status`, `records_processed`, más `phase`, `records_extracted`, `error_message`, `month_start` y ventana.
+- **Helper:** `get_latest_pipeline_run()` lee la última corrida para el futuro `GET /reporting/pipeline-runs/latest`.
+
+### 6.3 Parte 2 Fase 4 — polish (implementada)
+
+- **CLI:** `PYTHONPATH=. uv run python data/pipelines/pipeline.py` — ejecuta el ETL vía `task.fn()` cuando no hay `PREFECT_API_URL` (compatible con Windows).
+- **Cadencia:** mensual, listo el primer día hábil del mes (UTC); `month_start` por defecto es el mes calendario anterior.
+
+### 6.4 Parte 2 Fase 5 — API de reporting (implementada)
+
+Módulo `services/reporting/` (auth Bearer vía `get_current_user`). Los routers importan helpers de `data/pipelines/pipeline.py` — sin ETL inline en services.
+
+| Método | Ruta | Helper del pipeline |
+| --- | --- | --- |
+| GET | `/reporting/pipeline-runs/latest` | `get_latest_pipeline_run` |
+| POST | `/reporting/pipeline-runs` | `trigger_monthly_clinic_supply_performance_run` |
+| GET | `/reporting/monthly-clinic-supply-performance` | `query_monthly_clinic_supply_performance` |
+
+Montado en `services/app/main.py`. Tag OpenAPI: `reporting`. La ruta técnica `GET /telemetry/report` no cambia.
+
+**Nota de auth:** reporting usa Bearer como inventario porque expone KPIs de negocio y puede disparar el ETL (`POST /pipeline-runs`). La telemetría (ingesta/report) sigue sin auth para que la captura del browser (`track` / `sendBeacon`, incluidos eventos de fallo de sesión) no se rompa — no “corregir” esa asimetría en este hito.
 
 ---
 
