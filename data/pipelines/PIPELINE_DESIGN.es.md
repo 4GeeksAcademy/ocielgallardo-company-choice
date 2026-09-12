@@ -18,12 +18,56 @@ _Esta documentación está [disponible en inglés](./PIPELINE_DESIGN.md)._
 
 ---
 
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+
+
 ## 1. Estado actual
 
 ### 1.1 Lo que ya existe
 
 | Capa | Artefacto | Rol hoy |
-| --- | --- | --- |
+| ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ |
 | Captura | `uis/backoffice/lib/services/telemetry.ts` (`track()`) | Cola en memoria, flush por lotes, `sendBeacon`, reintento con backoff exponencial |
 | Instrumentación | Formularios de inventario + UI relacionada | Eventos obligatorios: `inbound_order_created`, `outbound_order_created`, `stock_threshold_triggered`, `supply_expiry_flagged`, más eventos técnicos/de auth |
 | Ingesta | `POST /telemetry/events` → `services/app/domain/telemetry_service.py` | Validación Pydantic por evento, filtro allowlist hacia `tags`, inserción masiva |
@@ -49,6 +93,17 @@ Ese entregable es el **Reporte mensual de desempeño de insumos por clínica** (
 
 ---
 
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+
+
 ## 2. Propósito y diseño del pipeline
 
 ### 2.1 Propósito (una frase)
@@ -56,7 +111,29 @@ Ese entregable es el **Reporte mensual de desempeño de insumos por clínica** (
 Producir el consolidado mensual que alimenta el **Reporte mensual de desempeño de insumos por clínica** de la Dra. Okonkwo, calculando **Costo de insumos por clínica**, **Volumen de consumo de insumos**, **Frecuencia de quiebre crítico** y **Conteo de riesgo de vencimiento** a partir de la telemetría obligatoria `inbound_order_created`, `outbound_order_created`, `stock_threshold_triggered` y `supply_expiry_flagged`.
 
 | Atributo | Valor |
-| --- | --- |
+| ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ |
 | Audiencia | Dra. Okonkwo (CEO), Claire Whitfield (Chief Compliance Officer) |
 | Frecuencia | Mensual — listo el primer día hábil del mes (UTC) |
 | Granularidad | Una fila por `clinic_id` × `month_start` (primer día del mes, UTC) |
@@ -67,7 +144,51 @@ Producir el consolidado mensual que alimenta el **Reporte mensual de desempeño 
 ### 2.2 Mapeo KPI ↔ evento
 
 | KPI | Campo calculado | `event_type` origen | Agregación |
-| --- | --- | --- | --- |
+| ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ |
 | Costo de insumos por clínica | `total_supply_cost` | `inbound_order_created` | `sum(unit_cost * quantity)` del mes |
 | Volumen de consumo de insumos | `supply_consumption_count` | `outbound_order_created` | Conteo de eventos (deduplicado por `event_id`) |
 | Frecuencia de quiebre crítico | `critical_stockout_count` | `stock_threshold_triggered` | Conteo de eventos |
@@ -82,7 +203,29 @@ v1 **no** agrupa por `department` — la clave unique del CONTEXT es solo `(clin
 **Fuente principal:** `telemetry_events` (solo lectura).
 
 | Aspecto | Especificación |
-| --- | --- |
+| ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ |
 | Filtro | `event_type IN ('inbound_order_created','outbound_order_created','stock_threshold_triggered','supply_expiry_flagged')` |
 | Ventana | Todos los eventos con `timestamp` en `[month_start, next_month_start)` UTC para el mes objetivo (las reejecuciones pueden ampliar ligeramente la ventana para captar llegadas tardías dentro de la política) |
 | Forma del payload | Columnas de fila + `tags` JSONB: `clinic_id`, `country`, `quantity`, `unit_cost` (inbound), `product_id`, etc. |
@@ -172,6 +315,17 @@ Sin un costo en `inbound_order_created`, no se puede calcular Costo de insumos p
 
 ---
 
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+
+
 ## 3. Resiliencia, idempotencia y observabilidad
 
 ### 3.1 Estrategia de idempotencia (fallo a mitad de carga → reejecución)
@@ -192,7 +346,40 @@ Watermark / checkpoint: `reporting.pipeline_runs.phase` registra la última fase
 Campos mínimos (nombre, tipo, por qué):
 
 | Campo | Tipo | Por qué es necesario para auditoría |
-| --- | --- | --- |
+| ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ |
 | `run_id` | `uuid` | Identidad estable del intento; correlaciona con el id de corrida Prefect y respuestas API |
 | `started_at` | `timestamptz` | Demuestra que el pipeline corrió (distingue “no hubo corrida” de “corrió con ceros”) |
 | `finished_at` | `timestamptz` nullable | Duración, detección de cuelgues, SLA del primer día hábil |
@@ -267,7 +454,29 @@ Diseño actual: **solo cola en memoria** (TelemetryService existente). IndexedDB
 #### Recuperabilidad — reintento de POST /telemetry
 
 | Resultado del servidor | Acción del cliente |
-| --- | --- |
+| ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ |
 | 200 y fila almacenada (o ya existe vía upsert por `event_id`) | Éxito — no reintentar |
 | Timeout / 5xx | Reintentar con el mismo payload / mismo `eventId` (backoff existente) |
 | 4xx de validación | No reintentar; descartar o registrar |
@@ -283,6 +492,17 @@ El flow programado a las 02:00 se solapa con “Ejecutar pipeline ahora” a las
 - Cada intento sigue teniendo un `run_id` único; solo un escritor de carga tiene el lock del mes.
 
 ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+
 
 ## 4. Mapeo a Prefect
 
@@ -300,7 +520,40 @@ El flow programado a las 02:00 se solapa con “Ejecutar pipeline ahora” a las
 ### 4.2 Tasks (mínimo tres)
 
 | Task | Etapa | Responsabilidad |
-| --- | --- | --- |
+| ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ |
 | `extract_supply_telemetry` | Extracción | Leer `telemetry_events` (+ cobertura de dominio opcional) para la ventana del mes |
 | `transform_monthly_clinic_kpis` | Transformación | Dedupe de `event_id`, agregar cuatro KPIs por clínica-mes |
 | `load_monthly_clinic_supply_performance` | Carga | Upsert en `reporting.monthly_clinic_supply_performance` |
@@ -314,18 +567,84 @@ Las transformaciones puras reutilizables pueden vivir en `data/process/` (p. ej.
 ### 4.4 Bloques Prefect
 
 | Bloque | Propósito |
-| --- | --- |
+| ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ |
 | Credenciales Supabase / Postgres | Mismas `SUPABASE_DB_*` o `DATABASE_URL` que inventario/telemetría — nunca commiteadas al repo |
 | Notificación opcional Slack/email | Alerta en `Failed` o ingesta silenciosa (Parte 3+) |
 
 ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+
 
 ## 5. Integración con la aplicación (solo diseño)
 
 Nuevo módulo **`services/reporting/`**, montado desde la app FastAPI en Parte 2. La capa HTTP importa callables desde `data/pipelines/` — **sin lógica ETL dentro de services**.
 
 | Endpoint | Comportamiento | Importa desde `data/pipelines/` |
-| --- | --- | --- |
+| ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ |
 | `GET /reporting/pipeline-runs/latest` | Estado + metadatos de la última corrida | `get_latest_pipeline_run()` |
 | `POST /reporting/pipeline-runs` | Disparo manual (`month_start` opcional); adquiere lock; inicia el flow | `trigger_monthly_clinic_supply_performance_run()` |
 | `GET /reporting/monthly-clinic-supply-performance` | Feed de KPIs para junta / dashboard Parte 3; `month_start` opcional (por defecto último mes calculado) | `query_monthly_clinic_supply_performance(month_start?)` |
@@ -354,7 +673,29 @@ Nota: el dominio del monorepo usa ids de clínica numéricos `1`–`12` (seriali
 ### 5.1 Separación respecto a telemetría
 
 | Preocupación | Módulo |
-| --- | --- |
+| ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ |
 | Captura + reporte técnico | `services/app/routers/telemetry.py`, `telemetry_analysis.py` |
 | KPIs de negocio + control del pipeline | `services/reporting/` → `data/pipelines/` |
 | Almacén de hechos | `telemetry_events` (solo fuente) |
@@ -368,10 +709,43 @@ Nota: el dominio del monorepo usa ids de clínica numéricos `1`–`12` (seriali
 
 ---
 
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+
+
 ## 6. Hoja de ruta de implementación (Partes 2–3)
 
 | Parte | Trabajo |
-| --- | --- |
+| ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ |
 | Parte 1 (este doc) | Diseño + `unit_cost` aditivo en `inbound_order_created` |
 | Parte 2 | Flow/tasks Prefect, DDL, upsert de ingesta por `event_id`, endpoints `services/reporting/` |
 | Parte 3 | Subflows, tests, dashboard backoffice consumiendo `GET /reporting/monthly-clinic-supply-performance` |
@@ -379,7 +753,40 @@ Nota: el dominio del monorepo usa ids de clínica numéricos `1`–`12` (seriali
 ### 6.1 Parte 2 Fase 2 — resiliencia (implementada)
 
 | Mecanismo | Dónde | Notas |
-| --- | --- | --- |
+| ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ |
 | Reintentos | `extract_supply_telemetry`, `load_monthly_clinic_supply_performance` | `retries=3`, `retry_delay_seconds=10` — fallos transitorios de Supabase/red |
 | Caché | `transform_monthly_clinic_kpis` | `cache_key_fn=task_input_hash` (eventos + `month_start`); `cache_expiration=1 hora` |
 | Manejo explícito de fallos | Flow | `load_…(return_state=True)` falla el flow si no completa; `write_eval_snapshot(return_state=True)` es no crítico |
@@ -403,7 +810,40 @@ Nota: el dominio del monorepo usa ids de clínica numéricos `1`–`12` (seriali
 Módulo `services/reporting/` (auth Bearer vía `get_current_user`). Los routers importan helpers de `data/pipelines/pipeline.py` — sin ETL inline en services.
 
 | Método | Ruta | Helper del pipeline |
-| --- | --- | --- |
+| ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ | ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+ |
 | GET | `/reporting/pipeline-runs/latest` | `get_latest_pipeline_run` |
 | POST | `/reporting/pipeline-runs` | `trigger_monthly_clinic_supply_performance_run` |
 | GET | `/reporting/monthly-clinic-supply-performance` | `query_monthly_clinic_supply_performance` |
@@ -413,6 +853,17 @@ Montado en `services/app/main.py`. Tag OpenAPI: `reporting`. La ruta técnica `G
 **Nota de auth:** reporting usa Bearer como inventario porque expone KPIs de negocio y puede disparar el ETL (`POST /pipeline-runs`). La telemetría (ingesta/report) sigue sin auth para que la captura del browser (`track` / `sendBeacon`, incluidos eventos de fallo de sesión) no se rompa — no “corregir” esa asimetría en este hito.
 
 ---
+
+### 6.5 Parte 3 — Subflows y bloqueo de corrida (implementado en este Hito)
+
+- **Topología de subflows**: el flujo principal ``monthly_clinic_supply_performance_flow`` es ahora un coordinador delgado sobre cuatro ``@flow`` subflows independientes — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow`` y ``snapshot_monthly_clinic_kpis_flow``. Cada subflow tiene entradas y salidas explícitas y puede ejecutarse de forma independiente. El subflow de transformación difunde una tarea ``@task`` por KPI de CONTEXT (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) y compone las filas por clínica. Todas las tasks usan ``cache_key_fn=task_input_hash`` con expiración de 1 hora, por lo que re-ejecuciones del mismo mes con eventos extraídos idénticos reutilizan el resultado en caché.
+
+- **Bloqueo por ``(pipeline_name, month_start)``**: ``_start_pipeline_run`` realiza una transaccional ``SELECT … FOR UPDATE`` contra ``reporting.pipeline_runs`` para comprobar si ya existe una fila ``running`` joven que sea menor a ``_RUN_LOCK_STALE_AFTER = 30 min`` para el mismo pipeline+mes. Una fila ``running`` stale (supuesta caída) no bloquea una nueva intención. Si se detecta un bloqueo activo, el inicio levanta ``ConcurrentRunError``, mostrando un `409 Conflict` cuando se detecta una corrida concurrente.
+
+- **Subflow opcional de "snapshot"**: ``snapshot_monthly_clinic_kpis_flow`` se invoca con ``return_state=True`` desde el flujo principal, de modo que su fallo no puede fallar una corrida cuya carga de KPIs ya se haya confirmado — consistente con el patrón `write_eval_snapshot` no crítico de la Parte 2.
+
+---
+
 
 ## 7. Checklist de trazabilidad
 
