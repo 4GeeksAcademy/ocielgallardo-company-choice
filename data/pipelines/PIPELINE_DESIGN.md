@@ -307,9 +307,20 @@ Scheduled 02:00 flow overlaps with “Run pipeline now” at 02:05.
 
 Reusable pure transforms may live in `data/process/` (e.g. `data/process/reporting/monthly_clinic_kpis.py`) and be imported by tasks — not by routers.
 
-### 4.3 Optional second flow (documented for Part 3)
+### 4.5 Part 3 — Subflows and run-lock (implemented in this Hito)
 
-**`backfill_monthly_clinic_supply_performance_flow`** — loops `month_start` over a range, calling the same three tasks (or subflows in Part 3). Not required to implement in Part 1.
+| Subflow | Stage | Responsibility |
+| --- | --- | --- |
+| ``extract_supply_telemetry_flow`` | Extract | Subflow — read mandatory supply events for one calendar month. Input: ``month_start``. Output: raw telemetry event dicts. Runnable independently. |
+| ``transform_monthly_clinic_kpis_flow`` | Transform | Subflow — fans out to one task per CONTEXT KPI and composes per-clinic rows. Tasks: ``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``. Each task is independently cached via ``task_input_hash`` (1‑hour expiration). |
+| ``load_monthly_clinic_supply_performance_flow`` | Load | Subflow — idempotent upsert of composed KPI rows into ``reporting.monthly_clinic_supply_performance`` via ``ON CONFLICT (clinic_id, month_start) DO UPDATE``. Fails the run if the critical load task does not complete. |
+| ``snapshot_monthly_clinic_kpis_flow`` | Optional | Non‑critical subflow — persists a KPI snapshot under ``data/eval/`` for validation. Invoked with ``return_state=True`` from the main flow so its failure cannot fail a committed run. |
+
+| Concurrency lock (``PIPELINE_DESIGN §6.5``) | Mechanism | When it blocks |
+| --- | --- | --- |
+| Per-``(pipeline_name, month_start)`` run lock within the ``_start_pipeline_run`` transaction: two overlapping runs of the same board month raise ``ConcurrentRunError``. A ``running`` row older than ``_RUN_LOCK_STALE_AFTER = 30 min`` is assumed orphaned and does not block a new attempt. | Transactional ``SELECT … FOR UPDATE`` against the ``reporting.pipeline_runs`` table. | A live ``running`` row younger than 30 min for the same ``pipeline_name`` + ``month_start``. |
+
+The main flow ``monthly_clinic_supply_performance_flow`` is now a thin coordinator over the four subflows; it owns run‑lifecycle audit (``pipeline_runs``) and phase transitions but contains none of the ETL logic.
 
 ### 4.4 Prefect blocks
 
@@ -427,3 +438,14 @@ Mounted in `services/app/main.py`. OpenAPI tag: `reporting`. Technical path `GET
 - [x] Prefect: one main flow + three tasks + Running/Completed/Failed
 - [x] Three reporting endpoints mapped to `data/pipelines/` functions
 - [x] Technical telemetry path left unchanged; `telemetry_events` is source only
+- [x] Part 3 subflow topology and per-`(pipeline_name, month_start)` run lock implemented
+
+
+### 6.5 Part 3 — Subflows and run-lock (implemented in this Hito)
+
+- **Subflow topology**: the main flow ``monthly_clinic_supply_performance_flow`` is now a thin coordinator over four independent ``@flow`` subflows — ``extract_supply_telemetry_flow``, ``transform_monthly_clinic_kpis_flow``, ``load_monthly_clinic_supply_performance_flow``, and ``snapshot_monthly_clinic_kpis_flow``. Each subflow has explicit inputs/outputs and can execute independently. The transform subflow fans out to one Prefect ``@task`` per CONTEXT KPI (``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``, ``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) and composes the per-clinic rows. All tasks use ``cache_key_fn=task_input_hash`` with a 1‑hour expiration, so re-runs of the same month with identical extracted events reuse the cached result.
+
+- **Per-``(pipeline_name, month_start)`` run lock**: ``_start_pipeline_run`` performs a transactional ``SELECT … FOR UPDATE`` against ``reporting.pipeline_runs`` to check whether a ``running`` row younger than ``_RUN_LOCK_STALE_AFTER = 30 min`` already exists for the same pipeline+month. A stale ``running`` row (assumed crashed) does not block a new attempt. If a live lock is detected, the start raises ``ConcurrentRunError``, surfacing a `409 Conflict` when a concurrent run is detected.
+
+- **Optional snapshot subflow**: ``snapshot_monthly_clinic_kpis_flow`` is invoked with ``return_state=True`` from the main flow, so its failure cannot fail a run whose KPI load already committed — consistent with the non‑critical `write_eval_snapshot` pattern from Part 2.
+

@@ -6,6 +6,21 @@ Phase 3: idempotent upsert load + reporting.pipeline_runs execution log.
 Phase 4: CLI + monthly cadence (documented in PIPELINE_DESIGN §6.3).
 Phase 5: query/trigger helpers for services/reporting endpoints.
 
+Part 3 refactor — the main flow is now a thin coordinator over reusable
+subflows (``@flow``), each with explicit inputs/outputs and independently
+runnable:
+
+  * ``extract_supply_telemetry_flow``            (Extract)
+  * ``transform_monthly_clinic_kpis_flow``       (Transform — one task per KPI)
+  * ``load_monthly_clinic_supply_performance_flow`` (Load)
+  * ``snapshot_monthly_clinic_kpis_flow``        (optional, ``return_state=True``)
+
+The Transform subflow fans out to one task per CONTEXT KPI
+(``transform_supply_cost_per_clinic``, ``transform_supply_consumption_volume``,
+``transform_critical_stockout_frequency``, ``transform_expiry_risk_count``) and
+composes the per-clinic rows. A per-``(pipeline_name, month_start)`` run lock
+(§6.5) rejects overlapping runs of the same board month.
+
 Run from the repo root (requires SUPABASE_DB_* or DATABASE_URL):
 
     PYTHONPATH=. uv run python data/pipelines/pipeline.py
@@ -41,7 +56,11 @@ if str(_REPO_ROOT) not in sys.path:
 
 from data.process.reporting.monthly_clinic_kpis import (  # noqa: E402
     SUPPLY_EVENT_TYPES,
-    aggregate_monthly_clinic_kpis,
+    compose_monthly_clinic_kpi_rows,
+    compute_critical_stockout_frequency,
+    compute_expiry_risk_count,
+    compute_supply_consumption_volume,
+    compute_supply_cost_per_clinic,
 )
 from services.app.core.database import (  # noqa: E402
     get_engine,
@@ -62,6 +81,15 @@ _DB_RETRY_DELAY_SECONDS = 10
 # Board pack is monthly; within one hour a re-run (manual retry / overlapping click)
 # should reuse the same transform result for identical inputs.
 _TRANSFORM_CACHE_EXPIRATION = timedelta(hours=1)
+
+# Concurrency guard (PIPELINE_DESIGN §6.5): a `running` row younger than this is
+# treated as a live run holding the month lock. Older `running` rows are assumed
+# orphaned by a crashed process and no longer block a new attempt.
+_RUN_LOCK_STALE_AFTER = timedelta(minutes=30)
+
+
+class ConcurrentRunError(RuntimeError):
+    """Raised when another live run already holds the lock for this board month."""
 
 
 def _previous_month_start(today: date | None = None) -> date:
@@ -125,11 +153,45 @@ def _build_result(
 
 
 def _start_pipeline_run(run_id: UUID, month_start: date) -> datetime:
-    """Insert a running row into reporting.pipeline_runs (audit log)."""
+    """Insert a running row into reporting.pipeline_runs (audit log).
+
+    Acts as the per-``(pipeline_name, month_start)`` run lock: the check for an
+    existing live ``running`` row and the insert of this run's ``running`` row
+    happen in one transaction, so two overlapping runs of the same board month
+    cannot both proceed. A stale ``running`` row (older than
+    ``_RUN_LOCK_STALE_AFTER``, assumed crashed) does not block a new attempt.
+    """
     _ensure_reporting_schema()
     started_at = datetime.now(timezone.utc)
     window_start, window_end = _month_window(month_start)
+    stale_cutoff = started_at - _RUN_LOCK_STALE_AFTER
     with get_engine().begin() as conn:
+        live = conn.execute(
+            text(
+                """
+                SELECT run_id, started_at
+                FROM reporting.pipeline_runs
+                WHERE pipeline_name = :pipeline_name
+                  AND month_start = :month_start
+                  AND status = 'running'
+                  AND started_at >= :stale_cutoff
+                ORDER BY started_at DESC
+                LIMIT 1
+                FOR UPDATE
+                """
+            ),
+            {
+                "pipeline_name": PIPELINE_NAME,
+                "month_start": month_start,
+                "stale_cutoff": stale_cutoff,
+            },
+        ).mappings().first()
+        if live is not None:
+            raise ConcurrentRunError(
+                f"A run for {PIPELINE_NAME} month_start={month_start.isoformat()} "
+                f"is already in progress (run_id={live['run_id']}, "
+                f"started_at={live['started_at']})."
+            )
         conn.execute(
             text(
                 """
@@ -387,25 +449,81 @@ def extract_supply_telemetry(month_start: date) -> list[dict[str, Any]]:
 
 
 @task(
-    name="transform_monthly_clinic_kpis",
-    # Cache key = hash of task inputs (events payload + month_start) via task_input_hash.
-    # Expiration = 1 hour so a successful transform is not recomputed on a near-term re-run
-    # of the same month with identical extracted events (brief: skip unnecessary repeat).
+    name="transform_supply_cost_per_clinic",
+    # Cache key = hash of task inputs (events + month_start). A near-term re-run
+    # of the same month with identical events reuses the KPI result.
     cache_key_fn=task_input_hash,
     cache_expiration=_TRANSFORM_CACHE_EXPIRATION,
 )
-def transform_monthly_clinic_kpis(
+def transform_supply_cost_per_clinic(
     events: list[dict[str, Any]],
     month_start: date,
-) -> list[dict[str, Any]]:
-    """Aggregate extracted events into per-clinic KPI rows."""
-    rows = aggregate_monthly_clinic_kpis(events, month_start)
+) -> dict[tuple[str, str], float]:
+    """KPI — Supply Cost per Clinic: sum(unit_cost * quantity) of inbound orders."""
+    result = compute_supply_cost_per_clinic(events, month_start)
     logger.info(
-        "transform_monthly_clinic_kpis month_start=%s clinics=%s",
+        "transform_supply_cost_per_clinic month_start=%s clinics=%s",
         month_start.isoformat(),
-        len(rows),
+        len(result),
     )
-    return rows
+    return result
+
+
+@task(
+    name="transform_supply_consumption_volume",
+    cache_key_fn=task_input_hash,
+    cache_expiration=_TRANSFORM_CACHE_EXPIRATION,
+)
+def transform_supply_consumption_volume(
+    events: list[dict[str, Any]],
+    month_start: date,
+) -> dict[tuple[str, str], int]:
+    """KPI — Supply Consumption Volume: count of outbound_order_created events."""
+    result = compute_supply_consumption_volume(events, month_start)
+    logger.info(
+        "transform_supply_consumption_volume month_start=%s clinics=%s",
+        month_start.isoformat(),
+        len(result),
+    )
+    return result
+
+
+@task(
+    name="transform_critical_stockout_frequency",
+    cache_key_fn=task_input_hash,
+    cache_expiration=_TRANSFORM_CACHE_EXPIRATION,
+)
+def transform_critical_stockout_frequency(
+    events: list[dict[str, Any]],
+    month_start: date,
+) -> dict[tuple[str, str], int]:
+    """KPI — Critical Stockout Frequency: count of stock_threshold_triggered events."""
+    result = compute_critical_stockout_frequency(events, month_start)
+    logger.info(
+        "transform_critical_stockout_frequency month_start=%s clinics=%s",
+        month_start.isoformat(),
+        len(result),
+    )
+    return result
+
+
+@task(
+    name="transform_expiry_risk_count",
+    cache_key_fn=task_input_hash,
+    cache_expiration=_TRANSFORM_CACHE_EXPIRATION,
+)
+def transform_expiry_risk_count(
+    events: list[dict[str, Any]],
+    month_start: date,
+) -> dict[tuple[str, str], int]:
+    """KPI — Expiry Risk Count: count of supply_expiry_flagged events."""
+    result = compute_expiry_risk_count(events, month_start)
+    logger.info(
+        "transform_expiry_risk_count month_start=%s clinics=%s",
+        month_start.isoformat(),
+        len(result),
+    )
+    return result
 
 
 @task(
@@ -519,7 +637,13 @@ def write_eval_snapshot(
 def run_monthly_clinic_supply_performance(
     month_start: date | None = None,
 ) -> dict[str, Any]:
-    """Run ETL by calling task functions directly (no Prefect API required)."""
+    """Run ETL by calling task/transform functions directly (no Prefect API).
+
+    Windows-safe fallback used by the CLI when ``PREFECT_API_URL`` is unset
+    (the ephemeral Prefect API cannot start on paths with spaces). It reuses the
+    same pure transform composition as the Transform subflow, so both paths
+    produce identical rows.
+    """
     resolved_month = month_start or _previous_month_start()
     run_uuid = uuid4()
     run_id = str(run_uuid)
@@ -538,7 +662,17 @@ def run_monthly_clinic_supply_performance(
         records_extracted = len(events)
         _set_pipeline_phase(run_uuid, "transform")
 
-        kpi_rows = transform_monthly_clinic_kpis.fn(events, resolved_month)
+        kpi_rows = compose_monthly_clinic_kpi_rows(
+            month_start=resolved_month,
+            supply_cost=transform_supply_cost_per_clinic.fn(events, resolved_month),
+            consumption_volume=transform_supply_consumption_volume.fn(
+                events, resolved_month
+            ),
+            stockout_frequency=transform_critical_stockout_frequency.fn(
+                events, resolved_month
+            ),
+            expiry_risk=transform_expiry_risk_count.fn(events, resolved_month),
+        )
         _set_pipeline_phase(run_uuid, "load")
 
         load_result = load_monthly_clinic_supply_performance.fn(
@@ -586,11 +720,96 @@ def run_monthly_clinic_supply_performance(
         raise
 
 
+# --------------------------------------------------------------------------- #
+# Subflows — each phase is an independent @flow with explicit inputs/outputs.
+# The main flow (below) coordinates them but contains none of their logic.
+# --------------------------------------------------------------------------- #
+
+
+@flow(name="extract_supply_telemetry_flow")
+def extract_supply_telemetry_flow(month_start: date) -> list[dict[str, Any]]:
+    """Extract subflow — read mandatory supply events for one calendar month.
+
+    Input: ``month_start``. Output: raw serializable telemetry event dicts.
+    Runnable on its own to inspect what the extract window returns.
+    """
+    return extract_supply_telemetry(month_start)
+
+
+@flow(name="transform_monthly_clinic_kpis_flow")
+def transform_monthly_clinic_kpis_flow(
+    events: list[dict[str, Any]],
+    month_start: date,
+) -> list[dict[str, Any]]:
+    """Transform subflow — fan out to one task per CONTEXT KPI, then compose rows.
+
+    Input: extracted ``events`` + ``month_start``. Output: per-clinic KPI rows
+    ready for upsert. Each KPI task is independently cached and testable.
+    """
+    supply_cost = transform_supply_cost_per_clinic(events, month_start)
+    consumption_volume = transform_supply_consumption_volume(events, month_start)
+    stockout_frequency = transform_critical_stockout_frequency(events, month_start)
+    expiry_risk = transform_expiry_risk_count(events, month_start)
+
+    rows = compose_monthly_clinic_kpi_rows(
+        month_start=month_start,
+        supply_cost=supply_cost,
+        consumption_volume=consumption_volume,
+        stockout_frequency=stockout_frequency,
+        expiry_risk=expiry_risk,
+    )
+    logger.info(
+        "transform_monthly_clinic_kpis_flow month_start=%s clinics=%s",
+        month_start.isoformat(),
+        len(rows),
+    )
+    return rows
+
+
+@flow(name="load_monthly_clinic_supply_performance_flow")
+def load_monthly_clinic_supply_performance_flow(
+    rows: list[dict[str, Any]],
+    month_start: date,
+) -> dict[str, Any]:
+    """Load subflow — idempotent upsert of KPI rows into the reporting table.
+
+    Input: composed KPI ``rows`` + ``month_start``. Output: load result dict
+    (records_processed, month_start, pipeline_name). Fails the run if the
+    critical load task does not complete.
+    """
+    load_state = load_monthly_clinic_supply_performance(
+        rows, month_start, return_state=True
+    )
+    if load_state is None or not load_state.is_completed():
+        raise RuntimeError(
+            f"load_monthly_clinic_supply_performance failed: {load_state}"
+        )
+    return load_state.result()
+
+
+@flow(name="snapshot_monthly_clinic_kpis_flow")
+def snapshot_monthly_clinic_kpis_flow(
+    rows: list[dict[str, Any]],
+    month_start: date,
+) -> str:
+    """Optional subflow — persist a KPI snapshot under data/eval/ for validation.
+
+    Non-critical: the main flow invokes it with ``return_state=True`` so a
+    failure here never fails a run whose KPI load already committed.
+    """
+    return write_eval_snapshot(rows, month_start)
+
+
 @flow(name="monthly_clinic_supply_performance_flow")
 def monthly_clinic_supply_performance_flow(
     month_start: date | None = None,
 ) -> dict[str, Any]:
-    """Main ETL flow: extract → transform → load; eval snapshot is optional."""
+    """Main ETL flow — thin coordinator over the extract/transform/load subflows.
+
+    Owns run-lifecycle audit (pipeline_runs) and phase transitions; delegates all
+    ETL logic to the subflows. The optional snapshot subflow is invoked with
+    ``return_state=True`` so it cannot fail a committed run.
+    """
     resolved_month = month_start or _previous_month_start()
     run_uuid = uuid4()
     run_id = str(run_uuid)
@@ -605,30 +824,26 @@ def monthly_clinic_supply_performance_flow(
     try:
         _start_pipeline_run(run_uuid, resolved_month)
 
-        events = extract_supply_telemetry(resolved_month)
+        events = extract_supply_telemetry_flow(resolved_month)
         records_extracted = len(events)
         _set_pipeline_phase(run_uuid, "transform")
 
-        kpi_rows = transform_monthly_clinic_kpis(events, resolved_month)
+        kpi_rows = transform_monthly_clinic_kpis_flow(events, resolved_month)
         _set_pipeline_phase(run_uuid, "load")
 
-        load_state = load_monthly_clinic_supply_performance(
-            kpi_rows, resolved_month, return_state=True
+        load_result = load_monthly_clinic_supply_performance_flow(
+            kpi_rows, resolved_month
         )
-        if load_state is None or not load_state.is_completed():
-            raise RuntimeError(
-                f"load_monthly_clinic_supply_performance failed: {load_state}"
-            )
-        load_result = load_state.result()
         records_processed = load_result["records_processed"]
 
-        snapshot_state = write_eval_snapshot(
+        snapshot_state = snapshot_monthly_clinic_kpis_flow(
             kpi_rows, resolved_month, return_state=True
         )
         snapshot_ok = snapshot_state is not None and snapshot_state.is_completed()
         if not snapshot_ok:
             logger.warning(
-                "write_eval_snapshot failed (non-critical); KPI load already committed. state=%s",
+                "snapshot_monthly_clinic_kpis_flow failed (non-critical); "
+                "KPI load already committed. state=%s",
                 snapshot_state,
             )
 

@@ -41,6 +41,12 @@ export const WORK_NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    id: "reporting",
+    label: "Reporting",
+    href: "/reporting",
+    items: [],
+  },
+  {
     id: "telemetry",
     label: "Telemetry",
     href: "/telemetry",
