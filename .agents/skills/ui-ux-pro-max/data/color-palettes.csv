@@ -1,0 +1,11 @@
+name,primary,secondary,accent,background,text,industry,mood,description
+SaaS Professional,#2563EB,#64748B,#0EA5E9,#FFFFFF,#1E293B,"saas,tech,dashboard","professional,trustworthy,clean","Classic SaaS blue palette for trust and professionalism"
+Minimal Tech,#1F2328,#4B5563,#C62828,#FFFFFF,#1F2328,"tech,minimal,developer-tools","technical,modern,distinctive","GallaDev brand palette: Grafito structure, Rojo accent"
+FinTech Trust,#0F172A,#1E293B,#10B981,#FFFFFF,#0F172A,"fintech,banking,finance","secure,stable,premium","Dark navy with emerald for financial trust"
+Healthcare Calm,#065F46,#047857,#10B981,#F0FDF4,#064E3B,"healthcare,medical,wellness","calm,healing,natural","Green-based palette for health and wellness"
+E-commerce Energy,#DC2626,#991B1B,#F59E0B,#FFF7ED,#7C2D12,"ecommerce,retail,marketplace","energetic,urgent,warm","Red/orange for conversion and urgency"
+Creative Portfolio,#7C3AED,#5B21B6,#EC4899,#FAF5FF,#4C1D95,"creative,design,portfolio","expressive,artistic,modern","Purple/pink for creative industries"
+Enterprise Serious,#111827,#374151,#3B82F6,#FFFFFF,#111827,"enterprise,b2b,corporate","serious,authoritative,stable","Dark gray with blue for enterprise sales"
+Startup Vibrant,#F97316,#EA580C,#EAB308,#FFF7ED,#9A3412,"startup,innovation,vc","vibrant,optimistic,bold","Orange/yellow for startup energy"
+Developer Tools,#18181B,#3F3F46,#A855F7,#FAFAFA,#18181B,"developer,tools,cli","technical,precise,dark","Dark theme with purple for dev tools"
+Education Friendly,#2563EB,#1D4ED8,#F59E0B,#EFF6FF,#1E3A8A,"education,learning,edtech","friendly,approachable,structured","Blue/yellow for learning platforms"

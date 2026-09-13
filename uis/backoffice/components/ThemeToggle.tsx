@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Moon, Sun } from "lucide-react";
 import {
   applyTheme,
   getPreferredTheme,
@@ -10,27 +11,6 @@ import {
 
 interface ThemeToggleProps {
   className?: string;
-}
-
-function SunIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true">
-      <circle cx="12" cy="12" r="3.5" />
-      <path strokeLinecap="round" d="M12 3v1.5M12 19.5V21M3 12h1.5M19.5 12H21M5.6 5.6l1.1 1.1M17.3 17.3l1.1 1.1M5.6 18.4l1.1-1.1M17.3 6.7l1.1-1.1" />
-    </svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M20.5 14.2A7.5 7.5 0 0 1 9.8 3.5 7.8 7.8 0 1 0 20.5 14.2z"
-      />
-    </svg>
-  );
 }
 
 export function ThemeToggle({ className = "" }: ThemeToggleProps) {
@@ -52,7 +32,15 @@ export function ThemeToggle({ className = "" }: ThemeToggleProps) {
       title={theme === "dark" ? "Light mode" : "Dark mode"}
       onClick={() => setThemeState(toggleTheme())}
     >
-      {mounted ? (theme === "dark" ? <SunIcon /> : <MoonIcon />) : <MoonIcon />}
+      {mounted ? (
+        theme === "dark" ? (
+          <Sun size={20} strokeWidth={2} aria-hidden="true" />
+        ) : (
+          <Moon size={20} strokeWidth={2} aria-hidden="true" />
+        )
+      ) : (
+        <Moon size={20} strokeWidth={2} aria-hidden="true" />
+      )}
     </button>
   );
 }

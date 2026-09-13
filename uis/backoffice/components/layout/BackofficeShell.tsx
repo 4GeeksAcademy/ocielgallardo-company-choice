@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { LogOut } from "lucide-react";
 import { AccountMenu } from "@/components/layout/AccountMenu";
 import { DesktopSidebar } from "@/components/layout/DesktopSidebar";
 import { MobileBottomBar } from "@/components/layout/MobileBottomBar";
@@ -58,6 +59,7 @@ export function BackofficeShell({ children }: BackofficeShellProps) {
                   clearSessionAndRedirectToLogin();
                 }}
               >
+                <LogOut size={14} strokeWidth={2} aria-hidden="true" />
                 Cerrar sesión
               </Button>
             </div>

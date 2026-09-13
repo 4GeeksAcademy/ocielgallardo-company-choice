@@ -1,5 +1,13 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import {
+  Boxes,
+  ClipboardList,
+  PackageMinus,
+  Siren,
+  Truck,
+  Users,
+} from "lucide-react";
 import { LazyWhenVisible } from "@/components/ui/LazyWhenVisible";
 import { PanelPlaceholder } from "@/components/ui/PanelPlaceholder";
 
@@ -20,31 +28,37 @@ const MODULES = [
     href: "/incidents",
     title: "Incidents",
     description: "Register, filter, and update incident status across clinics.",
+    icon: Siren,
   },
   {
     href: "/incidents/summary",
     title: "Incident summary",
     description: "Aggregated metrics by status, category, origin, and branch.",
+    icon: ClipboardList,
   },
   {
     href: "/suppliers",
     title: "Suppliers",
     description: "Supplier directory with filters, rates, and status controls.",
+    icon: Truck,
   },
   {
     href: "/inventory/products",
     title: "Suministros",
     description: "Medical supplies list with current stock and level badges.",
+    icon: Boxes,
   },
   {
     href: "/inventory/orders",
     title: "Historial de órdenes",
     description: "Inbound deliveries and outbound consumption history.",
+    icon: PackageMinus,
   },
   {
     href: "/applications",
     title: "People & Talent",
     description: "Candidate pipeline tracker integrated with external API.",
+    icon: Users,
   },
 ] as const;
 
@@ -72,7 +86,15 @@ export default function HomePage() {
             href={module.href}
             className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-500"
           >
-            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">{module.title}</h2>
+            <span className="flex items-center gap-2.5">
+              <module.icon
+                size={18}
+                strokeWidth={2}
+                aria-hidden="true"
+                className="shrink-0 text-blue-600 dark:text-blue-400"
+              />
+              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">{module.title}</h2>
+            </span>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{module.description}</p>
           </Link>
         ))}

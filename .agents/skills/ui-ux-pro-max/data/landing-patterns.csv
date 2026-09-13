@@ -1,0 +1,12 @@
+name,structure,cta_placement,description,best_for
+Hero + Features,"hero,features,social-proof,cta","hero + footer","Classic SaaS landing with hero, feature grid, testimonials","SaaS, B2B, Enterprise"
+Video-First,"hero-video,benefits,demo,pricing","hero + sticky","Video hero with product demo, benefits, pricing","Product-led, Developer tools"
+Interactive Demo,"hero-interactive,features,use-cases,cta","hero + inline","Interactive product demo in hero section","Developer tools, APIs, Platforms"
+Problem-Solution,"problem,solution,features,proof,cta","problem + cta","Lead with problem, then solution","Early-stage, Niche products"
+Social Proof Heavy,"hero,testimonials,logos,features,pricing,cta","multiple","Trust-focused with logos and testimonials","Enterprise, High-trust"
+Minimalist,"hero,one-feature,cta","hero only","Ultra-minimal with single focus","Developer tools, Technical products"
+Pricing-First,"hero,pricing,features,faq,cta","pricing section","Transparent pricing upfront","Self-serve, PLG products"
+Comparison,"hero,comparison,features,testimonials,cta","comparison + cta","Direct competitor comparison","Competitive markets, Alternatives"
+Storytelling,"hero-story,journey,features,proof,cta","story + cta","Narrative-driven with customer journey","Brand-focused, Premium"
+Feature Tour,"hero,tour,features,integration,cta","tour + cta","Step-by-step feature walkthrough","Complex products, Platforms"
+Waitlist/Launch,"hero,benefits,waitlist,social-proof","hero + waitlist","Pre-launch with waitlist capture","Pre-launch, Beta products"

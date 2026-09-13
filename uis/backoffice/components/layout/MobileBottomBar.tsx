@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Building2, LayoutDashboard } from "lucide-react";
 import { DASHBOARD_HREF, isPathActive } from "@/components/layout/navConfig";
 
 interface MobileBottomBarProps {
@@ -26,25 +27,27 @@ export function MobileBottomBar({
         <Link
           href={DASHBOARD_HREF}
           aria-current={dashboardActive ? "page" : undefined}
-          className={`flex flex-col items-center justify-center text-xs font-medium transition ${
+          className={`flex flex-col items-center justify-center gap-0.5 text-xs font-medium transition ${
             dashboardActive
               ? "text-blue-700 dark:text-blue-300"
-              : "text-slate-700 dark:text-slate-200 hover:text-blue-700 dark:text-slate-300 dark:hover:text-blue-300"
+              : "text-slate-700 hover:text-blue-700 dark:text-slate-300 dark:hover:text-blue-300"
           }`}
         >
+          <LayoutDashboard size={18} strokeWidth={2} aria-hidden="true" />
           Dashboard
         </Link>
         <button
           type="button"
-          className={`flex flex-col items-center justify-center text-xs font-medium transition ${
+          className={`flex flex-col items-center justify-center gap-0.5 text-xs font-medium transition ${
             officeOpen
               ? "text-blue-700 dark:text-blue-300"
-              : "text-slate-700 dark:text-slate-200 hover:text-blue-700 dark:text-slate-300 dark:hover:text-blue-300"
+              : "text-slate-700 hover:text-blue-700 dark:text-slate-300 dark:hover:text-blue-300"
           }`}
           aria-expanded={officeOpen}
           aria-controls="office-menu-panel"
           onClick={onOfficeToggle}
         >
+          <Building2 size={18} strokeWidth={2} aria-hidden="true" />
           Office
         </button>
       </div>
