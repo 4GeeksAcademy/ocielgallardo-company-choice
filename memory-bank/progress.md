@@ -29,6 +29,14 @@
 - Docker backend image installs `pandas` via `services/requirements.txt` (dev) / `pyproject.toml` (prod). Dev/prod Dockerfiles use OS TLS + `ca-certificates`, with an insecure-host fallback if PyPI SSL fails on Docker Desktop. `GET /telemetry/report` lazy-imports the Pandas pipeline so auth/inventory still boot if that import fails.
 - Caching optimisation milestone: **Phase 5 complete** — in-memory TTL cache + invalidation on inventory list endpoints; report closed.
 
+## Recently Completed (main sync 8b7406a + PR #32)
+
+- Source commit `8b7406a` (`feat: update requirements and enhance backoffice layout`) was 1 ahead of `origin/main`: `services/requirements.txt` (+`prefect>=3`), `uis/backoffice/app/layout.tsx` (+`suppressHydrationWarning`), `uis/backoffice/components/layout/navConfig.ts` (+`BarChart3` on reporting group).
+- Partial cherry-pick `15a7e58` onto `feature/backoffice-ui-ux` (pushed to `origin/feature/backoffice-ui-ux`): only requirements + layout; `navConfig.ts` reporting hunk omitted because that branch has no `/reporting` route (reporting arrived on `main` via pipeline-enhancement). Full cherry-pick conflicts on `navConfig.ts`; partial avoids a dead nav link.
+- PR #32 (`feature/backoffice-layout-sync` -> `main`): 3 files, 7 insertions, 1 deletion; focused publish path for `8b7406a` (avoids backwards `feature/backoffice-ui-ux` -> `main` diff with ~1551 deletions).
+- Validation: `npm run lint` 16 problems identical to clean-`main` baseline (pre-existing); `npx tsc --noEmit` source clean (only stale gitignored `.next/dev` reporting types); `git diff --stat origin/main..HEAD` verified.
+- TODO: manual browser pass for theme hydration + reporting icon on `main`; merge PR #32 then sync `feature/backoffice-ui-ux` with `main` if needed.
+
 ## Recently Completed (backoffice UI/UX icons + form-validation rule)
 
 - Branch: `feature/backoffice-ui-ux` (cut from `main`).
