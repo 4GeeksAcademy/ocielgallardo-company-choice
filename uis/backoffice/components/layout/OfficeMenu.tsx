@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   WORK_NAV_GROUPS,
   isGroupActive,
@@ -36,18 +37,22 @@ function OfficeGroup({
 
   if (!hasChildren && group.href) {
     const active = isPathActive(pathname, group.href);
+    const GroupIcon = group.icon;
     return (
       <Link
         href={group.href}
         aria-current={active ? "page" : undefined}
-        className={`block rounded-md px-3 py-2.5 text-sm transition ${linkClassName(active)}`}
+        className={`flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm transition ${linkClassName(active)}`}
         onClick={onNavigate}
       >
+        <GroupIcon size={16} strokeWidth={2} aria-hidden="true" className="shrink-0" />
         {group.label}
       </Link>
     );
   }
 
+  const GroupIcon = group.icon;
+  const ChevronIcon = expanded ? ChevronDown : ChevronRight;
   return (
     <div>
       <button
@@ -55,15 +60,16 @@ function OfficeGroup({
         className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm font-medium transition ${
           groupActive
             ? "text-blue-700 dark:text-blue-300"
-            : "text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            : "text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
         }`}
         aria-expanded={expanded}
         onClick={() => setExpanded((value) => !value)}
       >
-        <span>{group.label}</span>
-        <span className="text-xs text-slate-400" aria-hidden="true">
-          {expanded ? "▾" : "▸"}
+        <span className="flex items-center gap-2.5">
+          <GroupIcon size={16} strokeWidth={2} aria-hidden="true" className="shrink-0" />
+          {group.label}
         </span>
+        <ChevronIcon size={14} strokeWidth={2} aria-hidden="true" className="text-slate-400" />
       </button>
       {expanded ? (
         <ul className="mt-1 space-y-0.5 border-l border-slate-200 ml-3 pl-2 dark:border-slate-700">
@@ -135,7 +141,7 @@ export function OfficeMenu({ open, onClose }: OfficeMenuProps) {
         style={{ marginBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="sticky top-0 border-b border-slate-100 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 dark:text-slate-300">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Office
           </p>
         </div>

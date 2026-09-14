@@ -1,6 +1,17 @@
+import type { LucideIcon } from "lucide-react";
+import {
+  Activity,
+  Boxes,
+  LayoutDashboard,
+  Siren,
+  Truck,
+  Users,
+} from "lucide-react";
+
 export interface NavLinkItem {
   href: string;
   label: string;
+  icon?: LucideIcon;
 }
 
 export interface NavGroup {
@@ -8,15 +19,19 @@ export interface NavGroup {
   label: string;
   /** When set and items is empty/omitted, the group label itself is a link. */
   href?: string;
+  icon: LucideIcon;
   items: NavLinkItem[];
 }
 
 export const DASHBOARD_HREF = "/" as const;
 
+export const DASHBOARD_ICON = LayoutDashboard;
+
 export const WORK_NAV_GROUPS: NavGroup[] = [
   {
     id: "incidents",
     label: "Incidents",
+    icon: Siren,
     items: [
       { href: "/incidents", label: "List" },
       { href: "/incidents/new", label: "New incident" },
@@ -28,11 +43,13 @@ export const WORK_NAV_GROUPS: NavGroup[] = [
     id: "suppliers",
     label: "Suppliers",
     href: "/suppliers",
+    icon: Truck,
     items: [],
   },
   {
     id: "inventory",
     label: "Inventory",
+    icon: Boxes,
     items: [
       { href: "/inventory/products", label: "Suministros" },
       { href: "/inventory/orders/inbound", label: "Registrar entrega" },
@@ -50,12 +67,14 @@ export const WORK_NAV_GROUPS: NavGroup[] = [
     id: "telemetry",
     label: "Telemetry",
     href: "/telemetry",
+    icon: Activity,
     items: [],
   },
   {
     id: "people-talent",
     label: "People & Talent",
     href: "/applications",
+    icon: Users,
     items: [],
   },
 ];

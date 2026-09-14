@@ -29,6 +29,15 @@
 - Docker backend image installs `pandas` via `services/requirements.txt` (dev) / `pyproject.toml` (prod). Dev/prod Dockerfiles use OS TLS + `ca-certificates`, with an insecure-host fallback if PyPI SSL fails on Docker Desktop. `GET /telemetry/report` lazy-imports the Pandas pipeline so auth/inventory still boot if that import fails.
 - Caching optimisation milestone: **Phase 5 complete** — in-memory TTL cache + invalidation on inventory list endpoints; report closed.
 
+## Recently Completed (backoffice UI/UX icons + form-validation rule)
+
+- Branch: `feature/backoffice-ui-ux` (cut from `main`).
+- Rules: `.agents/rules/design.md` §11 (backoffice icon/nav/state/dark operating rules, no-rebranding guardrail); new `.agents/rules/form-validation.md` (canonical `RegisterForm` pattern, per-field errors, `getFieldErrors()` mapping, a11y).
+- Backoffice (`uis/backoffice`): `lucide-react` added; icons in `navConfig` + `DesktopSidebar` + `OfficeMenu` + `MobileBottomBar` + dashboard `MODULES` + logout; `ThemeToggle` uses lucide `Sun`/`Moon`; `▾/▸` replaced with chevrons; duplicate `dark:*` classes cleaned in `Input`/`Select`/`Button`/`AccountMenu`/`OfficeMenu`.
+- Docs: `docs/backoffice/UI-UX-IMPROVEMENT.md`.
+- Validation: `npx tsc --noEmit` clean; `npm run lint` 16 problems identical to clean-`main` baseline (pre-existing); `npm run build` blocked by Google Fonts TLS in this environment (known limitation, unrelated).
+- TODO: form locale policy; `LoginForm` per-field migration; `SupplierForm` status retype; manual browser pass light/dark + mobile + screen reader.
+
 ## Recently Completed (business performance pipeline — Part 2 Phases 4–5)
 
 - Phase 4 docs: `PIPELINE_DESIGN.md` / `.es.md` §6.3 — CLI + monthly cadence marked implemented.

@@ -1,0 +1,11 @@
+name,keywords,compatible_stacks,description
+Minimalism,"clean,simple,professional,tech,minimal","react,nextjs,shadcn,vue,svelte","Clean, uncluttered interfaces with focus on content and usability"
+Glassmorphism,"modern,transparent,blur,frosted","react,nextjs,vue","Translucent layers with background blur for depth"
+Brutalism,"bold,raw,unconventional,expressive","react,nextjs","Raw, unpolished aesthetic with strong typography"
+Dark Mode,"dark,night,low-light,accessibility","all","Systematic dark theme with proper contrast ratios"
+Neumorphism,"soft,extruded,3d,tactile","react,nextjs","Soft UI with subtle shadows for depth perception"
+Aurora UI,"gradient,animated,colorful,dynamic","react,nextjs","Animated gradient backgrounds with organic motion"
+Bento Grid,"grid,modular,organized,japanese","react,nextjs,vue","Modular grid layout inspired by Japanese bento boxes"
+Claymorphism,"clay,soft,3d,playful","react,nextjs","Soft 3D appearance with inner/outer shadows"
+Cyberpunk,"neon,high-contrast,futuristic,tech","react,nextjs","High contrast neon aesthetics for tech products"
+Organic Shapes,"fluid,natural,rounded,friendly","react,nextjs,vue","Natural, non-geometric shapes for approachable feel"
