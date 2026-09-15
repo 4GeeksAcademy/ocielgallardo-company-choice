@@ -53,6 +53,10 @@ def ensure_job_runs_schema(engine: Engine) -> None:
     by this module (server defaults never need evaluation).
     """
     sql = SCHEMA_SQL_PATH.read_text(encoding="utf-8")
+    # Drop full-line comments so statement detection is not offset by the header.
+    sql = "\n".join(
+        line for line in sql.splitlines() if not line.strip().startswith("--")
+    )
     dialect = engine.dialect.name
     with engine.begin() as conn:
         for chunk in sql.split(";"):

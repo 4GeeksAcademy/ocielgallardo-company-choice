@@ -5,10 +5,14 @@
 -- the pipeline subprocess runs. job_runs records the orchestration layer only
 -- (lock via `processing`, idempotency via (job_name, target_date)).
 
+-- NOTE: ids and timestamps are always supplied by services.job_runner, so this
+-- DDL carries no function-based server defaults and also applies on SQLite
+-- (used by tests/nightly/). The CHECK + index behave the same on both.
+
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS job_runs (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id            UUID PRIMARY KEY,
   job_name      TEXT NOT NULL,
   target_date   DATE NOT NULL,
   status        TEXT NOT NULL DEFAULT 'pending'
@@ -16,7 +20,7 @@ CREATE TABLE IF NOT EXISTS job_runs (
   started_at    TIMESTAMPTZ,
   finished_at   TIMESTAMPTZ,
   error_message TEXT,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at    TIMESTAMPTZ NOT NULL
 );
 
 -- Idempotency lookups: completed-for-date and live-lock checks per job.

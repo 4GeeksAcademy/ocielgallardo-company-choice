@@ -152,10 +152,29 @@ def export_telemetry_csv(engine, target: date, raw_dir: Path) -> dict[str, objec
     return {"path": str(path), "rows": len(rows), "skipped": False}
 
 
+def _split_pipeline_cmd(value: str) -> list[str]:
+    """Split a ``PIPELINE_CMD`` override portably.
+
+    POSIX uses standard shell splitting. On Windows (``posix=False``) shlex
+    keeps quote characters inside tokens, so one layer of matching surrounding
+    quotes is stripped per token — backslashes in paths stay intact.
+    """
+    parts = shlex.split(value.strip(), posix=(os.name != "nt"))
+    if os.name == "nt":
+        stripped = []
+        for part in parts:
+            if len(part) >= 2 and part[0] == part[-1] and part[0] in "\"'":
+                stripped.append(part[1:-1])
+            else:
+                stripped.append(part)
+        return stripped
+    return parts
+
+
 def _default_pipeline_cmd() -> list[str]:
     override = os.getenv("PIPELINE_CMD")
     if override is not None and override.strip():
-        return shlex.split(override.strip(), posix=(os.name != "nt"))
+        return _split_pipeline_cmd(override)
     # Hito 6 entry point: monthly pipeline CLI (idempotent upsert + run lock).
     return [sys.executable, "data/pipelines/pipeline.py"]
 
