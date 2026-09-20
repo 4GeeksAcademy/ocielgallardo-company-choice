@@ -143,3 +143,12 @@ class TelemetryReportMetrics(BaseModel):
 class TelemetryReportResponse(BaseModel):
     period: TelemetryReportPeriod
     metrics: TelemetryReportMetrics
+
+
+class TaskStatusResponse(BaseModel):
+    """Public status envelope for a Celery task."""
+
+    task_id: str
+    status: str
+    result: object | None = None
+    error: str | None = None
