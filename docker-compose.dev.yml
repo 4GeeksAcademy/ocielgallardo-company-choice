@@ -38,6 +38,30 @@ services:
     volumes:
       - ./:/app
 
+  worker:
+    build:
+      context: ./services
+      dockerfile: Dockerfile
+    environment:
+      PYTHONPATH: /app/packages/shared
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    command: celery -A services.app.tasks.celery_app:celery_app worker --loglevel=info
+    volumes:
+      - ./:/app
+
+  flower:
+    build:
+      context: ./services
+      dockerfile: Dockerfile
+    environment:
+      PYTHONPATH: /app/packages/shared
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    command: celery -A services.app.tasks.celery_app:celery_app flower --port=5555
+    volumes:
+      - ./:/app
+    ports:
+      - "5555:5555"
+
 volumes:
   uis_website_node_modules:
   uis_backoffice_node_modules:
