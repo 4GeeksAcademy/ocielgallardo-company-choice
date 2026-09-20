@@ -100,6 +100,36 @@ Read the linked `README.md` inside each folder before you start coding there.
 
 → See [`services/README.md`](./services/README.md)
 
+### Background worker operations
+
+The long-running monthly reporting pipeline is queued through Celery. Redis is
+the shared broker and result backend for the API, worker, and Flower.
+
+Start the complete stack:
+
+```bash
+docker compose up --build
+```
+
+Start or stop only the worker:
+
+```bash
+docker compose up worker
+docker compose stop worker
+```
+
+Flower is available at `http://localhost:5555`. Submit a reporting run through
+`POST /reporting/pipeline-runs`, then poll `GET /tasks/{task_id}`. The endpoint
+returns `202 Accepted` with a task ID; task states are `pending`, `started`,
+`success`, and `failure`.
+
+Set `REDIS_URL` in `.env` when overriding the Compose default. Messages contain
+only small references such as `month_start`, never report payloads or PHI.
+Celery retries a failed task up to three times with exponential backoff. A task
+that exhausts its retries is recorded in the `task_dead_letters` database table
+with its task ID, attempt, complete error message, payload reference, and UTC
+timestamp.
+
 ### `data/` — datasets, pipelines, and evaluation
 
 **Purpose:** Everything data-related, from raw files to production-ready tables.

@@ -83,3 +83,29 @@ Incident analysis business logic lives under `incidents_analysis/` and is reused
 Incident CSV analysis lives under `incidents_analysis/` (validator rules shared via `healthcore_shared`) and is reused by `app/domain/incident_service`. The **incident manager** persists rows in TinyDB and exposes authenticated CRUD/summary/status endpoints (`incident_manager_service`). AUTH-01 JWT protection applies to users (except register), suppliers, and manager incident routes; CSV analyze/export remain public. AUTH-03 adds forgot/reset/change-password with Resend. Backoffice AUTH-02/03 attach Bearer from `localStorage` after `/login` or `/register` and expose password recovery UI. Other domain folders (`gateway`, `clinical-operations`, `revenue-cycle`, `compliance`) remain placeholders.
 
 > Spanish version: [README.es.md](./README.es.md).
+
+## Asynchronous reporting tasks
+
+`POST /reporting/pipeline-runs` queues the long-running monthly reporting pipeline
+with Celery and returns `202 Accepted` immediately:
+
+```json
+{"task_id": "<celery-task-id>", "status": "pending"}
+```
+
+Authenticated clients can poll `GET /tasks/{task_id}`. The public task states are
+`pending`, `started`, `success`, and `failure`; successful tasks include `result`.
+Transient failures are retried up to three times with exponential backoff. The
+final failure is persisted in the `task_dead_letters` database table with task
+ID, attempt, and error. Tasks have a 15-minute soft limit and a 16-minute hard
+limit.
+
+Start the development stack from the repository root:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+Redis is available to the containers as `redis:6379`; the API and worker use the
+same broker. The Celery worker runs as a separate process and Flower is available
+at `http://localhost:5555`.
