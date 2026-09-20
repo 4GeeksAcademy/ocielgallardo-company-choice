@@ -39,7 +39,7 @@ services:
     env_file:
       - .env
     environment:
-      PYTHONPATH: /app/packages/shared
+      PYTHONPATH: /app:/app/packages/shared
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3001}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
@@ -71,7 +71,7 @@ services:
     env_file:
       - .env
     environment:
-      PYTHONPATH: /app/packages/shared
+      PYTHONPATH: /app:/app/packages/shared
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       DATABASE_URL: ${DATABASE_URL:-}
       SUPABASE_DB_HOST: ${SUPABASE_DB_HOST:-}
@@ -93,7 +93,7 @@ services:
     container_name: healthcore-flower
     working_dir: /app
     environment:
-      PYTHONPATH: /app/packages/shared
+      PYTHONPATH: /app:/app/packages/shared
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     command: ["celery", "-A", "services.app.tasks.celery_app:celery_app", "flower", "--port=5555"]
     depends_on:
