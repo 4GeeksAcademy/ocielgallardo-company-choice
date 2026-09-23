@@ -93,4 +93,30 @@ PYTHONPATH=packages/shared uv run python scripts/seed_incidents.py
 La lógica de análisis de incidentes vive en `incidents_analysis/` y se reutiliza vía `app/domain/incident_service`. AUTH-01 aplica JWT a users (salvo registro) y a todas las rutas de suppliers; inventario exige Bearer. Incidents siguen públicas por ahora. Los demás dominios (`gateway`, `clinical-operations`, `revenue-cycle`, `compliance`) siguen como placeholders.
 La lógica de análisis CSV vive en `incidents_analysis/` (reglas vía `healthcore_shared`) y se reutiliza con `app/domain/incident_service`. El **gestor de incidencias** persiste en TinyDB y expone CRUD/summary/status autenticados (`incident_manager_service`). AUTH-01 aplica JWT a users (salvo registro), suppliers y rutas del gestor; analyze/export CSV siguen públicos. AUTH-03 añade forgot/reset/change-password con Resend. El backoffice (AUTH-02/03) adjunta Bearer desde `localStorage` tras `/login` o `/register` y expone la UI de recuperación. Los demás dominios (`gateway`, `clinical-operations`, `revenue-cycle`, `compliance`) siguen como placeholders.
 
+## Tareas asíncronas de reporting
+
+`POST /reporting/pipeline-runs` encola el pipeline mensual de reporting con Celery y
+devuelve inmediatamente `202 Accepted`:
+
+```json
+{"task_id": "<celery-task-id>", "status": "pending"}
+```
+
+El cliente autenticado puede consultar `GET /tasks/{task_id}`. Los estados públicos
+son `pending`, `started`, `success` y `failure`; las tareas exitosas incluyen
+`result`. Los fallos transitorios se reintentan hasta tres veces con backoff
+exponencial. El fallo final se persiste en la tabla de base de datos
+`task_dead_letters` con task ID, intento y error. Las tareas tienen un límite
+blando de 15 minutos y un límite duro de 16 minutos.
+
+Inicia el stack de desarrollo desde la raíz:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+Redis está disponible para los contenedores como `redis:6379`; la API y el worker
+usan el mismo broker. El worker corre como proceso separado y Flower está
+disponible en `http://localhost:5555`.
+
 > English version: [README.md](./README.md).

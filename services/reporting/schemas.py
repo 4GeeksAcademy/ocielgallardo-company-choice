@@ -37,6 +37,13 @@ class TriggerPipelineRunRequest(BaseModel):
     )
 
 
+class PipelineTaskResponse(BaseModel):
+    """Acknowledgement returned after a pipeline run is queued."""
+
+    task_id: str
+    status: str
+
+
 class ClinicSupplyPerformanceRow(BaseModel):
     clinic_id: str
     country: str

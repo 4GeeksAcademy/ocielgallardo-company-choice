@@ -1,5 +1,14 @@
 # Production stack (default). Hot-reload dev overlay: docker-compose.dev.yml
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: healthcore-redis
+    command: ["redis-server", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "6379:6379"
+    networks:
+      - healthcore_net
+
   uis:
     build:
       context: .
@@ -30,7 +39,7 @@ services:
     env_file:
       - .env
     environment:
-      PYTHONPATH: /app/packages/shared
+      PYTHONPATH: /app:/app/packages/shared
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3001}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
@@ -45,8 +54,52 @@ services:
       SUPABASE_DB_SSLMODE: ${SUPABASE_DB_SSLMODE:-}
       EMAIL_SSL_VERIFY: ${EMAIL_SSL_VERIFY:-true}
       PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: ${PASSWORD_RESET_TOKEN_EXPIRE_MINUTES:-30}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     ports:
       - "8000:8000"
+    depends_on:
+      - redis
+    networks:
+      - healthcore_net
+
+  worker:
+    build:
+      context: .
+      dockerfile: services/Dockerfile.prod
+    container_name: healthcore-worker
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app:/app/packages/shared
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      DATABASE_URL: ${DATABASE_URL:-}
+      SUPABASE_DB_HOST: ${SUPABASE_DB_HOST:-}
+      SUPABASE_DB_PORT: ${SUPABASE_DB_PORT:-}
+      SUPABASE_DB_NAME: ${SUPABASE_DB_NAME:-}
+      SUPABASE_DB_USER: ${SUPABASE_DB_USER:-}
+      SUPABASE_DB_PASSWORD: ${SUPABASE_DB_PASSWORD:-}
+      SUPABASE_DB_SSLMODE: ${SUPABASE_DB_SSLMODE:-}
+    command: ["celery", "-A", "services.app.tasks.celery_app:celery_app", "worker", "--loglevel=info"]
+    depends_on:
+      - redis
+    networks:
+      - healthcore_net
+
+  flower:
+    build:
+      context: .
+      dockerfile: services/Dockerfile.prod
+    container_name: healthcore-flower
+    working_dir: /app
+    environment:
+      PYTHONPATH: /app:/app/packages/shared
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    command: ["celery", "-A", "services.app.tasks.celery_app:celery_app", "flower", "--port=5555"]
+    depends_on:
+      - redis
+    ports:
+      - "5555:5555"
     networks:
       - healthcore_net
 

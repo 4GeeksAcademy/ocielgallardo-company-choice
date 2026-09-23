@@ -1,7 +1,9 @@
 bcrypt==4.0.1
+celery[redis]>=5.5
 certifi>=2026.7.22
 email-validator>=2.3.0
 fastapi>=0.141.1
+flower>=2.0
 pandas>=2.2
 passlib[bcrypt]>=1.7.4
 prefect>=3

@@ -15,6 +15,7 @@ from services.app.core.database import is_inventory_db_configured
 from services.app.models.user import UserPublic
 from services.reporting.schemas import (
     MonthlyClinicSupplyPerformanceResponse,
+    PipelineTaskResponse,
     PipelineRunResponse,
     TriggerPipelineRunRequest,
     pipeline_run_from_dict,
@@ -56,7 +57,8 @@ def get_latest_pipeline_run_endpoint(
 
 @router.post(
     "/pipeline-runs",
-    response_model=PipelineRunResponse,
+    response_model=PipelineTaskResponse,
+    status_code=status.HTTP_202_ACCEPTED,
     summary="Trigger a monthly clinic supply performance run",
 )
 def trigger_pipeline_run_endpoint(
@@ -66,31 +68,20 @@ def trigger_pipeline_run_endpoint(
         description="Optional month_start (ISO date). Overrides body when both set.",
     ),
     _current_user: UserPublic = Depends(get_current_user),
-) -> PipelineRunResponse:
-    """Run the ETL synchronously (same path as CLI when Prefect API is unset)."""
+) -> PipelineTaskResponse:
+    """Queue the ETL and return before the worker completes it."""
     _require_db()
-    from data.pipelines.pipeline import trigger_monthly_clinic_supply_performance_run
 
     resolved = month_start
     if resolved is None and body is not None:
         resolved = body.month_start
 
-    try:
-        result = trigger_monthly_clinic_supply_performance_run(month_start=resolved)
-    except RuntimeError as exc:
-        logger.exception("pipeline trigger failed (config)")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
-    except Exception as exc:  # noqa: BLE001 — surface ETL failure to client
-        logger.exception("pipeline trigger failed")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Pipeline run failed: {exc}",
-        ) from exc
+    from services.app.tasks.reporting import run_pipeline_task
 
-    return pipeline_run_from_dict(result)
+    task = run_pipeline_task.apply_async(
+        kwargs={"month_start": resolved.isoformat() if resolved else None}
+    )
+    return PipelineTaskResponse(task_id=task.id, status="pending")
 
 
 @router.get(

@@ -2,6 +2,17 @@
 
 ## Current Status Snapshot
 
+- Asynchronous reporting tasks: `POST /reporting/pipeline-runs` queues the monthly
+  pipeline through Celery and returns `202` with `task_id`; `GET /tasks/{task_id}`
+  exposes `pending|started|success|failure`. Redis is the shared broker/result
+  backend with `noeviction`, the worker runs separately in Compose, Flower is
+  exposed on `:5555`, and Celery performs the initial execution plus up to three
+  exponential-backoff retries. Final failures are persisted in
+  `task_dead_letters` with task ID, task name, final attempt, complete error,
+  small payload reference, and UTC timestamp. Logging includes task ID, attempt,
+  status, duration, and error. Validation: `uv run python -m pytest` passes 26
+  tests; `docker compose config`, compileall, and `git diff --check` pass.
+
 - Business performance pipeline Part 1 (**design**): `data/pipelines/PIPELINE_DESIGN.md` — Monthly Clinic Supply Performance Report for Dr. Okonkwo / Claire; KPIs from mandatory inventory telemetry; destination `reporting.monthly_clinic_supply_performance`.
 - Business performance pipeline Part 2 **Phase 1** (flows/tasks): `data/pipelines/pipeline.py` — Prefect `@flow` + extract/transform/load + optional `write_eval_snapshot`.
 - Business performance pipeline Part 2 **Phase 2** (resilience): DB tasks `retries=3` / `retry_delay_seconds=10`; transform `cache_key_fn=task_input_hash` + `cache_expiration=1h`; flow handles load + eval snapshot via `return_state=True`.

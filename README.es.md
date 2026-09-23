@@ -85,6 +85,36 @@ Lee el `README.md` enlazado dentro de cada carpeta antes de empezar a programar 
 
 → Ver [`uis/README.md`](./uis/README.md)
 
+### Operación del worker en segundo plano
+
+El pipeline mensual de reporting se encola mediante Celery. Redis es el broker y
+backend de resultados compartido por la API, el worker y Flower.
+
+Inicia todo el stack:
+
+```bash
+docker compose up --build
+```
+
+Inicia o detén solamente el worker:
+
+```bash
+docker compose up worker
+docker compose stop worker
+```
+
+Flower está disponible en `http://localhost:5555`. Envía una ejecución de
+reporting a `POST /reporting/pipeline-runs` y consulta después
+`GET /tasks/{task_id}`. El endpoint devuelve `202 Accepted` con un task ID; los
+estados son `pending`, `started`, `success` y `failure`.
+
+Configura `REDIS_URL` en `.env` si necesitas sobrescribir el valor por defecto
+de Compose. Los mensajes contienen únicamente referencias pequeñas como
+`month_start`, nunca payloads de reportes ni PHI. Celery reintenta una tarea
+fallida hasta tres veces con backoff exponencial. Una tarea que agota los
+reintentos se registra en la tabla de base de datos `task_dead_letters` con task
+ID, intento, mensaje de error completo, referencia del payload y timestamp UTC.
+
 ### `services/` — API centralizada de la empresa (FastAPI)
 
 **Propósito:** Un **backend FastAPI centralizado** para toda la empresa — un solo punto de entrada que reduce la complejidad a medida que crece el proyecto.
