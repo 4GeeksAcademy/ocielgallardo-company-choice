@@ -28,6 +28,19 @@
 - Docker production stack on `feature/performance-audit`: `docker compose up` runs `next start` + uvicorn (no reload); dev overlay via `docker-compose.dev.yml`.
 - Docker backend image installs `pandas` via `services/requirements.txt` (dev) / `pyproject.toml` (prod). Dev/prod Dockerfiles use OS TLS + `ca-certificates`, with an insecure-host fallback if PyPI SSL fails on Docker Desktop. `GET /telemetry/report` lazy-imports the Pandas pipeline so auth/inventory still boot if that import fails.
 - Caching optimisation milestone: **Phase 5 complete** — in-memory TTL cache + invalidation on inventory list endpoints; report closed.
+- Nightly telemetry export (Hito 22, DEV-53): `scripts/nightly_export.py` + `services/job_runner/` + `job_runs` table (orchestration state separate from `reporting.pipeline_runs`); CSV backup to `data/raw/`; subprocess pipeline trigger; crontab `0 2 * * *` (see Recently Completed).
+
+## Recently Completed (Hito 22 — nightly telemetry export)
+
+## Recently Completed (Hito 22 — nightly telemetry export)
+
+- Branch: `feature/nightly-telemetry-export` (cut from `origin/main` at `c15806b`).
+- Orchestration state: `data/pipelines/job_runs_schema.sql` (`job_runs`: id, job_name, target_date, status pending|processing|completed|failed, started_at, finished_at, error_message, created_at; index on (job_name, target_date)); separate layer from `reporting.pipeline_runs` (Hito 6 ETL audit).
+- State module: `services/job_runner/` (create/mark/consult + `has_processing_lock`, `has_completed_for_date`); the `processing` row itself is the distributed lock; portable SQL (SQLite-tested, Postgres DDL).
+- Script: `scripts/nightly_export.py` (`TARGET_DATE` or yesterday UTC; CSV backup to `data/raw/telemetry_YYYY-MM-DD.csv` skipped when present; Hito 6 pipeline via subprocess `python data/pipelines/pipeline.py`, overridable via `PIPELINE_CMD`; failures land in `failed`; exits 0 ok/skip, 1 failure, 2 bad date). No FastAPI imports.
+- Trigger: OS crontab / dedicated scheduler container `0 2 * * *` (documented in script docstring + PR); no in-API scheduler.
+- Validation: `uv run python -m pytest tests/nightly/test_nightly_export.py` 11 passed (lock, idempotency, failure, CSV); `tests/pipelines` 10 passed (no regression); live SQLite CLI demo (success/duplicate/lock/failure).
+- TODO: apply `job_runs_schema.sql` to Supabase; configure host crontab; manual run against staging DB.
 
 ## Recently Completed (main sync 8b7406a + PR #32)
 
