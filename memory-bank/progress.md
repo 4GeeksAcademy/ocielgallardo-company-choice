@@ -51,6 +51,7 @@
 - Script: `scripts/nightly_export.py` (`TARGET_DATE` or yesterday UTC; CSV backup to `data/raw/telemetry_YYYY-MM-DD.csv` skipped when present; Hito 6 pipeline via subprocess `python data/pipelines/pipeline.py`, overridable via `PIPELINE_CMD`; failures land in `failed`; exits 0 ok/skip, 1 failure, 2 bad date). No FastAPI imports.
 - Trigger: OS crontab / dedicated scheduler container `0 2 * * *` (documented in script docstring + PR); no in-API scheduler.
 - Validation: `uv run python -m pytest tests/nightly/test_nightly_export.py` 11 passed (lock, idempotency, failure, CSV); `tests/pipelines` 10 passed (no regression); live SQLite CLI demo (success/duplicate/lock/failure).
+- PR33 resilience follow-up: `job_runs` now has a partial unique index that makes `processing` lock acquisition atomic; stale locks expire to `failed` using `started_at`; telemetry CSVs are written to a same-directory temporary file and published with atomic `os.replace()`. Added tests for atomic lock acquisition and stale-lock recovery.
 - TODO: apply `job_runs_schema.sql` to Supabase; configure host crontab; manual run against staging DB.
 
 ## Recently Completed (main sync 8b7406a + PR #32)

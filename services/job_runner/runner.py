@@ -18,13 +18,14 @@ API process and threads.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ COMPLETED = "completed"
 FAILED = "failed"
 
 _ERROR_MAX_CHARS = 2000
+DEFAULT_LOCK_LEASE_SECONDS = 3600
 
 
 def _utcnow() -> datetime:
@@ -116,6 +118,12 @@ def mark_processing(engine: Engine, *, run_id: str) -> None:
     logger.info("job_runs run_id=%s status=%s", run_id, PROCESSING)
 
 
+def delete_job_run(engine: Engine, *, run_id: str) -> None:
+    """Remove a pending row when atomic lock acquisition loses a race."""
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM job_runs WHERE id = :run_id"), {"run_id": run_id})
+
+
 def mark_completed(engine: Engine, *, run_id: str) -> None:
     """Move a run to ``completed`` after export + pipeline both succeeded."""
     with engine.begin() as conn:
@@ -155,8 +163,40 @@ def mark_failed(engine: Engine, *, run_id: str, error: str) -> None:
     logger.info("job_runs run_id=%s status=%s", run_id, FAILED)
 
 
-def has_processing_lock(engine: Engine, *, job_name: str) -> bool:
-    """Return True when a live ``processing`` row holds the lock for the job."""
+def has_processing_lock(
+    engine: Engine,
+    *,
+    job_name: str,
+    lease_seconds: int = DEFAULT_LOCK_LEASE_SECONDS,
+) -> bool:
+    """Return True when a non-stale ``processing`` row holds the job lock.
+
+    A stale row is failed before checking the lock. This recovers from a
+    process terminated before it could persist its final state.
+    """
+    stale_before = _utcnow() - timedelta(seconds=lease_seconds)
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                UPDATE job_runs
+                SET status = :failed,
+                    finished_at = :finished_at,
+                    error_message = :error_message
+                WHERE job_name = :job_name
+                  AND status = :processing
+                  AND started_at < :stale_before
+                """
+            ),
+            {
+                "job_name": job_name,
+                "processing": PROCESSING,
+                "failed": FAILED,
+                "stale_before": stale_before,
+                "finished_at": _utcnow(),
+                "error_message": "processing lock expired before completion",
+            },
+        )
     with engine.connect() as conn:
         row = conn.execute(
             text(
@@ -172,6 +212,22 @@ def has_processing_lock(engine: Engine, *, job_name: str) -> bool:
     if locked:
         logger.info("job_runs job=%s lock held (status=%s)", job_name, PROCESSING)
     return locked
+
+
+def acquire_processing_lock(engine: Engine, *, run_id: str) -> bool:
+    """Atomically move a pending run to processing.
+
+    The partial unique index on ``job_runs`` makes the update fail for a
+    concurrent active run. The losing pending row is removed and reported as a
+    normal lock skip.
+    """
+    try:
+        mark_processing(engine, run_id=run_id)
+    except IntegrityError:
+        delete_job_run(engine, run_id=run_id)
+        logger.info("job_runs run_id=%s lock acquisition skipped", run_id)
+        return False
+    return True
 
 
 def has_completed_for_date(
