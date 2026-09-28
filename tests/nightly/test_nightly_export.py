@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import csv
 import sys
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 # Make the repo root importable when pytest is invoked from elsewhere.
@@ -126,6 +126,31 @@ def test_failed_never_stays_processing(engine):
     assert row["finished_at"] is not None
     assert len(row["error_message"]) <= 2000
     assert "processing" not in _statuses(engine)
+
+
+def test_processing_lock_acquisition_is_atomic(engine):
+    first = job_runner.create_job_run(engine, job_name=JOB, target_date=TARGET)
+    second = job_runner.create_job_run(engine, job_name=JOB, target_date=TARGET)
+
+    assert job_runner.acquire_processing_lock(engine, run_id=first) is True
+    assert job_runner.acquire_processing_lock(engine, run_id=second) is False
+    assert _statuses(engine) == ["processing"]
+
+
+def test_stale_processing_lock_is_failed(engine):
+    run_id = job_runner.create_job_run(engine, job_name=JOB, target_date=TARGET)
+    job_runner.mark_processing(engine, run_id=run_id)
+    stale_started_at = datetime.now(timezone.utc) - timedelta(hours=2)
+    with engine.begin() as conn:
+        conn.execute(
+            text("UPDATE job_runs SET started_at = :started_at WHERE id = :run_id"),
+            {"started_at": stale_started_at, "run_id": run_id},
+        )
+
+    assert job_runner.has_processing_lock(engine, job_name=JOB) is False
+    row = job_runner.get_run(engine, run_id=run_id)
+    assert row["status"] == "failed"
+    assert row["error_message"] == "processing lock expired before completion"
 
 
 def test_completed_gate_is_per_date(engine):

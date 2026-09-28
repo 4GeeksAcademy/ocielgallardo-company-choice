@@ -26,3 +26,9 @@ CREATE TABLE IF NOT EXISTS job_runs (
 -- Idempotency lookups: completed-for-date and live-lock checks per job.
 CREATE INDEX IF NOT EXISTS ix_job_runs_job_date
   ON job_runs (job_name, target_date);
+
+-- The lock acquisition is race-safe: only one active processing row can exist
+-- for a job, even when two scheduler processes check at the same time.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_job_runs_processing_job
+  ON job_runs (job_name)
+  WHERE status = 'processing';

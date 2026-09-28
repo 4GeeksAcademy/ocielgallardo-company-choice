@@ -40,6 +40,7 @@ import re
 import shlex
 import subprocess
 import sys
+import tempfile
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -136,11 +137,31 @@ def export_telemetry_csv(engine, target: date, raw_dir: Path) -> dict[str, objec
             .all()
         )
 
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(CSV_COLUMNS))
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({column: _cell(row[column]) for column in CSV_COLUMNS})
+    temporary_path: Path | None = None
+    try:
+        # Keep the temporary file beside the destination so os.replace is
+        # atomic on the same filesystem.
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            newline="",
+            encoding="utf-8",
+            dir=raw_dir,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary_path = Path(handle.name)
+            writer = csv.DictWriter(handle, fieldnames=list(CSV_COLUMNS))
+            writer.writeheader()
+            for row in rows:
+                writer.writerow({column: _cell(row[column]) for column in CSV_COLUMNS})
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+    except Exception:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+        raise
 
     logger.info(
         "job=%s target_date=%s status=exported rows=%s path=%s",
@@ -283,7 +304,13 @@ def main(
         return 0
 
     run_id = job_runner.create_job_run(engine, job_name=JOB_NAME, target_date=target)
-    job_runner.mark_processing(engine, run_id=run_id)
+    if not job_runner.acquire_processing_lock(engine, run_id=run_id):
+        logger.info(
+            "job=%s target_date=%s status=lock_skipped reason=concurrent_acquisition",
+            JOB_NAME,
+            target.isoformat(),
+        )
+        return 0
     logger.info(
         "job=%s target_date=%s status=processing run_id=%s",
         JOB_NAME,
