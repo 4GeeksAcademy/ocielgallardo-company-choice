@@ -133,15 +133,19 @@ def add_calendar_features(frame: pd.DataFrame) -> pd.DataFrame:
     return frame
 
 
-def chronological_split(frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def chronological_split(frame: pd.DataFrame,
+                          expected: tuple[int, int] = (96, 24)) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Split 8 years train / 2 years test on the date boundary.
 
     Must run BEFORE any feature statistics so the test years stay unseen.
+    ``expected`` is (96, 24) on the raw series; callers that already dropped
+    warm-up rows (e.g. lag features) pass their own counts — the boundary
+    and no-overlap guarantees always hold.
     """
     train = frame[frame["month"] <= TRAIN_END].reset_index(drop=True)
     test = frame[(frame["month"] >= TEST_START) & (frame["month"] <= TEST_END)].reset_index(drop=True)
-    if len(train) != 96 or len(test) != 24:
-        raise ValueError(f"expected 96/24 split, got {len(train)}/{len(test)}")
+    if (len(train), len(test)) != expected:
+        raise ValueError(f"expected {expected[0]}/{expected[1]} split, got {len(train)}/{len(test)}")
     if train["month"].max() >= test["month"].min():
         raise ValueError("train/test months overlap — chronological boundary broken")
     if set(train["month"]) & set(test["month"]):
