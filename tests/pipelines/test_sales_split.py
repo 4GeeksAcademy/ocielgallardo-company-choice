@@ -1,4 +1,4 @@
-"""Unit tests for the sales-forecasting 8/2-year split (Phase 1).
+"""Unit tests for the sales-forecasting 8/2-year split (Phase 1 / Phase 5).
 
 Honesty guarantees under test (Ticket: sales prediction model):
 
@@ -7,6 +7,7 @@ Honesty guarantees under test (Ticket: sales prediction model):
 - strictly chronological boundary, no shared months.
 - the scaler is fitted on train only (test statistics never leak in).
 - any null/empty cell fails loudly instead of being silently imputed.
+- Phase 5 acceptance: ``test_eight_two_year_split_has_no_data_leakage``.
 
 Run:
     python -m pytest tests/pipelines/test_sales_split.py
@@ -77,3 +78,35 @@ def test_null_cell_fails_loudly():
         assert "null/empty" in str(exc)
     else:
         raise AssertionError("clean_sales tolerated a null cell")
+
+
+def test_eight_two_year_split_has_no_data_leakage():
+    """Ticket acceptance: 8y train / 2y test with zero leakage between sets.
+
+    Checks in one place (CONTEXT §6 + honesty rule):
+    - train = 96 months 2016-01..2023-12; test = 24 months 2024-01..2025-12
+    - chronological boundary: every train month is strictly before every test month
+    - no shared ``month`` values (set intersection empty)
+    - scaler statistics come from train only (test never enters fit)
+    """
+    frame = _clean_frame()
+    train, test = chronological_split(frame)
+
+    # 8 years / 2 years by count and by calendar bounds.
+    assert len(train) == 96 and len(test) == 24
+    assert train["month"].min() == pd.Timestamp("2016-01-01")
+    assert train["month"].max() == pd.Timestamp("2023-12-01")
+    assert test["month"].min() == pd.Timestamp("2024-01-01")
+    assert test["month"].max() == pd.Timestamp("2025-12-01")
+
+    # No temporal overlap / no shared months (data leakage on the date axis).
+    assert train["month"].max() < test["month"].min()
+    assert set(train["month"]).isdisjoint(set(test["month"]))
+
+    # Feature-stat leakage: scaler must equal TRAIN stats, not full-series stats.
+    params = fit_scaler(train)
+    full_mean = {col: float(frame[col].mean()) for col in FEATURE_COLS}
+    for col in FEATURE_COLS:
+        assert params[col]["mean"] == float(train[col].mean())
+        # With growth over 10 years, train mean != full mean → proves test was excluded.
+        assert abs(params[col]["mean"] - full_mean[col]) > 1e-6

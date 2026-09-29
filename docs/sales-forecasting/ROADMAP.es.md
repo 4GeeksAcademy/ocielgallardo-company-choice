@@ -197,3 +197,54 @@ CONTEXT llama "K2 Score", por estas razones:
 >
 > **TODOs honestos:** PSI regional (CSV sin desglose US/UK); el pico de fin de 2025
 > sigue fuera de la banda p10–p90 (límite del modelo, no sobreajuste).
+
+---
+
+## Fase 4 — Visualización
+
+> Entregable CONTEXT §6: predicción + rango de variabilidad frente a los datos
+> reales de los 2 años de prueba (`month`, `revenue_usd`).
+
+### 4.0 Gráfico HealthCore (solo test)
+
+- [x] `plot_forecast` endurecido en `scripts/train_sales_model.py`
+- [x] Solo los **24 meses de test** (2024-01 → 2025-12); aserción `len == 24`
+- [x] Ejes CONTEXT: x = `month`, y = `revenue_usd` (USD)
+- [x] Series: real (`revenue_usd`) vs predicción RF (media del bosque)
+- [x] Área de variabilidad: banda p10–p90 entre árboles RF (`band_lo` / `band_hi`)
+- [x] Título explícito HealthCore + anotación `rmse_pct_of_mean` para Finanzas
+- [x] Artefacto: `data/process/sales_forecasting/sales_forecast.png` (gitignored)
+- [x] Test: `test_forecast_plot_written_for_24_test_months` (PNG > 0 bytes, 24 filas)
+
+> **Nota:** la banda p10–p90 es la dispersión entre los árboles del Random Forest,
+> no un intervalo de confianza bayesiano. Sirve para mostrar a Finanzas un rango
+> de incertidumbre, no un único número optimista.
+
+> **Resultado (2026-09-29, vía `subst W:`):** PNG regenerado (~84 KB);
+> `pytest` 36 passed; `git diff --check` limpio. El gráfico muestra
+> `revenue_usd` real vs predicción RF + banda p10–p90 en los 24 meses de test,
+> con anotación RMSE 4.74% del ingreso mensual medio.
+
+---
+
+## Fase 5 — Pruebas (split 8/2 + anti-fuga)
+
+> Entregable del ticket: al menos una prueba unitaria en `tests/pipelines/` que
+> valide el split 8 años train / 2 años test y que no haya data leakage entre
+> ambos conjuntos.
+
+### 5.0 Tests de honestidad del split
+
+- [x] `test_split_is_96_train_24_test_on_date_boundary` — conteos y límites de calendario
+- [x] `test_no_month_leaks_between_train_and_test` — frontera estricta + intersección vacía
+- [x] `test_scaler_is_fitted_on_train_only` — estadísticas de escalado sin test
+- [x] **Aceptación ticket:** `test_eight_two_year_split_has_no_data_leakage`
+  (8/2 + sin meses compartidos + scaler ≠ media de la serie completa)
+- [x] Pipeline con lags: `test_train_never_sees_test_years` (84/24 post warm-up)
+- [x] Features causales: `test_lag_features_are_causal` (mes t no lee meses ≥ t)
+
+> Archivo: `tests/pipelines/test_sales_split.py` (+ checks de modelo en
+> `test_sales_model.py`).
+
+> **Resultado (2026-09-29, vía `subst W:`):** `pytest tests/pipelines tests/nightly`
+> → **37 passed**; `git diff --check` limpio.

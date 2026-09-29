@@ -1,4 +1,4 @@
-"""Unit tests for the sales-forecasting training honesty (Phase 2–3).
+"""Unit tests for the sales-forecasting training honesty (Phase 2–4).
 
 Under test (Ticket: sales prediction model):
 
@@ -8,6 +8,7 @@ Under test (Ticket: sales prediction model):
 - metrics are computed on test only, with the documented MSE-% formula.
 - PSI ≈ 0 on identical distributions; PSI > 0.25 on a simulated shift.
 - R² (CONTEXT "K2 Score") is 1.0 on perfect predictions.
+- Visualization PNG is written for the 24 test months (CONTEXT columns).
 
 Run:
     uv run python -m pytest tests/pipelines/test_sales_model.py
@@ -38,6 +39,7 @@ from scripts.train_sales_model import (  # noqa: E402
     evaluate,
     feature_columns,
     interpret_psi,
+    plot_forecast,
     population_stability_index,
     predict_with_band,
     r2_score,
@@ -145,3 +147,23 @@ def test_all_metrics_computed_only_on_test_months():
     )
     assert "r2" in metrics
     assert "k2_note" in metrics
+
+
+def test_forecast_plot_written_for_24_test_months(tmp_path: Path):
+    """PNG deliverable covers exactly the 24 test months (CONTEXT columns)."""
+    train, test = _split()
+    cols = feature_columns(train)
+    model = train_forest(train[cols], train[TARGET_COL], n_estimators=TEST_TREES)
+    forecast = predict_with_band(model, test[cols])
+    metrics = evaluate(test[TARGET_COL], forecast["predicted"])
+
+    assert len(forecast) == 24
+    assert list(forecast.columns) == ["predicted", "band_lo", "band_hi"]
+    assert "month" in test.columns
+    assert TARGET_COL in test.columns  # revenue_usd
+    assert len(test) == 24
+
+    out = tmp_path / "sales_forecast.png"
+    plot_forecast(test["month"], test[TARGET_COL], forecast, out, metrics=metrics)
+    assert out.exists()
+    assert out.stat().st_size > 0

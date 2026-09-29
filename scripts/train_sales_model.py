@@ -236,17 +236,42 @@ def evaluate(actual: pd.Series, predicted: pd.Series,
 
 
 def plot_forecast(test_months: pd.Series, actual: pd.Series, forecast: pd.DataFrame,
-                  path: Path) -> None:
-    """Actual vs predicted + variability band over the 2 test years."""
+                  path: Path, metrics: dict | None = None) -> None:
+    """Actual vs predicted + variability band over the 2 HealthCore test years.
+
+    CONTEXT columns only: ``month`` on the x-axis, ``revenue_usd`` on the y-axis.
+    The band is the p10–p90 spread across Random Forest trees (not a Bayesian CI).
+    """
+    if len(test_months) != 24:
+        raise ValueError(
+            f"plot expects exactly 24 test months (2024-01..2025-12), got {len(test_months)}"
+        )
+    if not (
+        (forecast["band_lo"] <= forecast["predicted"])
+        & (forecast["predicted"] <= forecast["band_hi"])
+    ).all():
+        raise ValueError("band must satisfy band_lo <= predicted <= band_hi on every month")
+
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(test_months, actual, label="Real", linewidth=2)
+    ax.plot(test_months, actual, label="Real (revenue_usd)", linewidth=2)
     ax.plot(test_months, forecast["predicted"], label="Predicción RF", linewidth=2)
-    ax.fill_between(test_months, forecast["band_lo"], forecast["band_hi"],
-                    alpha=0.25, label="Banda p10–p90")
-    ax.set_title("Ventas 2024–2025: real vs predicción (test no visto)")
-    ax.set_xlabel("Mes")
-    ax.set_ylabel("Revenue USD")
-    ax.legend()
+    ax.fill_between(
+        test_months, forecast["band_lo"], forecast["band_hi"],
+        alpha=0.25, label="Banda p10–p90 (árboles RF)",
+    )
+    ax.set_title(
+        "HealthCore — ventas test 2024-01 → 2025-12 "
+        "(24 meses no vistos): real vs predicción RF"
+    )
+    ax.set_xlabel("month")
+    ax.set_ylabel("revenue_usd (USD)")
+    if metrics and "rmse_pct_of_mean" in metrics:
+        ax.annotate(
+            f"RMSE = {metrics['rmse_pct_of_mean']:.2f}% del ingreso mensual medio",
+            xy=(0.02, 0.97), xycoords="axes fraction",
+            ha="left", va="top", fontsize=9,
+        )
+    ax.legend(loc="upper right")
     fig.autofmt_xdate()
     fig.tight_layout()
     fig.savefig(path)
@@ -273,8 +298,10 @@ def run(n_estimators: int = N_ESTIMATORS,
     pd.concat([test[["month", TARGET_COL]].reset_index(drop=True), forecast], axis=1).to_csv(
         output_dir / "sales_predictions.csv", index=False
     )
-    plot_forecast(test["month"], test[TARGET_COL], forecast,
-                  output_dir / "sales_forecast.png")
+    plot_forecast(
+        test["month"], test[TARGET_COL], forecast,
+        output_dir / "sales_forecast.png", metrics=metrics,
+    )
     logger.info(
         "metrics: rmse_usd=%.0f rmse_pct_of_mean=%.2f%% gini=%.3f r2=%.3f psi=%.4f (%s)",
         metrics["rmse_usd"], metrics["rmse_pct_of_mean"], metrics["gini"],
