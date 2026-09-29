@@ -112,20 +112,37 @@
 ## Fase 3 — Evaluación avanzada
 
 > Objetivo: completar las 4 métricas que pide el CONTEXT (§3 y §6): MSE, PSI, Gini,
-> K2 Score. Las dos primeras ya están (MSE/RMSE y Gini, Fase 2). Esta fase añade PSI
-> y documenta el bloqueo de K2.
+> K2 Score. MSE/RMSE y Gini llegaron en Fase 2; esta fase añade PSI y resuelve
+> K2 Score como R² (coeficiente de determinación).
+
+> **Nota (por qué un MSE bajo no basta solo):**
+> El MSE solo dice "en promedio, ¿cuánto nos equivocamos en dólares?".
+> Eso es útil, pero no alcanza para confiar en el modelo:
+>
+> 1. Un error pequeño puede salir de **memorizar el pasado** (sobreajuste).
+>    Por eso evaluamos en 24 meses que el modelo **nunca vio**.
+> 2. El MSE no dice si el modelo **ordena bien** los meses (Agosto débil vs
+>    Diciembre fuerte). Eso lo mira el **Gini**.
+> 3. El MSE no avisa si los datos de prueba **ya no se parecen** a los de
+>    entrenamiento. Eso lo mira el **PSI**.
+> 4. El MSE no dice **qué parte de la variación** de ingresos captura el
+>    modelo. Eso lo mira el **R²** (nuestra lectura del K2 Score).
+>
+> En corto: MSE = tamaño del error. Las otras métricas = si ese error es
+> honesto, útil y estable. Finanzas necesita las cuatro, no solo un número
+> bonito.
 
 ### 3.0 PSI (Population Stability Index) — Estabilidad de distribución
 
-- [ ] `population_stability_index(expected, actual, bins=10)` implementada en `scripts/train_sales_model.py`
-- [ ] Fórmula por tramos: `Σ (actual% − expected%) × ln(actual% / expected%)`, con épsilon para bins vacíos
-- [ ] Bins por cuantiles del set *expected* (train); histograma del set *actual* (test) sobre los mismos bordes
-- [ ] `interpret_psi(psi)`: `<0.10` → sin cambio · `0.10–0.25` → moderado · `≥0.25` → fuerte (Siddiqi 2005)
-- [ ] Calculada **train-vs-test** sobre `revenue_usd`
-- [ ] `sales_metrics.json` extendido con `psi` (float) + `psi_interpretation` (string)
-- [ ] Test: PSI ≈ 0 con distribuciones idénticas (`test_psi_zero_with_identical_distributions`)
-- [ ] Test: PSI > 0.25 con shift simulado (`test_psi_high_with_shifted_distribution`)
-- [ ] Test: todas las métricas se calculan solo sobre los 24 meses de test (`test_all_metrics_computed_only_on_test_months`)
+- [x] `population_stability_index(expected, actual, bins=10)` implementada en `scripts/train_sales_model.py`
+- [x] Fórmula por tramos: `Σ (actual% − expected%) × ln(actual% / expected%)`, con épsilon para bins vacíos
+- [x] Bins por cuantiles del set *expected* (train); histograma del set *actual* (test) sobre los mismos bordes
+- [x] `interpret_psi(psi)`: `<0.10` → sin cambio · `0.10–0.25` → moderado · `≥0.25` → fuerte (Siddiqi 2005)
+- [x] Calculada **train-vs-test** sobre `revenue_usd`
+- [x] `sales_metrics.json` extendido con `psi` (float) + `psi_interpretation` (string)
+- [x] Test: PSI ≈ 0 con distribuciones idénticas (`test_psi_zero_with_identical_distributions`)
+- [x] Test: PSI > 0.25 con shift simulado (`test_psi_high_with_shifted_distribution`)
+- [x] Test: todas las métricas se calculan solo sobre los 24 meses de test (`test_all_metrics_computed_only_on_test_months`)
 
 > **Aproximación documentada:** el CONTEXT §3 pide PSI sobre la mezcla de visitas
 > US/UK, pero `healthcore_sales.csv` solo contiene filas `consolidated` — no hay
@@ -133,47 +150,50 @@
 > train-vs-test como proxy de estabilidad. Un PSI regional requiere el split de
 > datos descrito en CONTEXT §5 (proporción ~75/25 US/UK) y queda como **TODO**.
 
-### 3.1 K2 Score — ⛔ BLOQUEADO (fórmula no definida)
+### 3.1 K2 Score — resuelto como R² (coeficiente de determinación)
 
-**Estado:** implementación diferida — la definición/fórmula no existe en ningún
-artefacto del proyecto ni en la literatura estándar de ML/estadística.
+> **Legacy (bloqueo 2026-09-29):** la fórmula no estaba en CONTEXT ni en literatura
+> estándar bajo el nombre "K2 Score". Candidatas investigadas: D'Agostino K²
+> (normalidad de residuos), Cooper-Herskovits K2 (redes bayesianas), R², KS.
+> Se documentó el bloqueo y se pidió la definición oficial antes de inventar nada.
 
-**Investigación realizada (2026-09-29):**
+**Decisión del equipo (2026-09-29):** implementar **R²** como la métrica que el
+CONTEXT llama "K2 Score", por estas razones:
 
-| Candidata | Qué es | Aplica aquí |
-|---|---|---|
-| D'Agostino K² | Test de normalidad de residuos (`scipy.stats.normaltest`) | Posible, pero no se llama "K2 Score" en forecasting |
-| Cooper-Herskovits K2 | Score de estructura de redes bayesianas | No — es para DAGs, no regresión de series de tiempo |
-| R² (coef. determinación) | `1 − SS_res / SS_tot` | Posible typo; semántica distinta a "K2" |
-| KS (Kolmogorov-Smirnov) | Test de distribución | Posible confusión de nombre |
+1. **Complementa las otras tres sin redundancia.** MSE responde "¿cuánto erramos
+   en USD?"; Gini, "¿rankea bien meses débiles vs fuertes?"; PSI, "¿cambió la
+   distribución train→test?". R² responde la pregunta que falta: "¿qué proporción
+   de la variabilidad de ingresos captura el modelo?".
+2. **Explicable a Finanzas en una frase.** "El modelo explica el X% de la
+   variación mensual" — cumple el criterio no negociable del ticket ("métrica
+   que yo pueda explicarle a Finanzas sin que parezca una caja negra").
+3. **Hipótesis de typo K↔R** en teclado QWERTY; no existe métrica estándar de
+   forecasting llamada "K2 Score". R² es la lectura natural en un set de
+   evaluación de regresión.
+4. **Fórmula oficial, sin inventar:** `R² = 1 − SS_res / SS_tot`, con media
+   tomada solo del set de test (evaluación honesta).
 
-**Decisión:** no se inventa una métrica. Cuando el equipo o la rúbrica del bootcamp
-proporcione la fórmula oficial, se implementa con su test acorde.
-
-- [ ] Recibir fórmula oficial de K2 Score (fuente: rúbrica bootcamp / tech lead)
-- [ ] Implementar en `scripts/train_sales_model.py`
-- [ ] Añadir test unitario en `tests/pipelines/test_sales_model.py`
-- [ ] Extender `sales_metrics.json` con `k2` (float) + `k2_interpretation` (string)
-
-> Mientras tanto, `sales_metrics.json` incluirá:
-> ```json
-> "k2": null,
-> "k2_status": "blocked_missing_definition"
-> ```
+- [x] Decisión documentada: K2 Score = R² (este §3.1)
+- [x] `r2_score(actual, predicted)` implementada en `scripts/train_sales_model.py`
+- [x] Test: R² = 1.0 con predicción perfecta; parcial en (0, 1) (`test_r2_perfect_prediction`)
+- [x] `sales_metrics.json` incluye `r2` (float) + `k2_note` (string de trazabilidad)
 
 ### 3.2 Reporte consolidado y cierre
 
-- [ ] `sales_metrics.json` contiene: `mse_usd2`, `rmse_usd`, `rmse_pct_of_mean`, `gini`, `psi`, `psi_interpretation`, `k2` (null hasta desbloqueo)
-- [ ] `uv run python -m pytest tests/pipelines/ -q` → todos en verde
-- [ ] `uv run python scripts/train_sales_model.py` → métricas actualizadas
-- [ ] `git diff --check` limpio
+- [x] `sales_metrics.json` contiene: `mse_usd2`, `rmse_usd`, `rmse_pct_of_mean`, `gini`, `r2`, `k2_note`, `psi`, `psi_interpretation`
+- [x] `uv run python -m pytest tests/pipelines/ -q` → 35 passed (vía `subst W:`)
+- [x] `uv run python scripts/train_sales_model.py` → métricas actualizadas
+- [x] `git diff --check` limpio
 
-> **Resultados (pendiente ejecución):**
+> **Resultados (2026-09-29, `uv run python scripts/train_sales_model.py` vía `W:`):**
 >
 > | Métrica | Valor | Lectura para Finanzas |
 > |---|---|---|
-> | RMSE % | TODO | Desviación mensual típica como % del ingreso promedio |
-> | RMSE USD | TODO | Error absoluto mensual — margen de presupuesto |
-> | Gini | TODO | Capacidad de ranking: distinguir mes débil de mes fuerte |
-> | PSI | TODO | Estabilidad de la distribución de ingresos train→test |
-> | K2 | bloqueado | Requiere definición oficial |
+> | RMSE % | **4.74%** | Desviación mensual típica ≈ 5% del ingreso promedio |
+> | RMSE USD | **159 628** | Error absoluto mensual — margen de presupuesto ±160K |
+> | Gini | **0.962** | Distingue meses débiles de fuertes con alta confianza |
+> | PSI | **5.04** (`significant_shift`) | La distribución de `revenue_usd` cambió train→test (crecimiento anual ~4% desplaza la masa); proxy consolidado, no mezcla US/UK |
+> | R² (K2) | **0.799** | El modelo captura ~80% de la variabilidad de ingresos en test |
+>
+> **TODOs honestos:** PSI regional (CSV sin desglose US/UK); el pico de fin de 2025
+> sigue fuera de la banda p10–p90 (límite del modelo, no sobreajuste).

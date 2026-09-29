@@ -130,26 +130,109 @@ def normalized_gini(actual: pd.Series, predicted: pd.Series) -> float:
     return _gini(predicted) / denom if denom != 0 else 0.0
 
 
-def evaluate(actual: pd.Series, predicted: pd.Series) -> dict[str, float]:
+def population_stability_index(
+    expected: np.ndarray | pd.Series,
+    actual: np.ndarray | pd.Series,
+    bins: int = 10,
+    eps: float = 1e-4,
+) -> float:
+    """Population Stability Index — distribution shift between train and test.
+
+    Formula per bin: ``Σ (actual% − expected%) × ln(actual% / expected%)``.
+    Empty-bin proportions are floored at *eps* so the log stays finite.
+
+    **Approximation caveat:** CONTEXT §3 asks for PSI on the US/UK visit mix,
+    but ``healthcore_sales.csv`` only contains ``consolidated`` rows — no
+    regional breakdown. This PSI is computed on *revenue_usd* (train vs test)
+    as a proxy; a regional PSI needs the split described in CONTEXT §5 (TODO).
+
+    Standard thresholds (Siddiqi 2005):
+        PSI < 0.10  → no significant shift
+        0.10 ≤ PSI < 0.25 → moderate shift — investigate
+        PSI ≥ 0.25 → significant shift — retrain / escalate
+    """
+    expected = np.asarray(expected, dtype=float)
+    actual = np.asarray(actual, dtype=float)
+
+    # Bin edges from the *expected* (train) distribution — quantile-based.
+    quantiles = np.linspace(0, 100, bins + 1)
+    bin_edges = np.unique(np.percentile(expected, quantiles))
+    if len(bin_edges) < 2:
+        return 0.0
+    bin_edges[0] = -np.inf
+    bin_edges[-1] = np.inf
+
+    exp_counts = np.histogram(expected, bins=bin_edges)[0].astype(float)
+    act_counts = np.histogram(actual, bins=bin_edges)[0].astype(float)
+
+    exp_pct = exp_counts / exp_counts.sum()
+    act_pct = act_counts / act_counts.sum()
+
+    exp_pct = np.maximum(exp_pct, eps)
+    act_pct = np.maximum(act_pct, eps)
+
+    return float(np.sum((act_pct - exp_pct) * np.log(act_pct / exp_pct)))
+
+
+def interpret_psi(psi: float) -> str:
+    """Human-readable PSI interpretation (Siddiqi 2005 thresholds)."""
+    if psi < 0.10:
+        return "no_shift"
+    if psi < 0.25:
+        return "moderate_shift"
+    return "significant_shift"
+
+
+def r2_score(actual: pd.Series | np.ndarray, predicted: pd.Series | np.ndarray) -> float:
+    """Coefficient of determination — CONTEXT "K2 Score" resolved as R².
+
+    ``R² = 1 − SS_res / SS_tot``, with mean taken from *actual* only (test
+    months). Tells Finanzas what share of revenue variability the model
+    captures. See ROADMAP.es.md §3.1 for the decision rationale; the prior
+    "blocked_missing_definition" note is kept there as legacy.
+    """
+    actual = np.asarray(actual, dtype=float)
+    predicted = np.asarray(predicted, dtype=float)
+    ss_res = float(np.sum((actual - predicted) ** 2))
+    ss_tot = float(np.sum((actual - actual.mean()) ** 2))
+    if ss_tot == 0:
+        return 0.0
+    return 1.0 - ss_res / ss_tot
+
+
+def evaluate(actual: pd.Series, predicted: pd.Series,
+             train_revenue: pd.Series | None = None) -> dict:
     """MSE in USD² (CONTEXT), RMSE in USD and RMSE as % of mean monthly revenue.
 
     ``rmse_pct_of_mean = rmse / mean_revenue * 100`` — the Finanzas-readable
     number: "our typical monthly miss is X% of a normal month's revenue".
     RMSE (not MSE) is used for the percentage so units match (USD/USD).
+
+    Also reports: normalized Gini, R² (CONTEXT "K2 Score"), and — when
+    *train_revenue* is given — PSI train-vs-test on ``revenue_usd``.
     """
     actual = actual.astype(float)
     predicted = predicted.astype(float)
     mse = float(((actual - predicted) ** 2).mean())
     rmse = float(np.sqrt(mse))
     mean_revenue = float(actual.mean())
-    return {
+    metrics: dict = {
         "mse_usd2": mse,
         "rmse_usd": rmse,
         "mean_monthly_revenue_usd": mean_revenue,
         "rmse_pct_of_mean": rmse / mean_revenue * 100 if mean_revenue else float("nan"),
         "gini": float(normalized_gini(actual, predicted)),
+        "r2": float(r2_score(actual, predicted)),
+        "k2_note": (
+            "K2 Score resolved as R2 (coefficient of determination) — see ROADMAP §3.1"
+        ),
         "n_test_months": int(len(actual)),
     }
+    if train_revenue is not None:
+        psi = population_stability_index(train_revenue, actual)
+        metrics["psi"] = psi
+        metrics["psi_interpretation"] = interpret_psi(psi)
+    return metrics
 
 
 def plot_forecast(test_months: pd.Series, actual: pd.Series, forecast: pd.DataFrame,
@@ -180,7 +263,9 @@ def run(n_estimators: int = N_ESTIMATORS,
 
     model = train_forest(train[cols], train[TARGET_COL], n_estimators=n_estimators)
     forecast = predict_with_band(model, test[cols])
-    metrics = evaluate(test[TARGET_COL], forecast["predicted"])
+    metrics = evaluate(
+        test[TARGET_COL], forecast["predicted"], train_revenue=train[TARGET_COL]
+    )
 
     output_dir.mkdir(parents=True, exist_ok=True)
     joblib.dump({"model": model, "feature_cols": cols}, output_dir / "sales_rf_model.joblib")
@@ -190,8 +275,11 @@ def run(n_estimators: int = N_ESTIMATORS,
     )
     plot_forecast(test["month"], test[TARGET_COL], forecast,
                   output_dir / "sales_forecast.png")
-    logger.info("metrics: rmse_usd=%.0f rmse_pct_of_mean=%.2f%% gini=%.3f",
-                metrics["rmse_usd"], metrics["rmse_pct_of_mean"], metrics["gini"])
+    logger.info(
+        "metrics: rmse_usd=%.0f rmse_pct_of_mean=%.2f%% gini=%.3f r2=%.3f psi=%.4f (%s)",
+        metrics["rmse_usd"], metrics["rmse_pct_of_mean"], metrics["gini"],
+        metrics["r2"], metrics["psi"], metrics["psi_interpretation"],
+    )
     return metrics
 
 
