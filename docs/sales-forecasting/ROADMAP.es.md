@@ -84,7 +84,8 @@
 ### 2.2 Features (causales, sin fuga)
 
 - [x] Lags `lag_1/3/6/12` y `rolling_mean_3/12` calculados solo con filas pasadas (`scripts/train_sales_model.py::add_lag_features`)
-- [x] Base Fase 1: `visits_count`, `avg_revenue_per_visit_usd` (escaladas), `year`, `month_sin/cos`
+- [x] Calendario: `year`, `month_sin/cos` (BASE_FEATURES)
+- [~] Legacy Fase 2: `visits_count` / `avg_revenue_per_visit_usd` como features — **retiradas en Fase 5.1** (fuga contemporánea; ver §5.1)
 - [x] Historia de test tomada del final de train, sin exponer targets futuros (warm-up de 12 meses cae dentro de train → 84/24)
 
 ### 2.3 Entrenamiento y evaluación honesta
@@ -150,15 +151,16 @@
 > train-vs-test como proxy de estabilidad. Un PSI regional requiere el split de
 > datos descrito en CONTEXT §5 (proporción ~75/25 US/UK) y queda como **TODO**.
 
-### 3.1 K2 Score — resuelto como R² (coeficiente de determinación)
+### 3.1 K2 Score — interpretación adoptada como R² (no equivalencia oficial)
 
 > **Legacy (bloqueo 2026-09-29):** la fórmula no estaba en CONTEXT ni en literatura
 > estándar bajo el nombre "K2 Score". Candidatas investigadas: D'Agostino K²
 > (normalidad de residuos), Cooper-Herskovits K2 (redes bayesianas), R², KS.
 > Se documentó el bloqueo y se pidió la definición oficial antes de inventar nada.
 
-**Decisión del equipo (2026-09-29):** implementar **R²** como la métrica que el
-CONTEXT llama "K2 Score", por estas razones:
+**Decisión del equipo (2026-09-29, aclarada tras review):** reportar **R²** bajo la
+etiqueta CONTEXT "K2 Score" como **interpretación adoptada del equipo**, no como
+equivalencia oficial documentada por HealthCore. Motivos:
 
 1. **Complementa las otras tres sin redundancia.** MSE responde "¿cuánto erramos
    en USD?"; Gini, "¿rankea bien meses débiles vs fuertes?"; PSI, "¿cambió la
@@ -170,13 +172,13 @@ CONTEXT llama "K2 Score", por estas razones:
 3. **Hipótesis de typo K↔R** en teclado QWERTY; no existe métrica estándar de
    forecasting llamada "K2 Score". R² es la lectura natural en un set de
    evaluación de regresión.
-4. **Fórmula oficial, sin inventar:** `R² = 1 − SS_res / SS_tot`, con media
+4. **Fórmula oficial de R², sin inventar:** `R² = 1 − SS_res / SS_tot`, con media
    tomada solo del set de test (evaluación honesta).
 
-- [x] Decisión documentada: K2 Score = R² (este §3.1)
+- [x] Decisión documentada: etiqueta K2 → R² como interpretación adoptada (este §3.1)
 - [x] `r2_score(actual, predicted)` implementada en `scripts/train_sales_model.py`
 - [x] Test: R² = 1.0 con predicción perfecta; parcial en (0, 1) (`test_r2_perfect_prediction`)
-- [x] `sales_metrics.json` incluye `r2` (float) + `k2_note` (string de trazabilidad)
+- [x] `sales_metrics.json` incluye `r2` (float) + `k2_note` (trazabilidad: adopted, not official)
 
 ### 3.2 Reporte consolidado y cierre
 
@@ -248,3 +250,56 @@ CONTEXT llama "K2 Score", por estas razones:
 
 > **Resultado (2026-09-29, vía `subst W:`):** `pytest tests/pipelines tests/nightly`
 > → **37 passed**; `git diff --check` limpio.
+
+---
+
+## Fase 5.1 — Forecast honesto (PR review: fuga + descomposición)
+
+> Corrección post-review: el split 8/2 era cronológico, pero el test aún podía
+> "ver" el presente vía (a) `visits_count` × `avg_revenue_per_visit_usd` ≈
+> `revenue_usd` del mismo mes, y (b) lags construidos sobre train+test con el
+> `revenue_usd` real de test (batch predict). Esto inflaba RMSE/R².
+
+### 5.1.0 Sin features contemporáneas leaky
+
+- [x] `BASE_FEATURES = year, month_sin, month_cos` únicamente
+- [x] `LEAKY_CONTEMPORANEOUS = (visits_count, avg_revenue_per_visit_usd)` excluidas
+- [x] `feature_columns()` rechaza esas columnas si aparecen
+- [x] Test: `test_feature_columns_exclude_leaky_contemporaneous`
+
+### 5.1.1 Forecast recursivo en test (sellado)
+
+- [x] Lags de entrenamiento solo sobre el bloque train (`add_lag_features(train_raw)`)
+- [x] `forecast_recursive`: cada mes de test alimenta el siguiente con la **predicción**,
+  nunca con `revenue_usd` real ni visits/ARPU del mes
+- [x] Tests: banda ordenada 24 meses; `lag_1` del mes 1 = predicción del mes 0 ≠ real
+- [x] `forecast_mode` en métricas: `recursive_no_contemporaneous_visits_arpu`
+
+### 5.1.2 Descomposición estacional vs CONTEXT HealthCore
+
+- [x] `decompose_series` aditiva periodo=12 (sin statsmodels)
+- [x] Artefacto: `sales_decomposition.png`
+- [x] Checklist vs CONTEXT (Oct–Dec alto, Jul–Aug bajo) en `metrics["decomposition"]`
+- [x] Test: `test_decomposition_matches_healthcore_seasonality_pattern`
+
+### 5.1.3 K2 wording + métricas honestas
+
+- [x] `k2_note` / ROADMAP §3.1: R² = interpretación adoptada, no equivalencia oficial
+- [x] Re-entrenar y documentar RMSE/Gini/R²/PSI **post-fuga** (tabla abajo)
+
+> **Resultados honestos (2026-10-01, `uv run python scripts/train_sales_model.py` vía `W:`):**
+>
+> | Métrica | Valor (batch leaky, legacy) | Valor (recursivo limpio) | Lectura |
+> |---|---|---|---|
+> | RMSE % | ~4.74% | **5.90%** | Sube al quitar fuga contemporánea + usar lags predichos |
+> | RMSE USD | ~159 628 | **198 559** | Margen de presupuesto más realista ≈ ±200K |
+> | Gini | ~0.962 | **0.899** | Sigue distinguiendo meses débiles/fuertes |
+> | R² (adopted K2) | ~0.799 | **0.688** | Captura ~69% de la variabilidad (honesto) |
+> | PSI | ~5.04 | **5.10** (`significant_shift`) | Proxy train→test sin cambio material |
+>
+> Descomposición: picos estacionales **10/11/12**, valles **7/8/9** — alinea con
+> CONTEXT Oct–Dec alto / Jul–Aug bajo (`matches_context_* = True`).
+>
+> Validación: `pytest tests/pipelines/` → **27 passed**; `git diff --check` limpio.
+>
+> **TODO:** purge gap en CV temporal (evaluación formal en otra rama si aplica).

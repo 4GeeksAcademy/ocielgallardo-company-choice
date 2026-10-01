@@ -1,4 +1,4 @@
-"""Sales prediction training — Phase 2 (Ticket: sales prediction model).
+"""Sales prediction training — HealthCore (honest recursive forecast).
 
 Model: Random Forest (see ROADMAP.es.md §2.0 for the documented choice).
 
@@ -6,13 +6,15 @@ Standalone process — run from the repo root with::
 
     uv run python scripts/train_sales_model.py
 
-Honesty guarantees (same as Phase 1, extended)::
+Honesty guarantees::
 
-    1. causal features only — every lag/rolling at month t uses months < t,
-       so computing them on the continuous series before the split leaks nothing.
-    2. the forest trains on 2016-01..2023-12 only; 2024-01..2025-12 are
-       predicted unseen (24 months, no shuffle, no refit on test).
-    3. variability band = p10-p90 across the forest's own trees (no extra model).
+    1. chronological 8/2 split — forest fits on train years only.
+    2. no contemporaneous leakage — ``visits_count`` / ``avg_revenue_per_visit_usd``
+       are NOT model features (product ≈ revenue_usd on the same month).
+    3. recursive multi-step test forecast — each test month's lags/rollings are
+       built from train history + *previous predictions*, never from real test
+       revenue (and never from same-month visit/ARPU fields).
+    4. variability band = p10-p90 across the forest's own trees.
 
 Artifacts (gitignored runtime data)::
 
@@ -20,6 +22,7 @@ Artifacts (gitignored runtime data)::
     data/process/sales_forecasting/sales_metrics.json
     data/process/sales_forecasting/sales_predictions.csv
     data/process/sales_forecasting/sales_forecast.png
+    data/process/sales_forecasting/sales_decomposition.png
 """
 
 from __future__ import annotations
@@ -55,15 +58,17 @@ LAG_MONTHS = [1, 3, 6, 12]
 ROLLING_WINDOWS = [3, 12]
 LOW_Q, HIGH_Q = 10, 90
 
-BASE_FEATURES = ["visits_count", "avg_revenue_per_visit_usd", "year", "month_sin", "month_cos"]
+# Calendar only — known at forecast time. Contemporaneous visits/ARPU excluded
+# (PR review: same-month product ≈ revenue_usd).
+BASE_FEATURES = ["year", "month_sin", "month_cos"]
+LEAKY_CONTEMPORANEOUS = ("visits_count", "avg_revenue_per_visit_usd")
 
 
 def add_lag_features(frame: pd.DataFrame) -> pd.DataFrame:
     """Causal lags/rollings of the target — month t sees only months < t.
 
-    Safe to run on the continuous series before the split: no row ever reads
-    a future value. Rows without full history (first 12 months) are dropped;
-    they all fall inside train, never in test.
+    Prefer calling this on the **train block alone**. For the sealed test
+    horizon use ``forecast_recursive`` instead of precomputing lags on train+test.
     """
     frame = frame.sort_values("month").reset_index(drop=True)
     for lag in LAG_MONTHS:
@@ -76,13 +81,36 @@ def add_lag_features(frame: pd.DataFrame) -> pd.DataFrame:
     return frame
 
 
-def feature_columns(frame: pd.DataFrame) -> list[str]:
-    cols = BASE_FEATURES + [f"lag_{lag}" for lag in LAG_MONTHS]
+def feature_columns(frame: pd.DataFrame | None = None) -> list[str]:
+    """Model feature names — calendar + lags/rollings, never leaky contemporaneous."""
+    cols = list(BASE_FEATURES) + [f"lag_{lag}" for lag in LAG_MONTHS]
     cols += [f"rolling_mean_{w}" for w in ROLLING_WINDOWS]
-    missing = [c for c in cols if c not in frame.columns]
-    if missing:
-        raise ValueError(f"missing feature columns: {missing}")
+    for leaky in LEAKY_CONTEMPORANEOUS:
+        if leaky in cols:
+            raise ValueError(f"refusing leaky contemporaneous feature: {leaky}")
+    if frame is not None:
+        missing = [c for c in cols if c not in frame.columns]
+        if missing:
+            raise ValueError(f"missing feature columns: {missing}")
     return cols
+
+
+def _features_from_history(calendar_row: pd.Series, history: list[float]) -> dict[str, float]:
+    """Build one feature row from calendar fields + revenue history (past only)."""
+    if len(history) < max(LAG_MONTHS):
+        raise ValueError(
+            f"need ≥{max(LAG_MONTHS)} history months for lags, got {len(history)}"
+        )
+    feats: dict[str, float] = {
+        "year": float(calendar_row["year"]),
+        "month_sin": float(calendar_row["month_sin"]),
+        "month_cos": float(calendar_row["month_cos"]),
+    }
+    for lag in LAG_MONTHS:
+        feats[f"lag_{lag}"] = float(history[-lag])
+    for window in ROLLING_WINDOWS:
+        feats[f"rolling_mean_{window}"] = float(np.mean(history[-window:]))
+    return feats
 
 
 def train_forest(train_x: pd.DataFrame, train_y: pd.Series,
@@ -96,9 +124,44 @@ def train_forest(train_x: pd.DataFrame, train_y: pd.Series,
     return model
 
 
+def predict_row_with_band(model: RandomForestRegressor,
+                          row_x: pd.DataFrame) -> tuple[float, float, float]:
+    """One-row forest mean + p10-p90 across trees."""
+    arr = np.asarray(row_x)
+    tree_preds = np.array([tree.predict(arr)[0] for tree in model.estimators_])
+    return (
+        float(tree_preds.mean()),
+        float(np.percentile(tree_preds, LOW_Q)),
+        float(np.percentile(tree_preds, HIGH_Q)),
+    )
+
+
+def forecast_recursive(
+    model: RandomForestRegressor,
+    train_history: pd.Series,
+    test_calendar: pd.DataFrame,
+    feature_cols: list[str],
+) -> pd.DataFrame:
+    """Multi-step test forecast: each step feeds the next with the prediction.
+
+    ``train_history`` = revenue_usd through the last train month (no test).
+    ``test_calendar`` = test rows with month + calendar features only.
+    Real test ``revenue_usd`` / visits / ARPU are never read here.
+    """
+    history = [float(v) for v in train_history.tolist()]
+    rows: list[dict[str, float]] = []
+    for _, cal in test_calendar.iterrows():
+        feats = _features_from_history(cal, history)
+        row_x = pd.DataFrame([{c: feats[c] for c in feature_cols}])
+        pred, lo, hi = predict_row_with_band(model, row_x)
+        rows.append({"predicted": pred, "band_lo": lo, "band_hi": hi})
+        history.append(pred)  # recursive — not the real test revenue
+    return pd.DataFrame(rows)
+
+
 def predict_with_band(model: RandomForestRegressor,
                       test_x: pd.DataFrame) -> pd.DataFrame:
-    """Point prediction (forest mean) + p10-p90 band from the trees' votes."""
+    """Batch predict + band (train/diagnostics only — not for sealed test)."""
     test_arr = np.asarray(test_x)
     tree_preds = np.stack([tree.predict(test_arr) for tree in model.estimators_], axis=0)
     return pd.DataFrame({
@@ -108,12 +171,76 @@ def predict_with_band(model: RandomForestRegressor,
     })
 
 
-def normalized_gini(actual: pd.Series, predicted: pd.Series) -> float:
-    """Ranking quality: 1.0 = perfect ordering, 0.0 = random ordering.
+def decompose_series(frame: pd.DataFrame, period: int = 12) -> pd.DataFrame:
+    """Classical additive decomposition (trend / seasonal / residual).
 
-    Normalized Gini = Gini(pred-order) / Gini(actual-order); tells Sandra
-    whether the model ranks a weak August below a strong December.
+    Equivalent intent to ``statsmodels.tsa.seasonal_decompose`` without a new
+    heavy dependency: 12-month centered moving-average trend + month-of-year
+    seasonal means on the detrended series.
     """
+    frame = frame.sort_values("month").reset_index(drop=True)
+    y = frame[TARGET_COL].astype(float)
+    ma = y.rolling(window=period, center=True).mean()
+    trend = ma.rolling(window=2, center=True).mean()
+    detrended = y - trend
+    month_num = frame["month"].dt.month
+    seasonal = detrended.groupby(month_num).transform("mean")
+    residual = y - trend - seasonal
+    return pd.DataFrame({
+        "month": frame["month"],
+        "observed": y,
+        "trend": trend,
+        "seasonal": seasonal,
+        "residual": residual,
+        "month_num": month_num,
+    })
+
+
+def plot_decomposition(decomp: pd.DataFrame, path: Path) -> dict[str, str]:
+    """Plot decomposition and return a short CONTEXT-pattern checklist."""
+    fig, axes = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
+    axes[0].plot(decomp["month"], decomp["observed"], color="black")
+    axes[0].set_ylabel("observed")
+    axes[1].plot(decomp["month"], decomp["trend"])
+    axes[1].set_ylabel("trend")
+    axes[2].plot(decomp["month"], decomp["seasonal"])
+    axes[2].set_ylabel("seasonal")
+    axes[3].plot(decomp["month"], decomp["residual"])
+    axes[3].set_ylabel("residual")
+    axes[0].set_title(
+        "HealthCore revenue_usd — descomposición aditiva (periodo=12)"
+    )
+    fig.autofmt_xdate()
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)
+    logger.info("decomposition plot written to %s", path)
+
+    seas = (
+        decomp.dropna(subset=["seasonal"])
+        .groupby("month_num")["seasonal"]
+        .mean()
+    )
+    peak = sorted(seas.items(), key=lambda kv: kv[1], reverse=True)[:3]
+    trough = sorted(seas.items(), key=lambda kv: kv[1])[:3]
+    peak_months = [m for m, _ in peak]
+    trough_months = [m for m, _ in trough]
+    oct_dec = {10, 11, 12}
+    jul_aug = {7, 8}
+    return {
+        "peak_months": ",".join(str(m) for m in peak_months),
+        "trough_months": ",".join(str(m) for m in trough_months),
+        "matches_context_oct_dec_high": str(bool(oct_dec & set(peak_months))),
+        "matches_context_jul_aug_low": str(bool(jul_aug & set(trough_months))),
+        "note": (
+            "CONTEXT: Oct–Dec +15–20%, Jul–Aug −12–18%. "
+            f"Observed seasonal peaks≈{peak_months}, troughs≈{trough_months}."
+        ),
+    }
+
+
+def normalized_gini(actual: pd.Series, predicted: pd.Series) -> float:
+    """Ranking quality: 1.0 = perfect ordering, 0.0 = random ordering."""
     actual = np.asarray(actual, dtype=float)
     predicted = np.asarray(predicted, dtype=float)
 
@@ -136,25 +263,10 @@ def population_stability_index(
     bins: int = 10,
     eps: float = 1e-4,
 ) -> float:
-    """Population Stability Index — distribution shift between train and test.
-
-    Formula per bin: ``Σ (actual% − expected%) × ln(actual% / expected%)``.
-    Empty-bin proportions are floored at *eps* so the log stays finite.
-
-    **Approximation caveat:** CONTEXT §3 asks for PSI on the US/UK visit mix,
-    but ``healthcore_sales.csv`` only contains ``consolidated`` rows — no
-    regional breakdown. This PSI is computed on *revenue_usd* (train vs test)
-    as a proxy; a regional PSI needs the split described in CONTEXT §5 (TODO).
-
-    Standard thresholds (Siddiqi 2005):
-        PSI < 0.10  → no significant shift
-        0.10 ≤ PSI < 0.25 → moderate shift — investigate
-        PSI ≥ 0.25 → significant shift — retrain / escalate
-    """
+    """Population Stability Index — train vs test on revenue_usd (proxy)."""
     expected = np.asarray(expected, dtype=float)
     actual = np.asarray(actual, dtype=float)
 
-    # Bin edges from the *expected* (train) distribution — quantile-based.
     quantiles = np.linspace(0, 100, bins + 1)
     bin_edges = np.unique(np.percentile(expected, quantiles))
     if len(bin_edges) < 2:
@@ -184,13 +296,7 @@ def interpret_psi(psi: float) -> str:
 
 
 def r2_score(actual: pd.Series | np.ndarray, predicted: pd.Series | np.ndarray) -> float:
-    """Coefficient of determination — CONTEXT "K2 Score" resolved as R².
-
-    ``R² = 1 − SS_res / SS_tot``, with mean taken from *actual* only (test
-    months). Tells Finanzas what share of revenue variability the model
-    captures. See ROADMAP.es.md §3.1 for the decision rationale; the prior
-    "blocked_missing_definition" note is kept there as legacy.
-    """
+    """R² — adopted team reading of CONTEXT label "K2 Score" (not official)."""
     actual = np.asarray(actual, dtype=float)
     predicted = np.asarray(predicted, dtype=float)
     ss_res = float(np.sum((actual - predicted) ** 2))
@@ -202,15 +308,7 @@ def r2_score(actual: pd.Series | np.ndarray, predicted: pd.Series | np.ndarray) 
 
 def evaluate(actual: pd.Series, predicted: pd.Series,
              train_revenue: pd.Series | None = None) -> dict:
-    """MSE in USD² (CONTEXT), RMSE in USD and RMSE as % of mean monthly revenue.
-
-    ``rmse_pct_of_mean = rmse / mean_revenue * 100`` — the Finanzas-readable
-    number: "our typical monthly miss is X% of a normal month's revenue".
-    RMSE (not MSE) is used for the percentage so units match (USD/USD).
-
-    Also reports: normalized Gini, R² (CONTEXT "K2 Score"), and — when
-    *train_revenue* is given — PSI train-vs-test on ``revenue_usd``.
-    """
+    """MSE/RMSE/Gini/R² (+ optional PSI) on the sealed test months."""
     actual = actual.astype(float)
     predicted = predicted.astype(float)
     mse = float(((actual - predicted) ** 2).mean())
@@ -224,8 +322,11 @@ def evaluate(actual: pd.Series, predicted: pd.Series,
         "gini": float(normalized_gini(actual, predicted)),
         "r2": float(r2_score(actual, predicted)),
         "k2_note": (
-            "K2 Score resolved as R2 (coefficient of determination) — see ROADMAP §3.1"
+            "Adopted interpretation: CONTEXT label 'K2 Score' reported as R² "
+            "(coefficient of determination) — not an official equivalence; "
+            "see ROADMAP §3.1"
         ),
+        "forecast_mode": "recursive_no_contemporaneous_visits_arpu",
         "n_test_months": int(len(actual)),
     }
     if train_revenue is not None:
@@ -237,11 +338,7 @@ def evaluate(actual: pd.Series, predicted: pd.Series,
 
 def plot_forecast(test_months: pd.Series, actual: pd.Series, forecast: pd.DataFrame,
                   path: Path, metrics: dict | None = None) -> None:
-    """Actual vs predicted + variability band over the 2 HealthCore test years.
-
-    CONTEXT columns only: ``month`` on the x-axis, ``revenue_usd`` on the y-axis.
-    The band is the p10–p90 spread across Random Forest trees (not a Bayesian CI).
-    """
+    """Actual vs predicted + variability band over the 2 HealthCore test years."""
     if len(test_months) != 24:
         raise ValueError(
             f"plot expects exactly 24 test months (2024-01..2025-12), got {len(test_months)}"
@@ -254,14 +351,13 @@ def plot_forecast(test_months: pd.Series, actual: pd.Series, forecast: pd.DataFr
 
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.plot(test_months, actual, label="Real (revenue_usd)", linewidth=2)
-    ax.plot(test_months, forecast["predicted"], label="Predicción RF", linewidth=2)
+    ax.plot(test_months, forecast["predicted"], label="Predicción RF (recursiva)", linewidth=2)
     ax.fill_between(
         test_months, forecast["band_lo"], forecast["band_hi"],
         alpha=0.25, label="Banda p10–p90 (árboles RF)",
     )
     ax.set_title(
-        "HealthCore — ventas test 2024-01 → 2025-12 "
-        "(24 meses no vistos): real vs predicción RF"
+        "HealthCore — test 2024-01 → 2025-12 (recursivo, sin visits/ARPU contemporáneos)"
     )
     ax.set_xlabel("month")
     ax.set_ylabel("revenue_usd (USD)")
@@ -281,38 +377,56 @@ def plot_forecast(test_months: pd.Series, actual: pd.Series, forecast: pd.DataFr
 
 def run(n_estimators: int = N_ESTIMATORS,
         output_dir: Path = OUTPUT_DIR) -> dict[str, float]:
-    frame = add_lag_features(add_calendar_features(clean_sales(load_sales())))
-    # 108 rows after dropping the 12-month lag warm-up (all inside train).
-    train, test = chronological_split(frame, expected=(84, 24))
-    cols = feature_columns(frame)
+    base = add_calendar_features(clean_sales(load_sales()))
+    # Split BEFORE any lag construction that could touch the test horizon.
+    train_raw, test_raw = chronological_split(base, expected=(96, 24))
 
+    decomp = decompose_series(base)
+
+    # Lags for fitting: train block only (no test revenues in lag columns).
+    train = add_lag_features(train_raw.copy())
+    cols = feature_columns(train)
     model = train_forest(train[cols], train[TARGET_COL], n_estimators=n_estimators)
-    forecast = predict_with_band(model, test[cols])
+
+    forecast = forecast_recursive(
+        model,
+        train_history=train_raw[TARGET_COL],
+        test_calendar=test_raw[["month", "year", "month_sin", "month_cos"]],
+        feature_cols=cols,
+    )
     metrics = evaluate(
-        test[TARGET_COL], forecast["predicted"], train_revenue=train[TARGET_COL]
+        test_raw[TARGET_COL], forecast["predicted"],
+        train_revenue=train_raw[TARGET_COL],
     )
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    decomp_notes = plot_decomposition(decomp, output_dir / "sales_decomposition.png")
+    metrics["decomposition"] = decomp_notes
+
     joblib.dump({"model": model, "feature_cols": cols}, output_dir / "sales_rf_model.joblib")
     (output_dir / "sales_metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
-    pd.concat([test[["month", TARGET_COL]].reset_index(drop=True), forecast], axis=1).to_csv(
-        output_dir / "sales_predictions.csv", index=False
-    )
+    pd.concat(
+        [test_raw[["month", TARGET_COL]].reset_index(drop=True), forecast], axis=1
+    ).to_csv(output_dir / "sales_predictions.csv", index=False)
     plot_forecast(
-        test["month"], test[TARGET_COL], forecast,
+        test_raw["month"], test_raw[TARGET_COL], forecast,
         output_dir / "sales_forecast.png", metrics=metrics,
     )
     logger.info(
-        "metrics: rmse_usd=%.0f rmse_pct_of_mean=%.2f%% gini=%.3f r2=%.3f psi=%.4f (%s)",
+        "metrics: rmse_usd=%.0f rmse_pct_of_mean=%.2f%% gini=%.3f r2=%.3f psi=%.4f (%s) mode=%s",
         metrics["rmse_usd"], metrics["rmse_pct_of_mean"], metrics["gini"],
         metrics["r2"], metrics["psi"], metrics["psi_interpretation"],
+        metrics["forecast_mode"],
     )
+    logger.info("decomposition: %s", decomp_notes.get("note", ""))
     return metrics
 
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
-    parser = argparse.ArgumentParser(description="Train HealthCore sales RF (Phase 2).")
+    parser = argparse.ArgumentParser(
+        description="Train HealthCore sales RF (honest recursive test forecast)."
+    )
     parser.add_argument("--n-estimators", type=int, default=N_ESTIMATORS)
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
     args = parser.parse_args()

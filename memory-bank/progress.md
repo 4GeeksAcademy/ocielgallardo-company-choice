@@ -52,7 +52,17 @@
 - Trigger: OS crontab / dedicated scheduler container `0 2 * * *` (documented in script docstring + PR); no in-API scheduler.
 - Validation: `uv run python -m pytest tests/nightly/test_nightly_export.py` 11 passed (lock, idempotency, failure, CSV); `tests/pipelines` 10 passed (no regression); live SQLite CLI demo (success/duplicate/lock/failure).
 - PR33 resilience follow-up: `job_runs` now has a partial unique index that makes `processing` lock acquisition atomic; stale locks expire to `failed` using `started_at`; telemetry CSVs are written to a same-directory temporary file and published with atomic `os.replace()`. Added tests for atomic lock acquisition and stale-lock recovery.
-- TODO: apply `job_runs_schema.sql` to Supabase; configure host crontab; manual run against staging DB.
+-   TODO: apply `job_runs_schema.sql` to Supabase; configure host crontab; manual run against staging DB.
+
+## Recently Completed (sales forecasting — Fase 5.1 honest recursive forecast)
+
+- Branch: `feature/sales-forecast-model`.
+- PR-review fix: removed contemporaneous `visits_count` / `avg_revenue_per_visit_usd` from RF features; test horizon uses `forecast_recursive` (lags from predictions, not real test revenue).
+- Classical additive seasonal decomposition (`sales_decomposition.png`) — peaks 10/11/12, troughs 7/8/9 match CONTEXT.
+- K2 documented as **adopted** R² reading (not official equivalence) in ROADMAP §3.1 + `k2_note`.
+- Honest test metrics (via `subst W:`): RMSE 5.90%, Gini 0.899, R² 0.688, PSI 5.10 (`significant_shift`); mode `recursive_no_contemporaneous_visits_arpu`.
+- Validation: `pytest tests/pipelines/` 27 passed; `git diff --check` clean.
+- Docs: `docs/sales-forecasting/ROADMAP.es.md` Fase 5.1.
 
 ## Recently Completed (main sync 8b7406a + PR #32)
 
