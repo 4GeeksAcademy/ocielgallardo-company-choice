@@ -114,7 +114,8 @@
 
 > Objetivo: completar las 4 métricas que pide el CONTEXT (§3 y §6): MSE, PSI, Gini,
 > K2 Score. MSE/RMSE y Gini llegaron en Fase 2; esta fase añade PSI y resuelve
-> K2 Score como R² (coeficiente de determinación).
+> K2 Score como **D'Agostino–Pearson K²** sobre residuos de test. R² queda como
+> métrica bonus (no sustituye a K2).
 
 > **Nota (por qué un MSE bajo no basta solo):**
 > El MSE solo dice "en promedio, ¿cuánto nos equivocamos en dólares?".
@@ -126,12 +127,13 @@
 >    Diciembre fuerte). Eso lo mira el **Gini**.
 > 3. El MSE no avisa si los datos de prueba **ya no se parecen** a los de
 >    entrenamiento. Eso lo mira el **PSI**.
-> 4. El MSE no dice **qué parte de la variación** de ingresos captura el
->    modelo. Eso lo mira el **R²** (nuestra lectura del K2 Score).
+> 4. El MSE no dice si los **residuos** (real − predicho) se comportan como
+>    ruido aproximadamente normal. Eso lo mira el **K2** (D'Agostino).
+> 5. **Bonus:** R² dice qué parte de la variación de ingresos captura el modelo.
 >
 > En corto: MSE = tamaño del error. Las otras métricas = si ese error es
-> honesto, útil y estable. Finanzas necesita las cuatro, no solo un número
-> bonito.
+> honesto, útil y estable. Finanzas necesita las cuatro del CONTEXT, no solo
+> un número bonito.
 
 ### 3.0 PSI (Population Stability Index) — Estabilidad de distribución
 
@@ -151,54 +153,48 @@
 > train-vs-test como proxy de estabilidad. Un PSI regional requiere el split de
 > datos descrito en CONTEXT §5 (proporción ~75/25 US/UK) y queda como **TODO**.
 
-### 3.1 K2 Score — interpretación adoptada como R² (no equivalencia oficial)
+### 3.1 K2 Score — D'Agostino–Pearson K² (residuos de test)
 
-> **Legacy (bloqueo 2026-09-29):** la fórmula no estaba en CONTEXT ni en literatura
-> estándar bajo el nombre "K2 Score". Candidatas investigadas: D'Agostino K²
-> (normalidad de residuos), Cooper-Herskovits K2 (redes bayesianas), R², KS.
-> Se documentó el bloqueo y se pidió la definición oficial antes de inventar nada.
+> **Legacy (bloqueo 2026-09-29 → aclarado 2026-10-02):** sin definición en CONTEXT,
+> se exploró R² como hipótesis provisional. La definición confirmada del ticket:
+> K2 mide si los residuos (`real − predicho`) siguen una distribución
+> aproximadamente normal. Eso es el test de D'Agostino–Pearson (`scipy.stats.normaltest`).
 
-**Decisión del equipo (2026-09-29, aclarada tras review):** reportar **R²** bajo la
-etiqueta CONTEXT "K2 Score" como **interpretación adoptada del equipo**, no como
-equivalencia oficial documentada por HealthCore. Motivos:
+**Qué mide:** distancia de los residuos respecto a ruido normal.
 
-1. **Complementa las otras tres sin redundancia.** MSE responde "¿cuánto erramos
-   en USD?"; Gini, "¿rankea bien meses débiles vs fuertes?"; PSI, "¿cambió la
-   distribución train→test?". R² responde la pregunta que falta: "¿qué proporción
-   de la variabilidad de ingresos captura el modelo?".
-2. **Explicable a Finanzas en una frase.** "El modelo explica el X% de la
-   variación mensual" — cumple el criterio no negociable del ticket ("métrica
-   que yo pueda explicarle a Finanzas sin que parezca una caja negra").
-3. **Hipótesis de typo K↔R** en teclado QWERTY; no existe métrica estándar de
-   forecasting llamada "K2 Score". R² es la lectura natural en un set de
-   evaluación de regresión.
-4. **Fórmula oficial de R², sin inventar:** `R² = 1 − SS_res / SS_tot`, con media
-   tomada solo del set de test (evaluación honesta).
+- **K2 cercano a 0** (+ `p ≥ 0.05`) → residuos lucen normales (`residuals_look_normal`).
+- **K2 grande** (+ `p < 0.05`) → sesgo / no normalidad (`residuals_non_normal`).
 
-- [x] Decisión documentada: etiqueta K2 → R² como interpretación adoptada (este §3.1)
-- [x] `r2_score(actual, predicted)` implementada en `scripts/train_sales_model.py`
-- [x] Test: R² = 1.0 con predicción perfecta; parcial en (0, 1) (`test_r2_perfect_prediction`)
-- [x] `sales_metrics.json` incluye `r2` (float) + `k2_note` (trazabilidad: adopted, not official)
+**Regla 8/2 (no negociable):** residuos = solo los **24 meses de test**
+(2024-01 → 2025-12) tras el forecast recursivo. Train nunca entra en K2.
+
+**Caveat:** con `n = 24` el test tiene potencia limitada; un p no significativo
+no prueba normalidad perfecta, solo que no se rechaza al α = 0.05.
+
+- [x] `k2_score(residuals)` → `k2`, `k2_pvalue`, `k2_interpretation` (`scripts/train_sales_model.py`)
+- [x] `evaluate` calcula residuos solo sobre `actual`/`predicted` de test
+- [x] Tests: normal ≈ `residuals_look_normal`; skewed ≈ `residuals_non_normal`
+- [x] `sales_metrics.json`: `k2`, `k2_pvalue`, `k2_interpretation`, `k2_note`
+- [x] **Bonus:** `r2` sigue reportado; no es el K2 del CONTEXT
 
 ### 3.2 Reporte consolidado y cierre
 
-- [x] `sales_metrics.json` contiene: `mse_usd2`, `rmse_usd`, `rmse_pct_of_mean`, `gini`, `r2`, `k2_note`, `psi`, `psi_interpretation`
-- [x] `uv run python -m pytest tests/pipelines/ -q` → 35 passed (vía `subst W:`)
+- [x] `sales_metrics.json` contiene: `mse_usd2`, `rmse_usd`, `rmse_pct_of_mean`, `gini`, `k2`, `k2_pvalue`, `k2_interpretation`, `k2_note`, `r2` (bonus), `psi`, `psi_interpretation`
+- [x] `uv run python -m pytest tests/pipelines/ -q` (vía `subst W:`)
 - [x] `uv run python scripts/train_sales_model.py` → métricas actualizadas
 - [x] `git diff --check` limpio
 
-> **Resultados (2026-09-29, `uv run python scripts/train_sales_model.py` vía `W:`):**
+> **Resultados legacy (2026-09-29, batch leaky + R²-as-K2 — histórico):**
 >
-> | Métrica | Valor | Lectura para Finanzas |
+> | Métrica | Valor | Lectura |
 > |---|---|---|
-> | RMSE % | **4.74%** | Desviación mensual típica ≈ 5% del ingreso promedio |
-> | RMSE USD | **159 628** | Error absoluto mensual — margen de presupuesto ±160K |
-> | Gini | **0.962** | Distingue meses débiles de fuertes con alta confianza |
-> | PSI | **5.04** (`significant_shift`) | La distribución de `revenue_usd` cambió train→test (crecimiento anual ~4% desplaza la masa); proxy consolidado, no mezcla US/UK |
-> | R² (K2) | **0.799** | El modelo captura ~80% de la variabilidad de ingresos en test |
+> | RMSE % | **4.74%** | (antes de sellar el test) |
+> | Gini | **0.962** | |
+> | PSI | **5.04** | |
+> | R² (mal etiquetado como K2) | **0.799** | sustituido: ver §3.1 + Fase 5.1 |
 >
 > **TODOs honestos:** PSI regional (CSV sin desglose US/UK); el pico de fin de 2025
-> sigue fuera de la banda p10–p90 (límite del modelo, no sobreajuste).
+> puede quedar fuera de la banda p10–p90 (límite del modelo, no sobreajuste).
 
 ---
 
@@ -282,24 +278,27 @@ equivalencia oficial documentada por HealthCore. Motivos:
 - [x] Checklist vs CONTEXT (Oct–Dec alto, Jul–Aug bajo) en `metrics["decomposition"]`
 - [x] Test: `test_decomposition_matches_healthcore_seasonality_pattern`
 
-### 5.1.3 K2 wording + métricas honestas
+### 5.1.3 K2 real (D'Agostino) + R² bonus + métricas honestas
 
-- [x] `k2_note` / ROADMAP §3.1: R² = interpretación adoptada, no equivalencia oficial
-- [x] Re-entrenar y documentar RMSE/Gini/R²/PSI **post-fuga** (tabla abajo)
+- [x] CONTEXT K2 = D'Agostino–Pearson sobre residuos de los **24 meses de test** (§3.1)
+- [x] R² permanece como **bonus** (no sustituye a K2)
+- [x] Re-entrenar y documentar RMSE/Gini/K2/R²/PSI post-fuga (tabla abajo)
 
-> **Resultados honestos (2026-10-01, `uv run python scripts/train_sales_model.py` vía `W:`):**
+> **Resultados honestos (2026-10-02, recursivo + D'Agostino K2 vía `W:`):**
 >
 > | Métrica | Valor (batch leaky, legacy) | Valor (recursivo limpio) | Lectura |
 > |---|---|---|---|
 > | RMSE % | ~4.74% | **5.90%** | Sube al quitar fuga contemporánea + usar lags predichos |
 > | RMSE USD | ~159 628 | **198 559** | Margen de presupuesto más realista ≈ ±200K |
 > | Gini | ~0.962 | **0.899** | Sigue distinguiendo meses débiles/fuertes |
-> | R² (adopted K2) | ~0.799 | **0.688** | Captura ~69% de la variabilidad (honesto) |
+> | K2 (D'Agostino) | — | **0.883** (p=0.643, `residuals_look_normal`) | Residuos de test ≈ ruido normal (α=0.05; n=24 potencia limitada) |
+> | R² (bonus) | ~0.799 | **0.688** | Captura ~69% de la variabilidad (no es K2) |
 > | PSI | ~5.04 | **5.10** (`significant_shift`) | Proxy train→test sin cambio material |
 >
 > Descomposición: picos estacionales **10/11/12**, valles **7/8/9** — alinea con
 > CONTEXT Oct–Dec alto / Jul–Aug bajo (`matches_context_* = True`).
 >
-> Validación: `pytest tests/pipelines/` → **27 passed**; `git diff --check` limpio.
+> Validación: `pytest tests/pipelines/` → **29 passed**; `git diff --check` limpio.
 >
 > **TODO:** purge gap en CV temporal (evaluación formal en otra rama si aplica).
+

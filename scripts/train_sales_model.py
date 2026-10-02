@@ -39,6 +39,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy import stats
 from sklearn.ensemble import RandomForestRegressor
 
 from scripts.prepare_sales_data import (
@@ -296,7 +297,7 @@ def interpret_psi(psi: float) -> str:
 
 
 def r2_score(actual: pd.Series | np.ndarray, predicted: pd.Series | np.ndarray) -> float:
-    """R² — adopted team reading of CONTEXT label "K2 Score" (not official)."""
+    """R² — bonus metric only (not the CONTEXT K2 Score)."""
     actual = np.asarray(actual, dtype=float)
     predicted = np.asarray(predicted, dtype=float)
     ss_res = float(np.sum((actual - predicted) ** 2))
@@ -306,26 +307,58 @@ def r2_score(actual: pd.Series | np.ndarray, predicted: pd.Series | np.ndarray) 
     return 1.0 - ss_res / ss_tot
 
 
+K2_ALPHA = 0.05  # reject normality when p < alpha
+
+
+def k2_score(residuals: pd.Series | np.ndarray) -> dict[str, float | str]:
+    """D'Agostino–Pearson K² normality test on residuals (CONTEXT K2 Score).
+
+    Closer to 0 ⇒ residuals look approximately normal; large K² ⇒ skewed /
+    non-normal structure that MSE alone can miss. Requires n ≥ 8 (scipy).
+    """
+    residuals = np.asarray(residuals, dtype=float)
+    n = int(len(residuals))
+    if n < 8:
+        raise ValueError(f"D'Agostino K² needs ≥8 residuals, got {n}")
+    statistic, pvalue = stats.normaltest(residuals)
+    k2 = float(statistic)
+    p = float(pvalue)
+    return {
+        "k2": k2,
+        "k2_pvalue": p,
+        "k2_interpretation": (
+            "residuals_look_normal" if p >= K2_ALPHA else "residuals_non_normal"
+        ),
+        "k2_n": n,
+    }
+
+
 def evaluate(actual: pd.Series, predicted: pd.Series,
              train_revenue: pd.Series | None = None) -> dict:
-    """MSE/RMSE/Gini/R² (+ optional PSI) on the sealed test months."""
+    """MSE/RMSE/Gini/K2 (+ bonus R², optional PSI) on the sealed test months only."""
     actual = actual.astype(float)
     predicted = predicted.astype(float)
-    mse = float(((actual - predicted) ** 2).mean())
+    residuals = actual - predicted
+    mse = float((residuals ** 2).mean())
     rmse = float(np.sqrt(mse))
     mean_revenue = float(actual.mean())
+    k2_metrics = k2_score(residuals)
     metrics: dict = {
         "mse_usd2": mse,
         "rmse_usd": rmse,
         "mean_monthly_revenue_usd": mean_revenue,
         "rmse_pct_of_mean": rmse / mean_revenue * 100 if mean_revenue else float("nan"),
         "gini": float(normalized_gini(actual, predicted)),
-        "r2": float(r2_score(actual, predicted)),
+        "k2": k2_metrics["k2"],
+        "k2_pvalue": k2_metrics["k2_pvalue"],
+        "k2_interpretation": k2_metrics["k2_interpretation"],
         "k2_note": (
-            "Adopted interpretation: CONTEXT label 'K2 Score' reported as R² "
-            "(coefficient of determination) — not an official equivalence; "
-            "see ROADMAP §3.1"
+            "CONTEXT K2 Score = D'Agostino–Pearson K² normality test on "
+            "test residuals (actual − predicted); near 0 ≈ normal noise, "
+            f"large ⇒ structural bias. Reject normality if p < {K2_ALPHA}. "
+            "R² is a bonus metric only — see ROADMAP §3.1"
         ),
+        "r2": float(r2_score(actual, predicted)),  # bonus
         "forecast_mode": "recursive_no_contemporaneous_visits_arpu",
         "n_test_months": int(len(actual)),
     }
@@ -413,8 +446,10 @@ def run(n_estimators: int = N_ESTIMATORS,
         output_dir / "sales_forecast.png", metrics=metrics,
     )
     logger.info(
-        "metrics: rmse_usd=%.0f rmse_pct_of_mean=%.2f%% gini=%.3f r2=%.3f psi=%.4f (%s) mode=%s",
+        "metrics: rmse_usd=%.0f rmse_pct_of_mean=%.2f%% gini=%.3f "
+        "k2=%.3f p=%.4f (%s) r2_bonus=%.3f psi=%.4f (%s) mode=%s",
         metrics["rmse_usd"], metrics["rmse_pct_of_mean"], metrics["gini"],
+        metrics["k2"], metrics["k2_pvalue"], metrics["k2_interpretation"],
         metrics["r2"], metrics["psi"], metrics["psi_interpretation"],
         metrics["forecast_mode"],
     )

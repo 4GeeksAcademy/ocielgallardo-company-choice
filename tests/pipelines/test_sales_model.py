@@ -41,6 +41,7 @@ from scripts.train_sales_model import (  # noqa: E402
     feature_columns,
     forecast_recursive,
     interpret_psi,
+    k2_score,
     plot_forecast,
     population_stability_index,
     r2_score,
@@ -126,7 +127,11 @@ def test_metrics_follow_documented_formula():
         metrics["rmse_usd"] / metrics["mean_monthly_revenue_usd"] * 100
     )
     assert 0.0 <= metrics["gini"] <= 1.0
-    assert "r2" in metrics
+    assert "k2" in metrics and "k2_pvalue" in metrics
+    assert metrics["k2_interpretation"] in (
+        "residuals_look_normal", "residuals_non_normal",
+    )
+    assert "r2" in metrics  # bonus
     assert metrics["forecast_mode"] == "recursive_no_contemporaneous_visits_arpu"
 
 
@@ -147,7 +152,26 @@ def test_psi_high_with_shifted_distribution():
     assert interpret_psi(psi) == "significant_shift"
 
 
+def test_k2_near_zero_for_normal_residuals():
+    rng = np.random.RandomState(42)
+    residuals = rng.normal(loc=0.0, scale=1.0, size=200)
+    out = k2_score(residuals)
+    assert out["k2_n"] == 200
+    assert out["k2_pvalue"] >= 0.05
+    assert out["k2_interpretation"] == "residuals_look_normal"
+
+
+def test_k2_high_for_skewed_residuals():
+    rng = np.random.RandomState(42)
+    residuals = rng.exponential(scale=2.0, size=200)  # strongly right-skewed
+    out = k2_score(residuals)
+    assert out["k2"] > 5.0
+    assert out["k2_pvalue"] < 0.05
+    assert out["k2_interpretation"] == "residuals_non_normal"
+
+
 def test_r2_perfect_prediction():
+    """Bonus metric — R² is not CONTEXT K2."""
     actual = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
     assert r2_score(actual, actual) == 1.0
     partial = actual + 0.5
@@ -163,8 +187,11 @@ def test_all_metrics_computed_only_on_test_months():
     assert metrics["n_test_months"] == 24
     assert len(test_raw) == 24
     assert "psi" in metrics
-    assert "k2_note" in metrics
-    assert "adopted" in metrics["k2_note"].lower() or "R²" in metrics["k2_note"] or "R2" in metrics["k2_note"]
+    assert "k2" in metrics
+    assert "k2_pvalue" in metrics
+    note = metrics["k2_note"].lower()
+    assert "d'agostino" in note or "dagostino" in note or "residual" in note
+    assert "bonus" in note or "r²" in note or "r2" in note
 
 
 def test_forecast_plot_written_for_24_test_months(tmp_path: Path):
