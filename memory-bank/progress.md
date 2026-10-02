@@ -52,7 +52,22 @@
 - Trigger: OS crontab / dedicated scheduler container `0 2 * * *` (documented in script docstring + PR); no in-API scheduler.
 - Validation: `uv run python -m pytest tests/nightly/test_nightly_export.py` 11 passed (lock, idempotency, failure, CSV); `tests/pipelines` 10 passed (no regression); live SQLite CLI demo (success/duplicate/lock/failure).
 - PR33 resilience follow-up: `job_runs` now has a partial unique index that makes `processing` lock acquisition atomic; stale locks expire to `failed` using `started_at`; telemetry CSVs are written to a same-directory temporary file and published with atomic `os.replace()`. Added tests for atomic lock acquisition and stale-lock recovery.
-- TODO: apply `job_runs_schema.sql` to Supabase; configure host crontab; manual run against staging DB.
+-   TODO: apply `job_runs_schema.sql` to Supabase; configure host crontab; manual run against staging DB.
+
+## Recently Completed (sales forecasting — Fase 5.1 honest recursive forecast)
+
+- Branch: `feature/sales-forecast-model`.
+- PR-review fix: removed contemporaneous `visits_count` / `avg_revenue_per_visit_usd` from RF features; test horizon uses `forecast_recursive` (lags from predictions, not real test revenue).
+- Classical additive seasonal decomposition (`sales_decomposition.png`) — peaks 10/11/12, troughs 7/8/9 match CONTEXT.
+- Honest recursive metrics (via `subst W:`): RMSE 5.90%, Gini 0.899, R² bonus 0.688, PSI 5.10 (`significant_shift`); mode `recursive_no_contemporaneous_visits_arpu`.
+- Docs: `docs/sales-forecasting/ROADMAP.es.md` Fase 5.1.
+
+## Recently Completed (sales forecasting — true K2 = D'Agostino on test residuals)
+
+- CONTEXT K2 Score implemented as D'Agostino–Pearson `normaltest` on **24 sealed test residuals only** (8/2 rule); fields `k2`, `k2_pvalue`, `k2_interpretation`.
+- R² kept as **bonus** only (no longer labeled as K2).
+- ROADMAP §3.1 rewritten; tests cover normal vs skewed synthetic residuals + pipeline 8/2 assertions.
+- Validation: `pytest tests/pipelines/` 29 passed; train K2=0.883 (p=0.643, residuals_look_normal); `git diff --check` clean.
 
 ## Recently Completed (main sync 8b7406a + PR #32)
 
