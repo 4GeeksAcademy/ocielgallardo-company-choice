@@ -108,6 +108,15 @@
 > límite MAX_PATH (260) y rompe la importación de sklearn en el venv. Validación
 > ejecutada vía unidad `W:` (`subst`) — ver memoria del hito si se repite.
 
+### 2.4 Criterio de decisión de negocio para la evaluación
+
+- [x] Uso principal declarado: apoyar la planificación de capacidad clínica y la visibilidad ejecutiva de ingresos.
+- [x] Métrica principal para el tamaño del error: RMSE como porcentaje del ingreso mensual medio; MSE en USD² queda como soporte financiero.
+- [x] Error direccional definido como `prediction - actual`: positivo indica sobreestimación y negativo indica subestimación.
+- [x] Supuesto de trabajo: para planificar capacidad, subestimar puede ser más costoso que sobreestimar porque una capacidad insuficiente puede limitar el acceso de pacientes.
+- [x] El sesgo direccional se interpretará junto con RMSE; no se usará RMSE como única evidencia de confiabilidad.
+- [ ] TODO: confirmar con el responsable de negocio si la asimetría del costo y el umbral de error son aceptables para staging.
+
 ---
 
 ## Fase 3 — Evaluación avanzada

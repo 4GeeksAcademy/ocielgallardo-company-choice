@@ -69,6 +69,16 @@
 - ROADMAP §3.1 rewritten; tests cover normal vs skewed synthetic residuals + pipeline 8/2 assertions.
 - Validation: `pytest tests/pipelines/` 29 passed; train K2=0.883 (p=0.643, residuals_look_normal); `git diff --check` clean.
 
+## Recently Completed (sales forecasting — Phase 2 business evaluation criterion)
+
+- Branch: `feature/regression-model-eval`.
+- Documented the forecast's primary use as clinic-capacity planning and executive revenue visibility.
+- Defined RMSE as the primary error-size metric, with MSE in USD² as a financial support metric.
+- Defined signed directional error as `prediction - actual` to distinguish overestimation from underestimation.
+- Recorded the working assumption that underestimation may be more costly for capacity planning because insufficient capacity can restrict patient access.
+- Added a `TODO` to confirm the cost asymmetry and acceptable staging threshold with the business owner.
+- Changed only `docs/sales-forecasting/ROADMAP.es.md` and this progress entry; no model code or hyperparameters changed.
+
 ## Recently Completed (main sync 8b7406a + PR #32)
 
 - Source commit `8b7406a` (`feat: update requirements and enhance backoffice layout`) was 1 ahead of `origin/main`: `services/requirements.txt` (+`prefect>=3`), `uis/backoffice/app/layout.tsx` (+`suppressHydrationWarning`), `uis/backoffice/components/layout/navConfig.ts` (+`BarChart3` on reporting group).
