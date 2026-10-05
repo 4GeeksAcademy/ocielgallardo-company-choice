@@ -69,6 +69,27 @@
 - ROADMAP §3.1 rewritten; tests cover normal vs skewed synthetic residuals + pipeline 8/2 assertions.
 - Validation: `pytest tests/pipelines/` 29 passed; train K2=0.883 (p=0.643, residuals_look_normal); `git diff --check` clean.
 
+## Recently Completed (sales forecasting — academy rubric evaluation)
+
+- Branch: `feature/regression-model-eval`.
+- Aligned `scripts/evaluate_sales_model.py` to 4Geeks rubric: `TimeSeriesSplit(n_splits=5, test_size=12, gap=12)`, MAE+RMSE train/val, mean±std, lag features rebuilt per fold, artifacts under `data/eval/`.
+- Canonical report: `data/eval/evaluation_report.md` + `learning_curve.png`; diagnosis **overfitting**; CV RMSE **7.41% ± 1.11%**, MAE **6.31% ± 1.49%**.
+- Primary metric justification: RMSE (CONTEXT Tom/Sandra + seasonal spike sensitivity); MAE secondary.
+- Corrective action: `max_depth=6`, `min_samples_leaf=3` (prescribed, not yet applied in trainer).
+- Tests: chronological fold-order unit test + MAE coverage; `tests/pipelines/` → **40 passed** via `subst W:`.
+- Still open: business cost confirmation; regional PSI; apply hyperparameter constraint; commit/push/PR when requested.
+
+## Recently Completed (sales forecasting — formal staging evaluation)
+
+- Branch: `feature/regression-model-eval`.
+- Added `scripts/evaluate_sales_model.py`: temporal learning curve (fixed future val + gap=12), `TimeSeriesSplit(n_splits=3, test_size=12, gap=12)`, signed bias (`prediction - actual`), stability summary, reproducible fit diagnosis, specific corrective action.
+- Added `tests/pipelines/test_sales_evaluation.py` (10 tests); full `tests/pipelines/` → **39 passed** via `subst W:` (Windows MAX_PATH / sklearn).
+- Diagnosis: **overfitting** (train RMSE ~1.1–1.5% vs val ~9% on curve; mean gap ~11 pp); CV stable at **7.13% ± 0.78**; bias leans underestimation (~−3.7%, ~69% months).
+- Corrective action prescribed (not yet applied): `max_depth=6`, `min_samples_leaf=3`, then re-run evaluation.
+- Report: `docs/sales-forecasting/MODEL-EVALUATION.md`; ROADMAP §6 closed for this ticket.
+- Still open: business cost-assumption confirmation; regional PSI; applying the hyperparameter constraint in `train_sales_model.py`.
+- **Superseded by academy rubric pass above** (5 folds, MAE, `data/eval/` paths).
+
 ## Recently Completed (sales forecasting — Phase 2 business evaluation criterion)
 
 - Branch: `feature/regression-model-eval`.

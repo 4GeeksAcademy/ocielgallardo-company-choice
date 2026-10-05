@@ -309,5 +309,36 @@ no prueba normalidad perfecta, solo que no se rechaza al α = 0.05.
 >
 > Validación: `pytest tests/pipelines/` → **29 passed**; `git diff --check` limpio.
 >
-> **TODO:** purge gap en CV temporal (evaluación formal en otra rama si aplica).
+> **TODO (histórico, cerrado en §6):** purge gap en CV temporal → implementado
+> en `scripts/evaluate_sales_model.py` (`TimeSeriesSplit` + `gap=12`).
+
+---
+
+## Fase 6 — Evaluación formal para staging (`feature/regression-model-eval`)
+
+> Ticket del tech lead + rúbrica academia 4Geeks: curvas de aprendizaje, CV
+> temporal ≥5 folds, MAE+RMSE, diagnóstico y acción correctiva específica.
+> Criterio de negocio: §2.4.
+
+### 6.0 Script y artefactos (rúbrica academia)
+
+- [x] `scripts/evaluate_sales_model.py` — learning curve + `TimeSeriesSplit(n_splits=5, gap=12)` + MAE/RMSE + sesgo
+- [x] Forecast recursivo reutilizado; lags reconstruidos **por fold** (sin fuga); test sellado fuera de CV
+- [x] Artefactos en `data/eval/`: `learning_curve.png`, `evaluation_report.md`, CSV/JSON de soporte
+- [x] Tests: `tests/pipelines/test_sales_evaluation.py` (orden cronológico de folds, ≥5 folds, MAE+RMSE)
+
+### 6.1 Resultados (500 árboles, 5 folds, vía `subst W:`)
+
+- [x] Diagnóstico: **overfitting** (train ≈ 1.1–1.5% vs val ≈ 9% en curva; mean gap ≈ 11 pp)
+- [x] CV: val RMSE % ≈ **7.41 ± 1.11**; val MAE % ≈ **6.31 ± 1.49** (stable)
+- [x] Métrica principal justificada: **RMSE** (CONTEXT Tom/Sandra + penaliza picos estacionales); MAE secundaria
+- [x] Sesgo: subestimación predominante — lado costoso bajo §2.4
+- [x] Acción correctiva: `max_depth=6`, `min_samples_leaf=3`; re-evaluar antes de staging
+- [x] Informe canónico: `data/eval/evaluation_report.md` (espejo histórico: `docs/sales-forecasting/MODEL-EVALUATION.md`)
+- [x] `uv run python -m pytest tests/pipelines/ -q` → **40 passed**
+
+> **No cerrado aquí (fuera de alcance del ticket):**
+> - [ ] TODO §2.4: confirmar asimetría de costo / umbral con negocio
+> - [ ] TODO PSI regional (CSV solo `consolidated`)
+> - [ ] Aplicar el constraint de hiperparámetros en `train_sales_model.py` (prescrito, no aplicado)
 
