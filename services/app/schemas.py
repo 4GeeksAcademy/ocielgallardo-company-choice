@@ -152,3 +152,16 @@ class TaskStatusResponse(BaseModel):
     status: str
     result: object | None = None
     error: str | None = None
+
+
+class RagQueryRequest(BaseModel):
+    """Coordinator question for the knowledge assistant."""
+
+    question: str = Field(min_length=3, max_length=1000)
+
+
+class RagQueryResponse(BaseModel):
+    """Model-generated answer only — never raw Qdrant chunks or scores."""
+
+    question: str
+    answer: str

@@ -14,6 +14,7 @@ from services.app.routers.auth import router as auth_router
 from services.app.routers.profiles import router as profiles_router
 from services.app.routers.inventory import router as inventory_router
 from services.app.routers.telemetry import router as telemetry_router
+from services.app.routers.rag import router as rag_router
 from services.app.routers.tasks import router as tasks_router
 from services.reporting.router import router as reporting_router
 
@@ -107,5 +108,6 @@ app.include_router(auth_router)
 app.include_router(profiles_router)
 app.include_router(inventory_router)
 app.include_router(telemetry_router)
+app.include_router(rag_router)
 app.include_router(reporting_router)
 app.include_router(tasks_router)
