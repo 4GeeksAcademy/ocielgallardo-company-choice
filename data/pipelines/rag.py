@@ -22,9 +22,11 @@ logger = logging.getLogger(__name__)
 
 # Cosine-similarity floor: below this, chunks are typically off-topic for
 # short front-desk policy questions, so the model must answer honestly
-# instead of guessing. Tune with data/eval/test-queries.json
-# (Recall@3 target >= 80%). See docs/rag/rag-design.md for the rationale.
-DEFAULT_MIN_SCORE = 0.35
+# instead of guessing. Tuned 0.35 -> 0.25 with data/eval/test-queries.json:
+# insurance questions rank the right document first at 0.287-0.345, so 0.35
+# returned empty context (Recall@3 75%); 0.25 admits them while keeping
+# off-topic chunks (<= 0.24 on the eval set) out. See docs/rag/rag-design.md.
+DEFAULT_MIN_SCORE = 0.25
 DEFAULT_TOP_K = 5
 
 # Fallback when the model returns nothing usable — a constant template,

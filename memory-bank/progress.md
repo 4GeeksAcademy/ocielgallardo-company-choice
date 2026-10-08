@@ -20,14 +20,19 @@
   threshold tuning, idempotency choice). Env: `EMBEDDING_*` (OpenRouter,
   `nvidia/nemotron-3-embed-1b:free`, dim 2048) / `LLM_*` (Groq,
   `qwen/qwen3.8-27b`); Compose carries RAG vars.
-  Validation: 15 RAG tests pass; OpenAPI lists `POST /knowledge/query`
-  (30 paths, `/rag/*` gone); backoffice `tsc --noEmit` clean;
+  Live index 2026-10-08: 8 corpus files (EN+ES) from the syllabus
+  `00-general-contexts/healthcore/` → `healthcore_knowledge`, 24 chunks
+  (3/file, 6 per `source_document`), dim 2048. Chunk budget tuned
+  800→400 for the ≥3 seed rule; `min_score` tuned 0.35→0.25 after the
+  insurance queries ranked right-doc-first at 0.287–0.345 (Recall@3 75%→
+  **100%**, 8/8). Demo: "Is there a charge for cancelling 12 hours in
+  advance?" → correct $50 USD / £40 GBP private-pay answer with
+  Medicare/Medicaid exemption. Validation: 15 RAG tests pass; OpenAPI
+  lists `POST /knowledge/query`; backoffice `tsc --noEmit` clean;
   `docker compose config` + `git diff --check` pass;
   `pytest --ignore=tests/pipelines` 18 passed. Limitation: full `pytest`
   still blocked by pre-existing sklearn `KeyError: '__reduce_cython__'`
-  (unrelated). TODO: `00-general-contexts/healthcore/` absent — copy the
-  4 source docs and run `setup()`; set API keys in local `.env`; run the
-  Recall@3 script.
+  (unrelated). TODO: PR review; re-tune threshold after any corpus change.
 
 - RAG dependencies installed via `uv add` (no pip/pipenv): `qdrant-client>=1.19.1`,
   `groq>=1.7.0` (generation), `openai>=3.26.1` (OpenAI-compatible client for

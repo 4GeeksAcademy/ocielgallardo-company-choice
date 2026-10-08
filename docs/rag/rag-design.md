@@ -48,10 +48,12 @@ Hybrid heading + paragraph packing (`chunk_markdown` in
 - Markdown headings (`#`–`######`) become the chunk `section`, so each
   policy rule keeps its titled unit (e.g. a cancellation-fee clause never
   merges with unrelated sections).
-- Paragraphs pack greedily to ~800 chars with a 1-paragraph overlap, so a
+- Paragraphs pack greedily to ~400 chars with a 1-paragraph overlap, so a
   rule split across a boundary still appears whole in a neighbour chunk.
   Sentences are never cut mid-line: packing only joins/splits at paragraph
-  boundaries.
+  boundaries. (~1 KB source docs need the ~400 budget to reach ≥ 3 chunks
+  each; measured 2026-10-08: exactly 3 chunks per document, 24 total —
+  6 per `source_document` across EN+ES.)
 - Text preprocessing is minimal and documented: lines are stripped, blank
   lines dropped, paragraphs joined with single spaces — no lowercasing, no
   stop-word removal, so fees, timeframes, and plan names embed verbatim.
@@ -61,8 +63,8 @@ semantic unit is the titled rule/condition, not a fixed token window.
 Heading-scoped chunks keep one rule per chunk; the overlap preserves
 conditions that span paragraphs.
 
-- TODO: record per-document chunk counts after indexing (each of the four
-  documents must yield ≥ 3 chunks).
+- Indexed 2026-10-08: 3 chunks per file (8 files → 24 chunks), seed
+  requirement met for all four `source_document` ids in both languages.
 
 ## 4. Embeddings and generation (separate models)
 
@@ -81,14 +83,16 @@ conditions that span paragraphs.
 
 ## 5. Similarity threshold and tuning
 
-`retrieve(query, *, k=5, min_score=0.35)`: nearest 5, drop below 0.35
+`retrieve(query, *, k=5, min_score=0.25)`: nearest 5, drop below 0.25
 cosine — fewer than `k` may return. Rationale: for short front-desk policy
-questions, chunks below ~0.35 are typically off-topic; answering from them
+questions, chunks below ~0.25 are typically off-topic; answering from them
 risks unfaithful fees/coverage, so the model instead answers honestly from
-the empty-context prompt. Tuning procedure: run
-`uv run python data/eval/measure_rag_recall.py` (Recall@3 on
-`data/eval/test-queries.json`, target ≥ 80%); if recall misses, lower the
-floor in small steps and re-check faithfulness on the same set.
+the empty-context prompt. Tuning (measured 2026-10-08, 24 indexed chunks):
+the initial 0.35 floor returned empty context for both insurance questions
+(the right document ranked first at 0.287–0.345) → Recall@3 75%; lowering
+to 0.25 admits them while keeping off-topic chunks (≤ 0.24 on the eval set)
+out → Recall@3 100% (8/8). Re-tune with
+`uv run python data/eval/measure_rag_recall.py` after any corpus change.
 
 ## 6. Idempotency
 
