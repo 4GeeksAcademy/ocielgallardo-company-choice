@@ -58,7 +58,9 @@ def _resolve_database_url() -> str:
             "SUPABASE_DB_HOST, SUPABASE_DB_USER, and SUPABASE_DB_PASSWORD in .env"
         )
 
-    return f"postgresql://{user}:{quote_plus(password)}@{host}:{port}/{name}"
+    # Pin psycopg2 explicitly: SQLAlchemy >= 2.1 defaults postgresql://
+    # to the psycopg (v3) driver, which is not installed here.
+    return f"postgresql+psycopg2://{user}:{quote_plus(password)}@{host}:{port}/{name}"
 
 
 @lru_cache(maxsize=1)
