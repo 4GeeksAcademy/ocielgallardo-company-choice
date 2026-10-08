@@ -25,19 +25,28 @@ logger = logging.getLogger(__name__)
 DEFAULT_COLLECTION = "healthcore_knowledge"
 
 # Expected corpus files (filename stem -> source_document payload value).
+# Both English (.en) and Spanish (.es) sources map to the same document ids;
+# language is detected from the suffix at load time.
 SOURCE_DOCUMENTS = {
     "healthcore-insurance-coverage.en": "insurance-coverage",
     "healthcore-appointment-policy.en": "appointment-policy",
     "healthcore-referral-process.en": "referral-process",
     "healthcore-new-patient-checklist.en": "new-patient-checklist",
+    "healthcore-insurance-coverage.es": "insurance-coverage",
+    "healthcore-appointment-policy.es": "appointment-policy",
+    "healthcore-referral-process.es": "referral-process",
+    "healthcore-new-patient-checklist.es": "new-patient-checklist",
 }
 
 # Seed requirement: every source document must produce at least 3 chunks.
 MIN_CHUNKS_PER_DOCUMENT = 3
 
-# Chunking budget: pack paragraphs up to ~800 chars, keep 1 paragraph overlap
+# Chunking budget: pack paragraphs up to ~400 chars, keep 1 paragraph overlap
 # so section boundaries stay searchable without duplicating whole sections.
-CHUNK_TARGET_CHARS = 800
+# (~1KB source docs need a ~400 budget to reach the seed minimum of 3 chunks
+# per document; packing still only splits at paragraph boundaries, never
+# mid-sentence.)
+CHUNK_TARGET_CHARS = 400
 CHUNK_OVERLAP_PARAGRAPHS = 1
 
 _HEADING_RE = re.compile(r"^#{1,6}\s+(.*\S)\s*$")
