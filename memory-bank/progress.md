@@ -2,6 +2,51 @@
 
 ## Current Status Snapshot
 
+- RAG knowledge base (Milestone 7, branch `feature/rag-knowledge-base`,
+  aligned with the phase spec): `data/process/rag.py` (`setup` with
+  deterministic uuid5 point IDs = idempotent re-runs, singular `embed()`
+  shared by index and query paths, payload per brief §3) +
+  `data/pipelines/rag.py` (`retrieve(query, *, k=5, min_score=0.35)` →
+  payload dicts, never SDK objects; standalone
+  `generate_answer(question, context)`; `query(question) -> str` is
+  literally retrieve + generate, honest empty-context fallback) +
+  `POST /knowledge/query` (Bearer, `{question, answer}` only — no chunks
+  or scores to clients) + backoffice `/knowledge` page (loading/error
+  states, dark mode) + `tests/pipelines/test_rag.py` (15 offline tests:
+  threshold filtering, fewer-than-k, model-output-not-raw, step separation)
+  + `data/eval/measure_rag_recall.py` (Recall@3 script) +
+  `data/eval/test-queries.json` (8 questions, 4 docs) +
+  `docs/rag/rag-design.md` (flow diagram, chunking rationale, models,
+  threshold tuning, idempotency choice). Env: `EMBEDDING_*` (OpenRouter,
+  `nvidia/nemotron-3-embed-1b:free`, dim 2048) / `LLM_*` (Groq,
+  `qwen/qwen3.8-27b`); Compose carries RAG vars.
+  Validation: 15 RAG tests pass; OpenAPI lists `POST /knowledge/query`
+  (30 paths, `/rag/*` gone); backoffice `tsc --noEmit` clean;
+  `docker compose config` + `git diff --check` pass;
+  `pytest --ignore=tests/pipelines` 18 passed. Limitation: full `pytest`
+  still blocked by pre-existing sklearn `KeyError: '__reduce_cython__'`
+  (unrelated). TODO: `00-general-contexts/healthcore/` absent — copy the
+  4 source docs and run `setup()`; set API keys in local `.env`; run the
+  Recall@3 script.
+
+- RAG dependencies installed via `uv add` (no pip/pipenv): `qdrant-client>=1.19.1`,
+  `groq>=1.7.0` (generation), `openai>=3.26.1` (OpenAI-compatible client for
+  OpenRouter embeddings; credentials pending from developer). `fastapi>=0.141.1`
+  already present. `services/requirements.txt` synced for the dev image;
+  `QDRANT_URL`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`
+  placeholders added to `.env.example` and Compose `backend`/`worker` env.
+  Validation: imports OK (fastapi 0.141.1, qdrant-client 1.19.1, groq 1.7.0,
+  openai 3.26.1); `docker compose config` + `git diff --check` pass;
+  `pytest --ignore=tests/pipelines` 18 passed. Limitation: full `pytest`
+  collection fails on `tests/pipelines` with pre-existing sklearn
+  `KeyError: '__reduce_cython__'`, unrelated to this change.
+
+- Local Docker Compose now includes Qdrant (`qdrant/qdrant:latest`) as `healthcore-qdrant` on
+  `6333` (REST) / `6334` (gRPC), persistent volume `qdrant_storage`, network
+  `healthcore_dev_network`. Backend receives `QDRANT_URL` default
+  `http://qdrant:6333`. Stop any standalone host Qdrant bound to those ports
+  before `docker compose up` to avoid port conflicts.
+
 - Asynchronous reporting tasks: `POST /reporting/pipeline-runs` queues the monthly
   pipeline through Celery and returns `202` with `task_id`; `GET /tasks/{task_id}`
   exposes `pending|started|success|failure`. Redis is the shared broker/result
