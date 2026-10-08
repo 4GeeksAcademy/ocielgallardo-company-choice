@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   BarChart3,
+  BookOpen,
   Boxes,
   LayoutDashboard,
   Siren,
@@ -70,6 +71,13 @@ export const WORK_NAV_GROUPS: NavGroup[] = [
     label: "Telemetry",
     href: "/telemetry",
     icon: Activity,
+    items: [],
+  },
+  {
+    id: "knowledge",
+    label: "Knowledge",
+    href: "/knowledge",
+    icon: BookOpen,
     items: [],
   },
   {
