@@ -98,10 +98,13 @@ out → Recall@3 100% (8/8). Re-tune with
 ## 6. Idempotency
 
 `setup()` is idempotent by deterministic IDs: each point ID is
-`uuid5(collection, source_document, chunk_index)`, so re-running overwrites
-the same points instead of duplicating them (chosen over wipe-and-reload to
-avoid a window with an empty collection). Pass `recreate=True` only for an
-explicit full rebuild (e.g. embedding-model change).
+`uuid5(collection, source_document, language, chunk_index)`, so re-running
+overwrites the same points instead of duplicating them (chosen over
+wipe-and-reload to avoid a window with an empty collection). `language` is
+required in the ID — without it, EN and ES chunks of one document collide
+and overwrite each other (found live: 12 stored instead of 24). Pass
+`recreate=True` only for an explicit full rebuild (e.g. embedding-model
+change).
 
 ## 7. Acceptance notes
 

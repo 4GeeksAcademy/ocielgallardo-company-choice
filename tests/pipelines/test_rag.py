@@ -171,6 +171,12 @@ def test_chunk_point_id_is_deterministic() -> None:
     assert first != chunk_point_id("healthcore_knowledge", "referral-process", 0)
 
 
+def test_chunk_point_id_differs_by_language() -> None:
+    en_id = chunk_point_id("healthcore_knowledge", "appointment-policy", 0, "en")
+    es_id = chunk_point_id("healthcore_knowledge", "appointment-policy", 0, "es")
+    assert en_id != es_id  # no EN/ES overwrite on upsert
+
+
 def test_load_corpus_missing_dir_lists_expected_files(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="healthcore-insurance-coverage.en.md"):
         load_corpus(tmp_path / "does-not-exist")

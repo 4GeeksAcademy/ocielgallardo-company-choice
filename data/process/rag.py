@@ -289,12 +289,18 @@ def _get_qdrant_client(settings: RagSettings):
     return QdrantClient(url=settings.qdrant_url, timeout=10)
 
 
-def chunk_point_id(collection: str, source_document: str, chunk_index: int) -> str:
-    """Deterministic point ID so re-running ``setup()`` upserts, never duplicates."""
+def chunk_point_id(
+    collection: str, source_document: str, chunk_index: int, language: str = "en"
+) -> str:
+    """Deterministic point ID so re-running ``setup()`` upserts, never duplicates.
+
+    ``language`` is part of the ID: EN and ES chunks of the same document
+    would otherwise collide and overwrite each other.
+    """
     return str(
         uuid.uuid5(
             uuid.NAMESPACE_URL,
-            f"{collection}:{source_document}:{chunk_index}",
+            f"{collection}:{source_document}:{language}:{chunk_index}",
         )
     )
 
@@ -337,6 +343,7 @@ def setup(
                     resolved.collection,
                     str(chunk["source_document"]),
                     int(chunk["chunk_index"]),
+                    str(chunk.get("language", "en")),
                 ),
                 vector=vector,
                 payload=chunk,
