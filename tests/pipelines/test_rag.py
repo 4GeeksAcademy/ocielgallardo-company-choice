@@ -328,3 +328,39 @@ def test_build_prompt_contains_business_rules() -> None:
     assert "United States" in prompt
     assert "United Kingdom" in prompt
     assert "billing" in prompt
+
+
+def test_embed_texts_batches_into_single_request(monkeypatch) -> None:
+    calls: list[object] = []
+
+    class _BatchEmbeddings:
+        def create(self, model, input):
+            texts = input if isinstance(input, list) else [input]
+            calls.append(list(texts))
+            assert model == "test-embedding-model"
+            return SimpleNamespace(
+                data=[SimpleNamespace(embedding=[float(len(t))] * 8) for t in texts]
+            )
+
+    class _BatchClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        @property
+        def embeddings(self):
+            return _BatchEmbeddings()
+
+    monkeypatch.setattr("openai.OpenAI", _BatchClient)
+
+    vectors = rag_process.embed_texts(["aaa", "b", "ccccc"], settings=_settings())
+
+    assert len(calls) == 1  # one POST, not one per text
+    assert calls[0] == ["aaa", "b", "ccccc"]  # full array, order preserved
+    assert vectors == [[3.0] * 8, [1.0] * 8, [5.0] * 8]
+    # Same vectors as singular embed() per text (contract equivalence).
+    assert vectors == [embed(t, settings=_settings()) for t in ["aaa", "b", "ccccc"]]
+
+
+def test_embed_texts_rejects_missing_key() -> None:
+    with pytest.raises(RuntimeError, match="EMBEDDING_API_KEY"):
+        rag_process.embed_texts(["hello"], settings=_settings(embedding_api_key=""))

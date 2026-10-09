@@ -253,9 +253,34 @@ def embed(text: str, *, settings: RagSettings | None = None) -> list[float]:
 
 
 def embed_texts(texts: list[str], *, settings: RagSettings | None = None) -> list[list[float]]:
-    """Embed a batch by delegating to :func:`embed` (same function, same model)."""
+    """Embed a batch in a single API request (same model/client as :func:`embed`).
+
+    Transport-only batching: one ``POST`` with the full input array instead
+    of one request per text. Vectors keep input order, so results match
+    calling :func:`embed` per text. Used by ``setup()``; ``retrieve()``
+    keeps using singular :func:`embed` for the user question.
+    """
+    from openai import OpenAI
+
     resolved = settings or RagSettings.from_env()
-    return [embed(text, settings=resolved) for text in texts]
+    _require_embedding_config(resolved)
+    if not texts:
+        return []
+    client = OpenAI(
+        api_key=resolved.embedding_api_key,
+        base_url=resolved.embedding_api_url,
+    )
+    response = client.embeddings.create(model=resolved.embedding_model, input=texts)
+    vectors = [list(item.embedding) for item in response.data]
+    if resolved.embedding_dim and any(
+        len(vector) != resolved.embedding_dim for vector in vectors
+    ):
+        logger.warning(
+            "Embedding dim mismatch: EMBEDDING_DIM=%d, got sizes %s",
+            resolved.embedding_dim,
+            sorted({len(vector) for vector in vectors}),
+        )
+    return vectors
 
 
 def _get_qdrant_client(settings: RagSettings):

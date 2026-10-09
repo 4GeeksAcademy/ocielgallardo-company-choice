@@ -74,9 +74,10 @@ conditions that span paragraphs.
 - Generation: `LLM_MODEL=qwen/qwen3.8-27b` via `LLM_API_URL` (Groq
   OpenAI-compatible), `temperature=0.2`, `max_tokens=512` for short desk
   answers. 4Geeks-provided.
-- `embed(text)` is the single entry point used both at index time
-  (`setup()` → `embed_texts()` delegates to it) and at query time
-  (`retrieve()`), guaranteeing identical preprocessing and model.
+- `embed(text)` is the contract used at query time (`retrieve()`); index
+  time (`setup()` → `embed_texts()`) batches the same model/client/
+  preprocessing into one request (transport-only batching, order
+  preserved), guaranteeing identical vectors with 1 POST instead of N.
   `setup()` raises if `EMBEDDING_MODEL == LLM_MODEL`.
 - Qdrant: Cosine distance; collection `healthcore_knowledge` (override via
   `RAG_COLLECTION`).
