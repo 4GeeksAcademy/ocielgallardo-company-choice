@@ -9,6 +9,17 @@ services:
     networks:
       - healthcore_net
 
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: healthcore-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    networks:
+      - healthcore_net
+
   uis:
     build:
       context: .
@@ -55,10 +66,20 @@ services:
       EMAIL_SSL_VERIFY: ${EMAIL_SSL_VERIFY:-true}
       PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: ${PASSWORD_RESET_TOKEN_EXPIRE_MINUTES:-30}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_API_URL: ${EMBEDDING_API_URL:-https://openrouter.ai/api/v1}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-2048}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_API_URL: ${LLM_API_URL:-https://api.groq.com/openai/v1}
+      LLM_MODEL: ${LLM_MODEL:-}
+      RAG_COLLECTION: ${RAG_COLLECTION:-healthcore_knowledge}
     ports:
       - "8000:8000"
     depends_on:
       - redis
+      - qdrant
     networks:
       - healthcore_net
 
@@ -80,6 +101,15 @@ services:
       SUPABASE_DB_USER: ${SUPABASE_DB_USER:-}
       SUPABASE_DB_PASSWORD: ${SUPABASE_DB_PASSWORD:-}
       SUPABASE_DB_SSLMODE: ${SUPABASE_DB_SSLMODE:-}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_API_URL: ${EMBEDDING_API_URL:-https://openrouter.ai/api/v1}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-2048}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_API_URL: ${LLM_API_URL:-https://api.groq.com/openai/v1}
+      LLM_MODEL: ${LLM_MODEL:-}
+      RAG_COLLECTION: ${RAG_COLLECTION:-healthcore_knowledge}
     command: ["celery", "-A", "services.app.tasks.celery_app:celery_app", "worker", "--loglevel=info"]
     depends_on:
       - redis
@@ -102,6 +132,9 @@ services:
       - "5555:5555"
     networks:
       - healthcore_net
+
+volumes:
+  qdrant_storage:
 
 networks:
   healthcore_net:

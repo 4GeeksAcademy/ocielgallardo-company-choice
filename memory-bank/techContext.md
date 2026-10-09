@@ -5,7 +5,7 @@
 - Domain and utilities: TypeScript (typed models and utility modules).
 - Package tooling: npm scripts via `packages/shared/package.json`.
 - Shared Python package: `packages/shared/healthcore_shared` (CSV validation + incident-manager constants/maps). Import via `PYTHONPATH=packages/shared` or hatch `dev-mode-dirs`.
-- Local Docker Compose (`#infra-40`): `uis` (website `:3000` + backoffice `:3001`) and `backend` (`:8000`) on `healthcore_dev_network`. Start from repo root: `docker compose up`. Dev overlay: `npm run docker:dev`. Browser API URL: `NEXT_PUBLIC_HEALTHCORE_API_URL=http://localhost:8000`; in-network hostname: `backend`. Telemetry browser URL: `NEXT_PUBLIC_TELEMETRY_ENDPOINT=http://localhost:8000/telemetry/events` (root `.env` / compose must not point at `playground.4geeks.com` for local storage verification). Backend image must include `pandas` (`services/requirements.txt` for the dev Dockerfile; `pyproject.toml` for prod) or uvicorn crash-loops on `import pandas`.
+- Local Docker Compose (`#infra-40`): `uis` (website `:3000` + backoffice `:3001`), `backend` (`:8000`), Redis (`:6379`), Qdrant (`:6333` REST / `:6334` gRPC), Celery worker + Flower (`:5555`) on `healthcore_dev_network`. Start from repo root: `docker compose up`. Dev overlay: `npm run docker:dev`. Browser API URL: `NEXT_PUBLIC_HEALTHCORE_API_URL=http://localhost:8000`; in-network hostname: `backend`. Qdrant in-network URL: `QDRANT_URL=http://qdrant:6333` (host tools: `http://localhost:6333`). Telemetry browser URL: `NEXT_PUBLIC_TELEMETRY_ENDPOINT=http://localhost:8000/telemetry/events` (root `.env` / compose must not point at `playground.4geeks.com` for local storage verification). Backend image must include `pandas` (`services/requirements.txt` for the dev Dockerfile; `pyproject.toml` for prod) or uvicorn crash-loops on `import pandas`.
 
 ## Verified Technical Areas
 - TypeScript domain package in `src/`:
@@ -27,6 +27,8 @@
   - Backoffice: `uis/backoffice/app/telemetry/page.tsx` + `TelemetryReportPanel` (HTML tables)
   - Table: `telemetry_events` (SQLModel `services/app/models/telemetry.py`; DDL `docs/telemetry/telemetry-events.sql`)
   - Dependency: `pandas>=2.2` for report aggregation
+  - RAG dependencies (via `uv add`, never pip): `qdrant-client>=1.19.1`, `groq>=1.7.0`, `openai>=3.26.1` (OpenAI-compatible client for both providers); `fastapi>=0.141.1` already present; `services/requirements.txt` synced for the dev image
+  - RAG knowledge base (Milestone 7, phase-spec aligned): `data/process/rag.py` (`setup` idempotent via deterministic IDs, singular `embed()` for index + query) + `data/pipelines/rag.py` (`retrieve(query, *, k=5, min_score=0.35)` → payload dicts; `generate_answer(question, context)` standalone; `query(question) -> str`); `POST /knowledge/query` (Bearer, `{question, answer}` only); backoffice `/knowledge`; eval `data/eval/test-queries.json` + `measure_rag_recall.py`; design `docs/rag/rag-design.md`
   - Additive payload (business pipeline): `unit_cost` on `inbound_order_created` (schema allowlist + inbound form) for Supply Cost per Clinic KPI
 - Business performance pipeline (Part 1 design + Part 2 Phases 1–5):
   - Design doc: `data/pipelines/PIPELINE_DESIGN.md`

@@ -1,0 +1,48 @@
+{
+  "collection": "healthcore_knowledge",
+  "recall_at": 3,
+  "recall_target": 0.8,
+  "note": "TODO: validate expected_source_document against the real indexed documents once 00-general-contexts/healthcore/ is copied into docs/company-knowledge-base/.",
+  "queries": [
+    {
+      "id": "q-insurance-1",
+      "question": "Which insurance plans do you accept?",
+      "expected_source_document": "insurance-coverage"
+    },
+    {
+      "id": "q-insurance-2",
+      "question": "I have coverage from another country — do you take my insurance in London?",
+      "expected_source_document": "insurance-coverage"
+    },
+    {
+      "id": "q-appointment-1",
+      "question": "Is there a charge for cancelling 12 hours in advance?",
+      "expected_source_document": "appointment-policy"
+    },
+    {
+      "id": "q-appointment-2",
+      "question": "I am on Medicare and missed my appointment — will I be charged a no-show fee?",
+      "expected_source_document": "appointment-policy"
+    },
+    {
+      "id": "q-referral-1",
+      "question": "How long does an internal referral take?",
+      "expected_source_document": "referral-process"
+    },
+    {
+      "id": "q-referral-2",
+      "question": "What are the steps to refer a patient to a specialist?",
+      "expected_source_document": "referral-process"
+    },
+    {
+      "id": "q-new-patient-1",
+      "question": "What do I need to bring to my first appointment?",
+      "expected_source_document": "new-patient-checklist"
+    },
+    {
+      "id": "q-new-patient-2",
+      "question": "What documents does a new patient need to register?",
+      "expected_source_document": "new-patient-checklist"
+    }
+  ]
+}
