@@ -1,0 +1,16 @@
+{
+  "answer": "I don't have enough information in the clinic policies to answer that. Please verify it with billing or the clinic front desk.",
+  "trace": {
+    "trace_id": "golden-blank-001",
+    "thread_id": "golden-blank-001",
+    "question": "   ",
+    "status": "success",
+    "n_chunks": 0,
+    "sources": [],
+    "spans": [
+      {"node": "receive", "duration_ms": 0.01, "output": {"question_chars": 0}},
+      {"node": "refuse", "duration_ms": 0.01, "output": {"reason": "blank_question"}}
+    ],
+    "error": null
+  }
+}

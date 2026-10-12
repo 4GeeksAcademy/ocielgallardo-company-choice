@@ -1,0 +1,54 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0 -- W:\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\User\Desktop\Documentos\Potafolio\Camino de IT\Bootcamp AI ingenieria\Espacio para codigo\Proyectos\Academicos\ocielgallardo-company-choice
+configfile: pyproject.toml
+plugins: anyio-4.14.2, langsmith-0.14.7
+collecting ... collected 44 items
+
+tests/pipelines/test_agent_evals.py::test_eval_routing_order_on_golden_trace PASSED [  2%]
+tests/pipelines/test_agent_evals.py::test_eval_blank_short_circuit_on_golden_trace PASSED [  4%]
+tests/pipelines/test_agent_evals.py::test_eval_empty_context_honesty_on_golden_trace PASSED [  6%]
+tests/pipelines/test_agent_evals.py::test_eval_grounded_answer_on_golden_trace PASSED [  9%]
+tests/pipelines/test_agent_evals.py::test_generator_happy_run_passes_routing_eval PASSED [ 11%]
+tests/pipelines/test_agent_evals.py::test_generator_blank_run_passes_short_circuit_eval PASSED [ 13%]
+tests/pipelines/test_agent_evals.py::test_generator_empty_context_run_passes_honesty_eval PASSED [ 15%]
+tests/pipelines/test_agent_evals.py::test_generator_grounded_run_uses_real_corpus_chunk PASSED [ 18%]
+tests/pipelines/test_agent_evals.py::test_live_grounded_cancellation_answer PASSED [ 20%]
+tests/pipelines/test_agent_graph.py::test_graph_is_compiled_at_import PASSED [ 22%]
+tests/pipelines/test_agent_graph.py::test_state_holds_only_minimal_keys PASSED [ 25%]
+tests/pipelines/test_agent_graph.py::test_nodes_never_use_monolithic_query PASSED [ 27%]
+tests/pipelines/test_agent_graph.py::test_receive_node_strips_question PASSED [ 29%]
+tests/pipelines/test_agent_graph.py::test_retrieve_node_delegates_to_retrieve_once PASSED [ 31%]
+tests/pipelines/test_agent_graph.py::test_generate_node_uses_given_context_without_retrieval PASSED [ 34%]
+tests/pipelines/test_agent_graph.py::test_refuse_node_answers_without_retrieval_or_llm PASSED [ 36%]
+tests/pipelines/test_agent_graph.py::test_honest_node_generates_from_empty_context PASSED [ 38%]
+tests/pipelines/test_agent_graph.py::test_route_question PASSED          [ 40%]
+tests/pipelines/test_agent_graph.py::test_route_context PASSED           [ 43%]
+tests/pipelines/test_agent_graph.py::test_run_agent_calls_retrieve_exactly_once PASSED [ 45%]
+tests/pipelines/test_agent_graph.py::test_run_agent_produces_queryable_trace PASSED [ 47%]
+tests/pipelines/test_agent_graph.py::test_spans_carry_per_node_outputs PASSED [ 50%]
+tests/pipelines/test_agent_graph.py::test_run_agent_empty_question_short_circuits PASSED [ 52%]
+tests/pipelines/test_agent_graph.py::test_run_agent_empty_context_routes_to_honest PASSED [ 54%]
+tests/pipelines/test_agent_graph.py::test_checkpoint_state_inspectable_after_run PASSED [ 56%]
+tests/pipelines/test_agent_graph.py::test_run_agent_records_failed_trace PASSED [ 59%]
+tests/pipelines/test_rag.py::test_chunk_markdown_produces_payload_schema PASSED [ 61%]
+tests/pipelines/test_rag.py::test_long_document_yields_at_least_three_chunks PASSED [ 63%]
+tests/pipelines/test_rag.py::test_chunk_point_id_is_deterministic PASSED [ 65%]
+tests/pipelines/test_rag.py::test_chunk_point_id_differs_by_language PASSED [ 68%]
+tests/pipelines/test_rag.py::test_load_corpus_missing_dir_lists_expected_files PASSED [ 70%]
+tests/pipelines/test_rag.py::test_load_corpus_skips_readme_and_unknown_files PASSED [ 72%]
+tests/pipelines/test_rag.py::test_embed_uses_dedicated_model PASSED      [ 75%]
+tests/pipelines/test_rag.py::test_embed_rejects_generation_model_reuse PASSED [ 77%]
+tests/pipelines/test_rag.py::test_retrieve_uses_embed_for_the_question PASSED [ 79%]
+tests/pipelines/test_rag.py::test_retrieve_excludes_below_min_score PASSED [ 81%]
+tests/pipelines/test_rag.py::test_retrieve_returns_payload_dicts_and_may_return_fewer_than_k PASSED [ 84%]
+tests/pipelines/test_rag.py::test_generate_answer_returns_model_output PASSED [ 86%]
+tests/pipelines/test_rag.py::test_generate_answer_with_empty_context_still_asks_model PASSED [ 88%]
+tests/pipelines/test_rag.py::test_generate_answer_falls_back_when_model_returns_nothing PASSED [ 90%]
+tests/pipelines/test_rag.py::test_query_is_retrieve_plus_generate_answer PASSED [ 93%]
+tests/pipelines/test_rag.py::test_build_prompt_contains_business_rules PASSED [ 95%]
+tests/pipelines/test_rag.py::test_embed_texts_batches_into_single_request PASSED [ 97%]
+tests/pipelines/test_rag.py::test_embed_texts_rejects_missing_key PASSED [100%]
+
+============================= 44 passed in 2.97s ==============================

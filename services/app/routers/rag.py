@@ -21,8 +21,9 @@ def query_knowledge_base(
 ) -> RagQueryResponse:
     """Answer a coordinator question from the Qdrant knowledge base.
 
-    Thin wrapper over ``query()`` from ``data/pipelines/rag`` — no
-    retrieval/generation logic here. Returns only the model-generated
+    Thin wrapper over legacy ``query()`` from ``data.pipelines/rag`` — no
+    retrieval/generation logic here. The graph path lives under
+    ``POST /agent/query``. Returns only the model-generated
     string (never raw Qdrant chunks or similarity scores). Returns 503
     when RAG is not configured or Qdrant is unreachable.
     """

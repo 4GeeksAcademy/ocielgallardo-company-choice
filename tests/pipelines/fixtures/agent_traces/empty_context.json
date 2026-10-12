@@ -1,0 +1,17 @@
+{
+  "answer": "Honest model answer from the empty-context prompt.",
+  "trace": {
+    "trace_id": "golden-empty-001",
+    "thread_id": "golden-empty-001",
+    "question": "Do dragons get free checkups?",
+    "status": "success",
+    "n_chunks": 0,
+    "sources": [],
+    "spans": [
+      {"node": "receive", "duration_ms": 0.01, "output": {"question_chars": 29}},
+      {"node": "retrieve", "duration_ms": 2.8, "output": {"n_chunks": 0, "sources": []}},
+      {"node": "honest", "duration_ms": 110.0, "output": {"answer_chars": 50}}
+    ],
+    "error": null
+  }
+}
