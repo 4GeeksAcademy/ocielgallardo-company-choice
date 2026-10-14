@@ -21,8 +21,9 @@ def query_knowledge_base(
 ) -> RagQueryResponse:
     """Answer a coordinator question from the Qdrant knowledge base.
 
-    Thin wrapper over ``query()`` from ``data/pipelines/rag`` — no
-    retrieval/generation logic here. Returns only the model-generated
+    Thin wrapper over legacy ``query()`` from ``data.pipelines/rag`` — no
+    retrieval/generation logic here. The graph path lives under
+    ``POST /agent/query``. Returns only the model-generated
     string (never raw Qdrant chunks or similarity scores). Returns 503
     when RAG is not configured or Qdrant is unreachable.
     """
@@ -32,7 +33,7 @@ def query_knowledge_base(
         logger.warning("RAG unavailable: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
+            detail="Knowledge assistant is temporarily unavailable.",
         ) from exc
     except Exception as exc:  # Qdrant connectivity, LLM transport, ...
         logger.exception("RAG query failed for question %.60r", body.question)

@@ -1,0 +1,17 @@
+{
+  "answer": "Echo: - Cancelling less than 24 hours in advance, or no-show: 50 USD (or 40 GBP in the UK) for private-pay patients.",
+  "trace": {
+    "trace_id": "golden-happy-001",
+    "thread_id": "golden-happy-001",
+    "question": "Is there a charge for cancelling 12 hours in advance?",
+    "status": "success",
+    "n_chunks": 1,
+    "sources": ["appointment-policy"],
+    "spans": [
+      {"node": "receive", "duration_ms": 0.01, "output": {"question_chars": 53}},
+      {"node": "retrieve", "duration_ms": 3.2, "output": {"n_chunks": 1, "sources": ["appointment-policy"]}},
+      {"node": "generate", "duration_ms": 120.5, "output": {"answer_chars": 116}}
+    ],
+    "error": null
+  }
+}

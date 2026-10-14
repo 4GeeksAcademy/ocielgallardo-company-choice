@@ -5,6 +5,7 @@ email-validator>=2.3.0
 fastapi>=0.141.1
 flower>=2.0
 groq>=1.7.0
+langgraph>=1.2.14
 openai>=3.26.1
 pandas>=2.2
 passlib[bcrypt]>=1.7.4

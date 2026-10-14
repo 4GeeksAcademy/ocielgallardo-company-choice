@@ -2,6 +2,30 @@
 
 ## Current Status Snapshot
 
+- LangGraph agent base (branch `feature/langgraph-agent-base`, independent PR):
+  `data/pipelines/agent_graph.py` (`AgentState` = `{question, context, answer}` only;
+  5 single-responsibility nodes: `receive` (normalize), `retrieve` (only `retrieve()`),
+  `generate` (only `generate_answer(question, context)`), `refuse` (blank question →
+  honest fallback, no retrieval/LLM), `honest` (empty retrieval →
+  `generate_answer(question, [])` parity path); conditional edges
+  (`route_question`, `route_context`); no node uses monolithic `query()` —
+  AST-guarded; `graph = builder.compile(checkpointer=MemorySaver())` at import;
+  `run_agent()` with `thread_id == trace_id`, per-node output summaries in spans,
+  bounded traces via `get_trace()`/`get_last_trace()`, checkpoints via
+  `get_agent_state()`) + `POST /agent/query` (new thin router, graph path) with
+  `POST /knowledge/query` reverted to legacy `query()` (both coexist) +
+  `tests/pipelines/test_agent_graph.py` (17 offline tests) +
+  `tests/pipelines/test_agent_evals.py` (pure trace predicates + 3 golden fixtures
+  + mocked-run generator tests + live grounding eval skipped unless
+  `RUN_LIVE_EVALS=1`; grounding anchored on the $50 USD / £40 GBP cancellation fact) +
+  `docs/rag/agent-graph.md`. Dependency `langgraph>=1.2.14` via `uv add`,
+  `services/requirements.txt` synced. Live verification 2026-10-12 (docker compose
+  backend+qdrant+redis, 24-point index intact): `POST /agent/query` answers the
+  cancellation question with $50 USD / £40 GBP + Medicare/Medicaid exemption;
+  legacy `/knowledge/query` agrees; off-topic question answered honestly via the
+  `honest` node; `RUN_LIVE_EVALS=1` → 9 passed. Note: repo path hits Windows MAX_PATH
+  (260 chars) for `langsmith` modules — run Python via `subst W:` + direct
+  `W:/.venv/Scripts/python.exe -m pytest`.
 - RAG knowledge base (Milestone 7, branch `feature/rag-knowledge-base`,
   aligned with the phase spec): `data/process/rag.py` (`setup` with
   deterministic uuid5 point IDs = idempotent re-runs, singular `embed()`
