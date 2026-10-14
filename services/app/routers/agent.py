@@ -32,7 +32,7 @@ def query_agent(
         logger.warning("Agent unavailable: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
+            detail="Knowledge assistant is temporarily unavailable.",
         ) from exc
     except Exception as exc:  # Qdrant connectivity, LLM transport, ...
         logger.exception("Agent query failed for question %.60r", body.question)
