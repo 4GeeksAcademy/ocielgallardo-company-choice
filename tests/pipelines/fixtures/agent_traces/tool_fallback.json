@@ -1,0 +1,34 @@
+{
+  "answer": "I could not confirm the status of that ticket right now. Please check the incident manager directly or try again shortly.",
+  "trace": {
+    "trace_id": "golden-fallback-001",
+    "thread_id": "golden-fallback-001",
+    "question": "What is the status of ticket 999?",
+    "status": "success",
+    "n_chunks": 0,
+    "sources": [],
+    "sources_used": ["incidents"],
+    "route": "incidents",
+    "spans": [
+      {"node": "receive", "duration_ms": 0.01, "output": {"question_chars": 33}},
+      {"node": "decide_route", "duration_ms": 0.02, "output": {"route": "incidents", "ticket_id": 999}},
+      {
+        "node": "lookup_incident",
+        "duration_ms": 5001.0,
+        "output": {
+          "source_kind": "incidents",
+          "ok": false,
+          "error": "timeout",
+          "n_incidents": 0,
+          "ticket_id": 999
+        }
+      },
+      {
+        "node": "tool_fallback",
+        "duration_ms": 0.05,
+        "output": {"reason": "timeout", "answer_chars": 118}
+      }
+    ],
+    "error": null
+  }
+}
