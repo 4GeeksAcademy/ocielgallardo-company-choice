@@ -1,25 +1,22 @@
 """HealthCore knowledge assistant as an explicit LangGraph.
 
-Responsibility: expose the existing RAG behavior (``retrieve`` + ``generate_answer``
-from ``data.pipelines.rag``) as a compiled graph with single-responsibility nodes,
-explicit conditional edges, a minimal state, per-run traces, and checkpointing.
+Responsibility: expose RAG (``retrieve`` + ``generate_answer``) and live
+operational tools (incident lookup) as a compiled graph with single-responsibility
+nodes, conditional routing, minimal state, per-run traces, and checkpointing.
 
 Node contract (binding):
-- ``receive_node`` normalizes the question only (no retrieval, no LLM).
+- ``receive_node`` normalizes the question only (no retrieval, no LLM, no tools).
+- ``decide_route_node`` classifies RAG vs incident tool from the question text.
 - ``retrieve_node`` calls ONLY ``retrieve(question)``.
-- ``generate_node`` calls ONLY ``generate_answer(question, context)`` with the
-  context the retrieve node already produced.
-- ``refuse_node`` answers a blank question with the existing honest fallback
-  (no retrieval, no LLM).
-- ``honest_node`` answers empty retrieval with ``generate_answer(question, [])``
-  — the same honest empty-context path ``query()`` takes today, as its own node.
-- No node imports or calls the monolithic ``query()`` (it would re-run retrieval
-  and collapse the flow this graph makes explicit).
+- ``generate_node`` calls ONLY ``generate_answer(question, context)``.
+- ``lookup_incident_node`` calls ONLY the read-only incident tool.
+- ``tool_fallback_node`` answers honestly when the tool fails (no invented state).
+- ``refuse_node`` / ``honest_node`` keep the Part 1 blank/empty-context paths.
+- No node imports or calls the monolithic ``query()``.
 
 The graph is compiled at import time (with a ``MemorySaver`` checkpointer) so
-structural errors fail fast, not in production. Services call :func:`run_agent`
-and read ``result["answer"]`` — the HTTP contract (``{question, answer}`` only)
-is unchanged; traces stay internal.
+structural errors fail fast. Services call :func:`run_agent` and read
+``result["answer"]`` — HTTP still returns ``{question, answer}`` only.
 
 Run a question locally:
     uv run python -m data.pipelines.agent_graph "what do I need to bring to my first appointment?"
@@ -29,6 +26,7 @@ from __future__ import annotations
 
 import contextvars
 import logging
+import re
 import sys
 import time
 import uuid
@@ -39,16 +37,40 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from data.pipelines import rag as rag_pipeline
+from data.pipelines.agent_tools import (
+    IncidentToolInput,
+    format_incident_answer,
+    lookup_incident,
+)
 
 logger = logging.getLogger(__name__)
 
+# Ticket / incident phrasing that should not go to the policy RAG.
+_TICKET_ID_RE = re.compile(
+    r"\b(?:ticket|incident|caso|incidencia)\s*#?\s*(\d+)\b",
+    re.IGNORECASE,
+)
+_TICKET_STATUS_RE = re.compile(
+    r"\b(?:status|estado|state)\b.*\b(?:ticket|incident|caso|incidencia)\b"
+    r"|\b(?:ticket|incident|caso|incidencia)\b.*\b(?:status|estado|state)\b",
+    re.IGNORECASE,
+)
+_INCIDENT_KEYWORDS_RE = re.compile(
+    r"\b(?:open tickets?|tickets? abiertos?|incident manager|"
+    r"gestor de incidentes|support ticket)\b",
+    re.IGNORECASE,
+)
+
 
 class AgentState(TypedDict):
-    """Minimal state travelling between nodes. No history, no vectors."""
+    """State travelling between nodes. Tools add route + tool_result only."""
 
     question: str
     context: list[dict]
     answer: str
+    route: str
+    tool_result: dict
+    sources_used: list[str]
 
 
 # --- Internal per-run trace store (queryable, bounded, no PHI beyond the question) ---
@@ -111,7 +133,30 @@ def _store_trace(trace: dict) -> None:
         _TRACES.popitem(last=False)
 
 
-# --- Nodes: one responsibility each, delegating to the existing RAG functions ---
+def extract_ticket_id(question: str) -> int | None:
+    """Return the first ticket/incident id mentioned in ``question``, if any."""
+    match = _TICKET_ID_RE.search(question)
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except ValueError:
+        return None
+
+
+def classify_route(question: str) -> Literal["refuse", "incidents", "rag"]:
+    """Decide source from the question alone (no user-specified source)."""
+    text = question.strip()
+    if not text:
+        return "refuse"
+    if extract_ticket_id(text) is not None:
+        return "incidents"
+    if _TICKET_STATUS_RE.search(text) or _INCIDENT_KEYWORDS_RE.search(text):
+        return "incidents"
+    return "rag"
+
+
+# --- Nodes: one responsibility each ---
 
 
 def receive_node(state: AgentState) -> dict:
@@ -127,13 +172,34 @@ def receive_node(state: AgentState) -> dict:
         )
 
 
+def decide_route_node(state: AgentState) -> dict:
+    """Classify whether the question needs RAG or the incident tool."""
+    started = time.time()
+    route = "rag"
+    ticket_id: int | None = None
+    try:
+        route = classify_route(state["question"])
+        ticket_id = extract_ticket_id(state["question"])
+        return {"route": route}
+    finally:
+        _record_span(
+            "decide_route",
+            started,
+            time.time(),
+            {"route": route, "ticket_id": ticket_id},
+        )
+
+
 def retrieve_node(state: AgentState) -> dict:
     """Retrieve policy chunks for ``state['question']`` via ``retrieve()``."""
     started = time.time()
     context: list[dict] = []
     try:
         context = rag_pipeline.retrieve(state["question"])
-        return {"context": context}
+        sources = list(state.get("sources_used") or [])
+        if "rag" not in sources:
+            sources = [*sources, "rag"]
+        return {"context": context, "sources_used": sources}
     finally:
         _record_span(
             "retrieve",
@@ -144,6 +210,7 @@ def retrieve_node(state: AgentState) -> dict:
                 "sources": sorted(
                     {str(chunk.get("source_document", "")) for chunk in context}
                 ),
+                "source_kind": "rag",
             },
         )
 
@@ -183,12 +250,100 @@ def honest_node(state: AgentState) -> dict:
         )
 
 
-# --- Conditional edges: explicit routing, never a hardcoded straight line ---
+def lookup_incident_node(state: AgentState) -> dict:
+    """Call the read-only incident tool; never invent ticket state."""
+    started = time.time()
+    tool_payload: dict = {}
+    sources = list(state.get("sources_used") or [])
+    try:
+        ticket_id = extract_ticket_id(state["question"])
+        result = lookup_incident(IncidentToolInput(ticket_id=ticket_id))
+        tool_payload = result.model_dump()
+        if "incidents" not in sources:
+            sources = [*sources, "incidents"]
+        answer = format_incident_answer(result)
+        return {
+            "tool_result": tool_payload,
+            "sources_used": sources,
+            "answer": answer if result.ok else "",
+        }
+    finally:
+        _record_span(
+            "lookup_incident",
+            started,
+            time.time(),
+            {
+                "source_kind": "incidents",
+                "ok": bool(tool_payload.get("ok")),
+                "error": tool_payload.get("error"),
+                "n_incidents": len(tool_payload.get("incidents") or []),
+                "ticket_id": extract_ticket_id(state["question"]),
+            },
+        )
 
 
-def route_question(state: AgentState) -> Literal["refuse", "retrieve"]:
-    """Blank question short-circuits to ``refuse``; otherwise retrieve."""
-    return "refuse" if not state["question"].strip() else "retrieve"
+def tool_fallback_node(state: AgentState) -> dict:
+    """Honest answer when the incident tool failed or found nothing."""
+    from data.pipelines.agent_tools import (
+        INCIDENT_TOOL_FALLBACK,
+        IncidentToolOutput,
+        format_incident_answer as _fmt,
+    )
+
+    started = time.time()
+    answer = ""
+    try:
+        tool_result = state.get("tool_result") or {}
+        try:
+            answer = _fmt(IncidentToolOutput.model_validate(tool_result))
+        except Exception:
+            answer = str(tool_result.get("message") or INCIDENT_TOOL_FALLBACK)
+        return {"answer": answer}
+    finally:
+        _record_span(
+            "tool_fallback",
+            started,
+            time.time(),
+            {
+                "reason": (state.get("tool_result") or {}).get("error")
+                or "tool_failed",
+                "answer_chars": len(answer),
+            },
+        )
+
+
+def answer_from_tool_node(state: AgentState) -> dict:
+    """Surface a successful tool payload as the final answer (no LLM invent)."""
+    started = time.time()
+    answer = ""
+    try:
+        from data.pipelines.agent_tools import IncidentToolOutput, format_incident_answer
+
+        result = IncidentToolOutput.model_validate(state.get("tool_result") or {})
+        answer = format_incident_answer(result)
+        return {"answer": answer}
+    finally:
+        _record_span(
+            "answer_from_tool",
+            started,
+            time.time(),
+            {"answer_chars": len(answer), "source_kind": "incidents"},
+        )
+
+
+# --- Conditional edges ---
+
+
+def route_after_receive(state: AgentState) -> Literal["refuse", "decide_route"]:
+    """Blank question short-circuits to ``refuse``; otherwise decide source."""
+    return "refuse" if not state["question"].strip() else "decide_route"
+
+
+def route_after_decide(
+    state: AgentState,
+) -> Literal["lookup_incident", "retrieve"]:
+    """Send operational ticket questions to the tool; policies to RAG."""
+    return "lookup_incident" if state.get("route") == "incidents" else "retrieve"
 
 
 def route_context(state: AgentState) -> Literal["honest", "generate"]:
@@ -196,20 +351,43 @@ def route_context(state: AgentState) -> Literal["honest", "generate"]:
     return "honest" if not state["context"] else "generate"
 
 
+def route_after_incident_tool(
+    state: AgentState,
+) -> Literal["answer_from_tool", "tool_fallback"]:
+    """Successful lookup answers from tool data; failures take the fallback path."""
+    tool_result = state.get("tool_result") or {}
+    if tool_result.get("ok"):
+        return "answer_from_tool"
+    return "tool_fallback"
+
+
+# Backwards-compatible name used by Part 1 tests.
+def route_question(state: AgentState) -> Literal["refuse", "decide_route"]:
+    return route_after_receive(state)
+
+
 _checkpointer = MemorySaver()
 
 _builder = StateGraph(AgentState)
 _builder.add_node("receive", receive_node)
+_builder.add_node("decide_route", decide_route_node)
 _builder.add_node("retrieve", retrieve_node)
 _builder.add_node("generate", generate_node)
 _builder.add_node("refuse", refuse_node)
 _builder.add_node("honest", honest_node)
+_builder.add_node("lookup_incident", lookup_incident_node)
+_builder.add_node("tool_fallback", tool_fallback_node)
+_builder.add_node("answer_from_tool", answer_from_tool_node)
 _builder.add_edge(START, "receive")
-_builder.add_conditional_edges("receive", route_question)
+_builder.add_conditional_edges("receive", route_after_receive)
+_builder.add_conditional_edges("decide_route", route_after_decide)
 _builder.add_conditional_edges("retrieve", route_context)
+_builder.add_conditional_edges("lookup_incident", route_after_incident_tool)
 _builder.add_edge("refuse", END)
 _builder.add_edge("honest", END)
 _builder.add_edge("generate", END)
+_builder.add_edge("tool_fallback", END)
+_builder.add_edge("answer_from_tool", END)
 
 # Compiled at import time: structural errors surface on import, not in production.
 graph = _builder.compile(checkpointer=_checkpointer)
@@ -218,9 +396,8 @@ graph = _builder.compile(checkpointer=_checkpointer)
 def run_agent(question: str) -> dict:
     """Run the compiled graph for ``question`` and return the final state + trace id.
 
-    Returns ``{"question": ..., "context": [...], "answer": ...,
-    "trace_id": ...}``. The answer is always model-generated (or the honest
-    fallback for blank questions), never raw hits.
+    Returns ``{"question": ..., "context": [...], "answer": ..., "route": ...,
+    "tool_result": ..., "sources_used": [...], "trace_id": ...}``.
     """
     trace_id = uuid.uuid4().hex
     started = time.time()
@@ -234,6 +411,8 @@ def run_agent(question: str) -> dict:
         "status": "running",
         "n_chunks": 0,
         "sources": [],
+        "sources_used": [],
+        "route": None,
         "spans": [],
         "error": None,
     }
@@ -241,11 +420,19 @@ def run_agent(question: str) -> dict:
     token = _current_trace_id.set(trace_id)
     try:
         result = graph.invoke(
-            {"question": question, "context": [], "answer": ""},
+            {
+                "question": question,
+                "context": [],
+                "answer": "",
+                "route": "",
+                "tool_result": {},
+                "sources_used": [],
+            },
             {"configurable": {"thread_id": trace_id}},
         )
         finished = time.time()
         context = result.get("context", [])
+        sources_used = list(result.get("sources_used") or [])
         trace.update(
             {
                 "finished_at": finished,
@@ -255,12 +442,15 @@ def run_agent(question: str) -> dict:
                 "sources": sorted(
                     {str(chunk.get("source_document", "")) for chunk in context}
                 ),
+                "sources_used": sources_used,
+                "route": result.get("route") or None,
             }
         )
         logger.info(
-            "agent_graph run %s via %s in %.1fms",
+            "agent_graph run %s via %s sources=%s in %.1fms",
             trace_id,
             [span["node"] for span in trace["spans"]],
+            sources_used,
             trace["duration_ms"],
         )
         return {**result, "trace_id": trace_id}
@@ -288,4 +478,4 @@ if __name__ == "__main__":
         )
     outcome = run_agent(sys.argv[1])
     print(outcome["answer"])
-    print(f"[trace_id={outcome['trace_id']}]")
+    print(f"[trace_id={outcome['trace_id']} sources={outcome.get('sources_used')}]")
