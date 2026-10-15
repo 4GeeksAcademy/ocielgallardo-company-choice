@@ -39,8 +39,11 @@ from langgraph.graph import END, START, StateGraph
 from data.pipelines import rag as rag_pipeline
 from data.pipelines.agent_tools import (
     IncidentToolInput,
+    InventoryToolInput,
     format_incident_answer,
+    format_inventory_answer,
     lookup_incident,
+    lookup_inventory,
 )
 
 logger = logging.getLogger(__name__)
@@ -58,6 +61,12 @@ _TICKET_STATUS_RE = re.compile(
 _INCIDENT_KEYWORDS_RE = re.compile(
     r"\b(?:open tickets?|tickets? abiertos?|incident manager|"
     r"gestor de incidentes|support ticket)\b",
+    re.IGNORECASE,
+)
+_SKU_RE = re.compile(r"\b(HCR-[A-Z]+-\d+)\b", re.IGNORECASE)
+_INVENTORY_KEYWORDS_RE = re.compile(
+    r"\b(?:stock|inventory|inventario|suministro|supply|supplies|"
+    r"do we have|tenemos stock|hay stock|cu[aá]nto stock)\b",
     re.IGNORECASE,
 )
 
@@ -144,15 +153,37 @@ def extract_ticket_id(question: str) -> int | None:
         return None
 
 
-def classify_route(question: str) -> Literal["refuse", "incidents", "rag"]:
+def extract_sku(question: str) -> str | None:
+    """Return the first HealthCore SKU mentioned in ``question``, if any."""
+    match = _SKU_RE.search(question)
+    return match.group(1).upper() if match else None
+
+
+def extract_inventory_name_query(question: str) -> str | None:
+    """Best-effort product name fragment for stock questions without a SKU."""
+    if extract_sku(question):
+        return None
+    # Strip common stock phrasing; keep a short residual for substring match.
+    cleaned = _INVENTORY_KEYWORDS_RE.sub(" ", question)
+    cleaned = re.sub(r"[¿?¡!.,;:]", " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned or None
+
+
+def classify_route(
+    question: str,
+) -> Literal["refuse", "incidents", "inventory", "rag"]:
     """Decide source from the question alone (no user-specified source)."""
     text = question.strip()
     if not text:
         return "refuse"
+    # Incidents first: ticket ids must never be confused with inventory.
     if extract_ticket_id(text) is not None:
         return "incidents"
     if _TICKET_STATUS_RE.search(text) or _INCIDENT_KEYWORDS_RE.search(text):
         return "incidents"
+    if extract_sku(text) is not None or _INVENTORY_KEYWORDS_RE.search(text):
+        return "inventory"
     return "rag"
 
 
@@ -173,20 +204,22 @@ def receive_node(state: AgentState) -> dict:
 
 
 def decide_route_node(state: AgentState) -> dict:
-    """Classify whether the question needs RAG or the incident tool."""
+    """Classify whether the question needs RAG, incidents, or inventory."""
     started = time.time()
     route = "rag"
     ticket_id: int | None = None
+    sku: str | None = None
     try:
         route = classify_route(state["question"])
         ticket_id = extract_ticket_id(state["question"])
+        sku = extract_sku(state["question"])
         return {"route": route}
     finally:
         _record_span(
             "decide_route",
             started,
             time.time(),
-            {"route": route, "ticket_id": ticket_id},
+            {"route": route, "ticket_id": ticket_id, "sku": sku},
         )
 
 
@@ -282,22 +315,73 @@ def lookup_incident_node(state: AgentState) -> dict:
         )
 
 
+def lookup_inventory_node(state: AgentState) -> dict:
+    """Call the read-only inventory tool; never invent stock levels."""
+    started = time.time()
+    tool_payload: dict = {}
+    sources = list(state.get("sources_used") or [])
+    try:
+        sku = extract_sku(state["question"])
+        name_query = None if sku else extract_inventory_name_query(state["question"])
+        result = lookup_inventory(
+            InventoryToolInput(sku=sku, name_query=name_query)
+        )
+        tool_payload = result.model_dump()
+        if "inventory" not in sources:
+            sources = [*sources, "inventory"]
+        answer = format_inventory_answer(result)
+        return {
+            "tool_result": tool_payload,
+            "sources_used": sources,
+            "answer": answer if result.ok else "",
+        }
+    finally:
+        _record_span(
+            "lookup_inventory",
+            started,
+            time.time(),
+            {
+                "source_kind": "inventory",
+                "ok": bool(tool_payload.get("ok")),
+                "error": tool_payload.get("error"),
+                "n_products": len(tool_payload.get("products") or []),
+                "sku": extract_sku(state["question"]),
+            },
+        )
+
+
 def tool_fallback_node(state: AgentState) -> dict:
-    """Honest answer when the incident tool failed or found nothing."""
+    """Honest answer when an external tool failed or found nothing."""
     from data.pipelines.agent_tools import (
         INCIDENT_TOOL_FALLBACK,
+        INVENTORY_TOOL_FALLBACK,
         IncidentToolOutput,
-        format_incident_answer as _fmt,
+        InventoryToolOutput,
+        format_incident_answer as _fmt_incident,
+        format_inventory_answer as _fmt_inventory,
     )
 
     started = time.time()
     answer = ""
     try:
         tool_result = state.get("tool_result") or {}
+        sources = state.get("sources_used") or []
         try:
-            answer = _fmt(IncidentToolOutput.model_validate(tool_result))
+            if "inventory" in sources or "products" in tool_result:
+                answer = _fmt_inventory(
+                    InventoryToolOutput.model_validate(tool_result)
+                )
+            else:
+                answer = _fmt_incident(
+                    IncidentToolOutput.model_validate(tool_result)
+                )
         except Exception:
-            answer = str(tool_result.get("message") or INCIDENT_TOOL_FALLBACK)
+            default = (
+                INVENTORY_TOOL_FALLBACK
+                if "inventory" in sources
+                else INCIDENT_TOOL_FALLBACK
+            )
+            answer = str(tool_result.get("message") or default)
         return {"answer": answer}
     finally:
         _record_span(
@@ -314,20 +398,35 @@ def tool_fallback_node(state: AgentState) -> dict:
 
 def answer_from_tool_node(state: AgentState) -> dict:
     """Surface a successful tool payload as the final answer (no LLM invent)."""
+    from data.pipelines.agent_tools import (
+        IncidentToolOutput,
+        InventoryToolOutput,
+        format_incident_answer,
+        format_inventory_answer,
+    )
+
     started = time.time()
     answer = ""
+    source_kind = "incidents"
     try:
-        from data.pipelines.agent_tools import IncidentToolOutput, format_incident_answer
-
-        result = IncidentToolOutput.model_validate(state.get("tool_result") or {})
-        answer = format_incident_answer(result)
+        tool_result = state.get("tool_result") or {}
+        sources = state.get("sources_used") or []
+        if "inventory" in sources or "products" in tool_result:
+            source_kind = "inventory"
+            answer = format_inventory_answer(
+                InventoryToolOutput.model_validate(tool_result)
+            )
+        else:
+            answer = format_incident_answer(
+                IncidentToolOutput.model_validate(tool_result)
+            )
         return {"answer": answer}
     finally:
         _record_span(
             "answer_from_tool",
             started,
             time.time(),
-            {"answer_chars": len(answer), "source_kind": "incidents"},
+            {"answer_chars": len(answer), "source_kind": source_kind},
         )
 
 
@@ -341,9 +440,14 @@ def route_after_receive(state: AgentState) -> Literal["refuse", "decide_route"]:
 
 def route_after_decide(
     state: AgentState,
-) -> Literal["lookup_incident", "retrieve"]:
-    """Send operational ticket questions to the tool; policies to RAG."""
-    return "lookup_incident" if state.get("route") == "incidents" else "retrieve"
+) -> Literal["lookup_incident", "lookup_inventory", "retrieve"]:
+    """Send operational questions to the matching tool; policies to RAG."""
+    route = state.get("route")
+    if route == "incidents":
+        return "lookup_incident"
+    if route == "inventory":
+        return "lookup_inventory"
+    return "retrieve"
 
 
 def route_context(state: AgentState) -> Literal["honest", "generate"]:
@@ -351,7 +455,7 @@ def route_context(state: AgentState) -> Literal["honest", "generate"]:
     return "honest" if not state["context"] else "generate"
 
 
-def route_after_incident_tool(
+def route_after_tool(
     state: AgentState,
 ) -> Literal["answer_from_tool", "tool_fallback"]:
     """Successful lookup answers from tool data; failures take the fallback path."""
@@ -359,6 +463,10 @@ def route_after_incident_tool(
     if tool_result.get("ok"):
         return "answer_from_tool"
     return "tool_fallback"
+
+
+# Backwards-compatible alias used by Part 2 incident tests.
+route_after_incident_tool = route_after_tool
 
 
 # Backwards-compatible name used by Part 1 tests.
@@ -376,13 +484,15 @@ _builder.add_node("generate", generate_node)
 _builder.add_node("refuse", refuse_node)
 _builder.add_node("honest", honest_node)
 _builder.add_node("lookup_incident", lookup_incident_node)
+_builder.add_node("lookup_inventory", lookup_inventory_node)
 _builder.add_node("tool_fallback", tool_fallback_node)
 _builder.add_node("answer_from_tool", answer_from_tool_node)
 _builder.add_edge(START, "receive")
 _builder.add_conditional_edges("receive", route_after_receive)
 _builder.add_conditional_edges("decide_route", route_after_decide)
 _builder.add_conditional_edges("retrieve", route_context)
-_builder.add_conditional_edges("lookup_incident", route_after_incident_tool)
+_builder.add_conditional_edges("lookup_incident", route_after_tool)
+_builder.add_conditional_edges("lookup_inventory", route_after_tool)
 _builder.add_edge("refuse", END)
 _builder.add_edge("honest", END)
 _builder.add_edge("generate", END)

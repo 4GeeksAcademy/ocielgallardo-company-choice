@@ -153,8 +153,94 @@ def test_incident_tool_is_read_only_module() -> None:
         "create_incident",
         "update_incident_status",
         "insert_seed_incident",
-        ".post(",
-        ".patch(",
-        ".delete(",
+        "create_supply",
+        "create_delivery",
+        "create_consumption",
     ):
         assert forbidden not in source
+
+
+# --- Inventory tool ---
+
+
+def _fake_supply(sku: str = "HCR-PPE-001") -> SimpleNamespace:
+    return SimpleNamespace(
+        id=1,
+        name="Guantes de nitrilo (caja de 100)",
+        sku=sku,
+        category="ppe",
+        unit="box",
+        country="US",
+        current_stock=55,
+    )
+
+
+def test_inventory_tool_timeout_constant_is_numeric() -> None:
+    assert agent_tools.INVENTORY_TOOL_TIMEOUT_SECONDS == 5.0
+
+
+def test_lookup_inventory_by_sku_reads_domain(monkeypatch) -> None:
+    def _list(session):
+        return [_fake_supply(), _fake_supply("HCR-PPE-002")]
+
+    monkeypatch.setattr(agent_tools, "_fetch_inventory", None)
+
+    def _fetch(payload):
+        assert payload.sku == "HCR-PPE-001"
+        return [
+            agent_tools.InventoryRecord(
+                id=1,
+                name="Guantes de nitrilo (caja de 100)",
+                sku="HCR-PPE-001",
+                category="ppe",
+                unit="box",
+                country="US",
+                current_stock=55,
+            )
+        ]
+
+    monkeypatch.setattr(agent_tools, "_fetch_inventory", _fetch)
+
+    out = agent_tools.lookup_inventory(
+        agent_tools.InventoryToolInput(sku="HCR-PPE-001")
+    )
+
+    assert out.ok is True
+    assert out.products[0].current_stock == 55
+    assert "55" in agent_tools.format_inventory_answer(out)
+    assert "HCR-PPE-001" in agent_tools.format_inventory_answer(out)
+
+
+def test_lookup_inventory_timeout_returns_fallback(monkeypatch) -> None:
+    def _slow(payload):
+        time.sleep(0.3)
+        return []
+
+    monkeypatch.setattr(agent_tools, "_fetch_inventory", _slow)
+
+    out = agent_tools.lookup_inventory(
+        agent_tools.InventoryToolInput(sku="HCR-PPE-001"),
+        timeout_seconds=0.05,
+    )
+
+    assert out.ok is False
+    assert out.error == "timeout"
+    assert (
+        agent_tools.format_inventory_answer(out)
+        == agent_tools.INVENTORY_TOOL_FALLBACK
+    )
+
+
+def test_lookup_inventory_not_found(monkeypatch) -> None:
+    monkeypatch.setattr(agent_tools, "_fetch_inventory", lambda payload: [])
+
+    out = agent_tools.lookup_inventory(
+        agent_tools.InventoryToolInput(sku="HCR-NOPE-000")
+    )
+
+    assert out.ok is False
+    assert out.error == "not_found"
+    assert (
+        agent_tools.format_inventory_answer(out)
+        == agent_tools.INVENTORY_NOT_FOUND_MESSAGE
+    )

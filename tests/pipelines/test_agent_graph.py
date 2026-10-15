@@ -442,3 +442,51 @@ def test_run_agent_incident_not_found_is_honest(monkeypatch) -> None:
     assert route_after_incident_tool(
         _empty_state(tool_result=failed.model_dump())
     ) == "tool_fallback"
+
+
+def test_run_agent_stock_question_uses_inventory_tool_not_rag(monkeypatch) -> None:
+    from data.pipelines.agent_tools import InventoryRecord, InventoryToolOutput
+
+    def _forbidden_retrieve(*args, **kwargs):
+        raise AssertionError("stock questions must not call retrieve()")
+
+    monkeypatch.setattr(rag_pipeline, "retrieve", _forbidden_retrieve)
+    monkeypatch.setattr(
+        agent_graph,
+        "lookup_incident",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("stock questions must not call incident tool")
+        ),
+    )
+
+    tool_out = InventoryToolOutput(
+        ok=True,
+        products=[
+            InventoryRecord(
+                id=1,
+                name="Guantes de nitrilo (caja de 100)",
+                sku="HCR-PPE-001",
+                category="ppe",
+                unit="box",
+                country="US",
+                current_stock=55,
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        agent_graph, "lookup_inventory", lambda payload, **kw: tool_out
+    )
+
+    result = run_agent("Do we have stock of HCR-PPE-001?")
+    trace = get_trace(result["trace_id"])
+
+    assert "55" in result["answer"]
+    assert "HCR-PPE-001" in result["answer"]
+    assert result["sources_used"] == ["inventory"]
+    assert [span["node"] for span in trace["spans"]] == [
+        "receive",
+        "decide_route",
+        "lookup_inventory",
+        "answer_from_tool",
+    ]
+    assert classify_route("Do we have stock of HCR-PPE-001?") == "inventory"

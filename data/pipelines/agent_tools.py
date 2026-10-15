@@ -200,3 +200,166 @@ def format_incident_answer(result: IncidentToolOutput) -> str:
             f"title={item.title!r}, updated_at={item.updated_at}."
         )
     return " ".join(lines)
+
+
+# --- Inventory stock lookup (optional extra tool; single responsibility) ---
+
+INVENTORY_TOOL_TIMEOUT_SECONDS = 5.0
+
+INVENTORY_TOOL_FALLBACK = (
+    "I could not confirm inventory stock right now. "
+    "Please check the inventory module directly or try again shortly."
+)
+
+INVENTORY_NOT_FOUND_MESSAGE = (
+    "I could not find that product in the inventory. "
+    "Please verify the SKU or product name and try again."
+)
+
+
+class InventoryToolInput(BaseModel):
+    """Typed input for the inventory stock tool (read-only GET)."""
+
+    sku: str | None = Field(
+        default=None,
+        description="Exact SKU match (e.g. HCR-PPE-001)",
+    )
+    name_query: str | None = Field(
+        default=None,
+        description="Case-insensitive substring match against product name",
+    )
+    supply_id: int | None = Field(default=None, ge=1)
+
+
+class InventoryRecord(BaseModel):
+    """Fields exposed by GET /inventory/products."""
+
+    id: int
+    name: str
+    sku: str
+    category: str
+    unit: str
+    country: str
+    current_stock: int
+
+
+class InventoryToolOutput(BaseModel):
+    """Typed inventory result: success payload or honest failure."""
+
+    ok: bool
+    products: list[InventoryRecord] = Field(default_factory=list)
+    error: (
+        Literal["not_found", "timeout", "unavailable", "invalid_input"] | None
+    ) = None
+    message: str | None = None
+
+
+def _supply_to_record(supply) -> InventoryRecord:
+    return InventoryRecord(
+        id=int(supply.id),
+        name=str(supply.name),
+        sku=str(supply.sku),
+        category=str(supply.category),
+        unit=str(supply.unit),
+        country=str(supply.country),
+        current_stock=int(supply.current_stock),
+    )
+
+
+def _fetch_inventory(payload: InventoryToolInput) -> list[InventoryRecord]:
+    """Call the real inventory domain layer (GET /inventory/products semantics)."""
+    from fastapi import HTTPException
+    from sqlmodel import Session
+
+    from services.app.core.database import get_engine
+    from services.app.domain import inventory_service
+
+    with Session(get_engine()) as session:
+        if payload.supply_id is not None:
+            try:
+                supply = inventory_service.get_supply(session, payload.supply_id)
+            except HTTPException as exc:
+                if exc.status_code == 404:
+                    return []
+                raise
+            return [_supply_to_record(supply)]
+
+        products = inventory_service.list_supplies(session)
+        if payload.sku:
+            sku_upper = payload.sku.strip().upper()
+            products = [p for p in products if str(p.sku).upper() == sku_upper]
+        if payload.name_query:
+            needle = payload.name_query.strip().lower()
+            products = [p for p in products if needle in str(p.name).lower()]
+        return [_supply_to_record(p) for p in products]
+
+
+def lookup_inventory(
+    payload: InventoryToolInput,
+    *,
+    timeout_seconds: float = INVENTORY_TOOL_TIMEOUT_SECONDS,
+) -> InventoryToolOutput:
+    """Read-only stock lookup with explicit numeric timeout and fallback.
+
+    Uses ``list_supplies`` / ``get_supply`` from the existing inventory service.
+    Never invents stock levels on failure, timeout, or missing product.
+    """
+    if payload.supply_id is None and not payload.sku and not payload.name_query:
+        return InventoryToolOutput(
+            ok=False,
+            error="invalid_input",
+            message=INVENTORY_TOOL_FALLBACK,
+        )
+
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(_fetch_inventory, payload)
+            products = future.result(timeout=timeout_seconds)
+    except FuturesTimeoutError:
+        logger.warning(
+            "inventory tool timed out after %.1fs (sku=%s name=%s)",
+            timeout_seconds,
+            payload.sku,
+            payload.name_query,
+        )
+        return InventoryToolOutput(
+            ok=False,
+            error="timeout",
+            message=INVENTORY_TOOL_FALLBACK,
+        )
+    except Exception:
+        logger.exception(
+            "inventory tool failed (sku=%s name=%s)",
+            payload.sku,
+            payload.name_query,
+        )
+        return InventoryToolOutput(
+            ok=False,
+            error="unavailable",
+            message=INVENTORY_TOOL_FALLBACK,
+        )
+
+    if not products:
+        return InventoryToolOutput(
+            ok=False,
+            error="not_found",
+            message=INVENTORY_NOT_FOUND_MESSAGE,
+        )
+
+    return InventoryToolOutput(ok=True, products=products)
+
+
+def format_inventory_answer(result: InventoryToolOutput) -> str:
+    """Turn an inventory tool result into a coordinator-facing answer."""
+    if not result.ok:
+        return result.message or INVENTORY_TOOL_FALLBACK
+    if not result.products:
+        return INVENTORY_NOT_FOUND_MESSAGE
+
+    lines: list[str] = []
+    for item in result.products:
+        lines.append(
+            f"{item.name} (SKU {item.sku}): current_stock={item.current_stock} "
+            f"{item.unit}, category={item.category}, country={item.country}."
+        )
+    return " ".join(lines)
