@@ -24,8 +24,10 @@ export function KnowledgeQueryPanel() {
     setError(null);
     setAnswer(null);
     try {
+      // Support agent (Part 2): the compiled LangGraph auto-routes each
+      // question to clinic policies (RAG), live tickets, or live stock.
       const result = await healthcoreRequest<KnowledgeQueryResponse>(
-        "/knowledge/query",
+        "/agent/query",
         {
           method: "POST",
           body: JSON.stringify({ question: trimmed }),
@@ -46,7 +48,7 @@ export function KnowledgeQueryPanel() {
           htmlFor="knowledge-question"
           className="block text-sm font-medium text-slate-700 dark:text-slate-200"
         >
-          Ask about clinic policies, coverage, referrals, or first visits
+          Ask about clinic policies, ticket status, or inventory stock
         </label>
         <textarea
           id="knowledge-question"
@@ -54,7 +56,7 @@ export function KnowledgeQueryPanel() {
           onChange={(event) => setQuestion(event.target.value)}
           rows={3}
           maxLength={1000}
-          placeholder="e.g. Is there a charge for cancelling 12 hours in advance?"
+          placeholder="e.g. Is there a charge for cancelling 12 hours in advance? What is the status of ticket 2? Do we have stock of HCR-PPE-001?"
           className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
         />
         <button
@@ -74,7 +76,7 @@ export function KnowledgeQueryPanel() {
 
       {loading && (
         <p aria-live="polite" className="text-sm text-slate-500 dark:text-slate-400">
-          Searching clinic policies…
+          Asking the support agent…
         </p>
       )}
 

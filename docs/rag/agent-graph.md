@@ -1,12 +1,15 @@
-# Agent Graph — HealthCore Knowledge Assistant on LangGraph
+# Agent Graph — HealthCore Support Agent on LangGraph (Part 2)
 
 ## 1. Purpose
 
-Make the RAG reasoning flow explicit: same behavior as `query()` in
-`data/pipelines/rag.py`, but running inside a compiled LangGraph with
-single-responsibility nodes, explicit conditional edges, a minimal state,
-queryable per-run traces, and checkpointing. No new capabilities in this pass
-(Part 2 adds tools as new nodes + edges).
+Route each coordinator question to the right source — stable **knowledge**
+via RAG (`retrieve` + `generate_answer` in `data/pipelines/rag.py`) and live
+**operational data** via read-only HTTP tools over the existing incidents API
+(`GET /api/incidents`) and inventory API (`GET /inventory/products`).
+Compiled LangGraph with single-responsibility nodes, conditional routing,
+minimal state, queryable per-run traces, and checkpointing.
+
+Part 1 delivered the RAG graph. Part 2 adds the tools (this document).
 
 ## 2. Flow
 
@@ -14,10 +17,25 @@ queryable per-run traces, and checkpointing. No new capabilities in this pass
 flowchart TD
     START --> RECEIVE[receive]
     RECEIVE -->|blank question| REFUSE[refuse]
-    RECEIVE -->|otherwise| RETRIEVE[retrieve]
+    RECEIVE -->|otherwise| DECIDE[decide_route]
+    DECIDE -->|ticket only| INC[lookup_incident]
+    DECIDE -->|stock only| INV[lookup_inventory]
+    DECIDE -->|ticket + policy| HINC[lookup_incident]
+    DECIDE -->|stock + policy| HINV[lookup_inventory]
+    DECIDE -->|policy only| RETRIEVE[retrieve]
+    INC -->|ok| ANS[answer_from_tool]
+    INC -->|fail| FALL[tool_fallback]
+    INV -->|ok| ANS
+    INV -->|fail| FALL
+    HINC --> RET2[retrieve]
+    HINV --> RET2
+    RET2 --> SYN[synthesize_hybrid]
     RETRIEVE -->|no context| HONEST[honest]
     RETRIEVE -->|otherwise| GENERATE[generate]
     REFUSE --> END
+    ANS --> END
+    FALL --> END
+    SYN --> END
     HONEST --> END
     GENERATE --> END
 ```
@@ -25,62 +43,125 @@ flowchart TD
 1. `POST /agent/query` calls `run_agent(question)` from
    `data/pipelines/agent_graph.py` and returns `result["answer"]`.
    `POST /knowledge/query` keeps serving legacy `query()` so both paths coexist.
-2. `receive` normalizes the question; blank input short-circuits to `refuse`
-   (honest fallback, no retrieval, no LLM).
-3. `retrieve` calls ONLY `retrieve(question)` from `data/pipelines/rag.py`.
-4. `generate` calls ONLY `generate_answer(question, context)` with the
-   already-retrieved context. Empty retrieval routes to `honest`, which answers
-   via the existing empty-context path `generate_answer(question, [])`.
-5. Each run stores a trace (`get_trace(trace_id)` / `get_last_trace()`) and a
-   checkpoint (`get_agent_state(trace_id)`).
+   The backoffice Knowledge panel calls `/agent/query`.
+2. `receive` normalizes the question; blank input short-circuits to `refuse`.
+3. `decide_route` classifies from the question text alone (no user hint):
+   - ticket/incident only → `incidents` (API tool only)
+   - stock/SKU only → `inventory` (API tool only)
+   - ticket/incident **and** policy signals → `hybrid_incidents` (tool then RAG)
+   - stock/SKU **and** policy signals → `hybrid_inventory` (tool then RAG)
+   - otherwise → RAG only
+4. Tool nodes call typed helpers in `data/pipelines/agent_tools.py` only
+   (HTTP GET against the live APIs, 5.0 s timeout, Bearer from env).
+5. Hybrid path: `synthesize_hybrid` renders the deterministic tool fact block
+   first, then appends the LLM policy paragraph — live status/stock is never
+   left to the model to recall.
+6. Each run stores a trace (`get_trace` / `get_last_trace`) and a checkpoint
+   (`get_agent_state`).
 
 ## 3. State
 
-`AgentState = {question: str, context: list[dict], answer: str}` — nothing else.
-No conversation history, no vectors, no scores, no `trace_id` inside the state.
-`k` / `min_score` stay as retrieval defaults, not state fields.
+```text
+AgentState = {
+  question: str,
+  context: list[dict],
+  answer: str,
+  route: str,              # refuse | incidents | inventory | hybrid_* | rag
+  tool_result: dict,       # serialized IncidentToolOutput | InventoryToolOutput
+  sources_used: list[str], # execution order, e.g. ["incidents","rag"] on hybrid
+}
+```
 
-## 4. Node contract (binding)
+No conversation history, no vectors, no `trace_id` inside the state.
 
-- No node imports or calls the monolithic `query()` — it takes only a question
-  and would re-run retrieval, collapsing the explicit flow. Enforced by an AST
-  test in `tests/pipelines/test_agent_graph.py`.
-- `retrieve` never touches generation; `generate`/`honest` never touch
-  retrieval. End-to-end test asserts `retrieve` runs exactly once per run.
+## 4. Tools (Part 2)
 
-## 5. Compilation and checkpointing
+| Tool | Call | Timeout | Writes |
+|------|------|---------|--------|
+| Incident lookup | `GET /api/incidents/{id}` or `GET /api/incidents` (filters) | **5.0 s** | None |
+| Inventory stock | `GET /inventory/products/{id}` or `GET /inventory/products` | **5.0 s** | None |
 
-The graph is compiled at module import with a `MemorySaver` checkpointer
-(`graph = builder.compile(checkpointer=...)`), so structural errors fail fast
-instead of in production. `run_agent()` invokes with
-`thread_id == trace_id`, making each run inspectable (and re-runnable from its
-checkpoint) via `graph.get_state(config)` / `get_agent_state(trace_id)`.
+### Contracts
 
-## 6. Traces
+- **Incident input:** `IncidentToolInput` — `ticket_id` and/or filters
+  (`status`, `origin`, `branch`, `category`).
+- **Incident output:** `IncidentToolOutput` — `ok`, `incidents[]`
+  (`id`, `title`, `description`, `category`, `status`, `origin`, `branch`,
+  `created_at`, `updated_at`), `error`, `message`.
+- **Inventory input:** `InventoryToolInput` — `sku`, `name_query`, `supply_id`.
+- **Inventory output:** `InventoryToolOutput` — `ok`, `products[]`
+  (`id`, `name`, `sku`, `category`, `unit`, `country`, `current_stock`),
+  `error`, `message`.
+
+### Transport and auth
+
+Tools call the APIs over **HTTP** (`httpx`) at `AGENT_TOOL_API_URL`
+(default `http://127.0.0.1:8000`, overridable; Compose passes it through to
+`backend`). Auth is a valid Bearer JWT from `AGENT_TOOL_API_TOKEN`
+(env/config — **never hardcoded**). Timeouts, 404s, and transport/auth
+failures map to typed errors (`timeout` / `not_found` / `unavailable`) and
+honest fallbacks; the graph never hangs and never invents state.
+
+### Fallback
+
+On timeout, service error, missing ticket/product, or invalid input the graph
+routes to `tool_fallback` (tool-only) or answers with the tool honesty message
+inside `synthesize_hybrid` (hybrid). Fixed messages
+(`INCIDENT_TOOL_FALLBACK`, `INVENTORY_TOOL_FALLBACK`,
+`INCIDENT_NOT_FOUND_MESSAGE`, `INVENTORY_NOT_FOUND_MESSAGE`).
+
+### Why not index tickets in RAG
+
+Tickets and stock change in real time. RAG holds relatively stable policies
+and procedures. A live API call always returns current operational data; an
+indexed copy goes stale as soon as status or stock changes.
+
+## 5. Node contract (binding)
+
+- No node imports or calls the monolithic `query()` — enforced by AST test.
+- `retrieve` never touches generation or tools; tool nodes never call RAG and
+  never each other (single responsibility).
+- `synthesize_hybrid` is the only node combining sources, and tool facts stay
+  deterministic inside it.
+
+## 6. Compilation and checkpointing
+
+The graph is compiled at module import with a `MemorySaver` checkpointer.
+`run_agent()` invokes with `thread_id == trace_id`.
+
+## 7. Traces
 
 Per run: `trace_id`/`thread_id`, timestamps, per-node spans in execution order,
-**per-node output summaries** (`receive→question_chars`,
-`retrieve→{n_chunks, sources}`, `generate/honest→answer_chars`,
-`refuse→reason`), totals, latency, and error on failure. Bounded in-memory
-store (last 100). The HTTP contract is unchanged (`{question, answer}` only —
-never chunks or scores; no PHI at any point per HIPAA / UK GDPR).
+**per-node output summaries**, `sources_used` (which sources ran and in what
+order: RAG, tool, **or both**), `route`, totals, latency, error on failure.
 
-## 7. Evals
+| Path | Example `sources_used` | Span order (core) |
+|------|------------------------|-------------------|
+| RAG only | `["rag"]` | `decide_route → retrieve → generate` |
+| Tool only | `["incidents"]` | `decide_route → lookup_incident → answer_from_tool` |
+| **Both (hybrid)** | `["incidents", "rag"]` | `lookup_incident → retrieve → synthesize_hybrid` |
 
-`tests/pipelines/test_agent_evals.py` (single command) evaluates **traces**,
-not live runs: pure predicates over trace dicts against golden fixtures in
-`tests/pipelines/fixtures/agent_traces/` (routing order, blank short-circuit,
-empty-context honesty, KB grounding on the $50 USD / £40 GBP cancellation fact),
-plus generator tests proving fresh mocked runs satisfy the same predicates, plus
-a live grounding eval (skipped unless `RUN_LIVE_EVALS=1`). Evals are additional
-to the existing RAG tests, which keep passing unchanged.
+Span outputs carry `source_kind` (`rag` / `incidents` / `inventory`).
+Bounded in-memory store (last 100). HTTP contract unchanged:
+`{question, answer}` only.
 
-## 8. Adding a tool (Part 2 preview)
+## 8. Evals
 
-Add a node plus a conditional edge deciding when to route to it. Existing
-nodes and endpoints stay untouched.
+`tests/pipelines/test_agent_evals.py` evaluates **traces**, not live runs:
+
+| Eval | Intent |
+|------|--------|
+| `eval_routes_to_tool_not_rag` | Ticket/stock question → its API tool, no RAG |
+| `eval_routes_to_rag_not_tool` | Policy question → RAG, no API tool |
+| `eval_routes_to_hybrid_tool_and_rag` | Policy+live question → tool **and** RAG, tool first, facts cited |
+| `eval_tool_fallback_honesty` | API failure → `tool_fallback`, honest answer |
+| Part 1 preds | routing order, blank short-circuit, empty-context honesty, grounding |
+
+Golden fixtures in `tests/pipelines/fixtures/agent_traces/` plus generator
+anti-rot tests. Live grounding still skipped unless `RUN_LIVE_EVALS=1`.
 
 ## 9. Gaps (TODO)
 
-- TODO: decide trace/checkpoint persistence beyond memory (file/DB) if production review needs it.
+- TODO: decide trace/checkpoint persistence beyond memory if production review needs it.
 - TODO: re-tune `min_score` after any corpus change (see `docs/rag/rag-design.md`).
+- TODO: long-lived service identity for `AGENT_TOOL_API_TOKEN` (today a pasted user JWT that expires with `ACCESS_TOKEN_EXPIRE_MINUTES`).
