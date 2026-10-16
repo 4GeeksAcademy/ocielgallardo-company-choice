@@ -1,0 +1,30 @@
+{
+  "answer": "Ticket 482: status=in_progress, category=it_system, origin=branch, branch=austin_north, title='Printer offline', updated_at=2026-01-11T09:30:00Z.",
+  "trace": {
+    "trace_id": "golden-ticket-001",
+    "thread_id": "golden-ticket-001",
+    "question": "What is the status of ticket 482?",
+    "status": "success",
+    "n_chunks": 0,
+    "sources": [],
+    "sources_used": ["incidents"],
+    "route": "incidents",
+    "spans": [
+      {"node": "receive", "duration_ms": 0.01, "output": {"question_chars": 33}},
+      {"node": "decide_route", "duration_ms": 0.02, "output": {"route": "incidents", "ticket_id": 482}},
+      {
+        "node": "lookup_incident",
+        "duration_ms": 4.5,
+        "output": {
+          "source_kind": "incidents",
+          "ok": true,
+          "error": null,
+          "n_incidents": 1,
+          "ticket_id": 482
+        }
+      },
+      {"node": "answer_from_tool", "duration_ms": 0.05, "output": {"answer_chars": 140, "source_kind": "incidents"}}
+    ],
+    "error": null
+  }
+}

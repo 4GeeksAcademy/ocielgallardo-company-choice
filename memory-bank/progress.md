@@ -2,6 +2,27 @@
 
 ## Current Status Snapshot
 
+- LangGraph external tools Part 2 (branch `feature/langgraph-external-tools`):
+  `data/pipelines/agent_tools.py` — typed `IncidentToolInput/Output` +
+  `InventoryToolInput/Output`; in-process read-only calls to
+  `incident_manager_service` / `inventory_service` (same stores as
+  `GET /api/incidents` and `GET /inventory/products`); timeout **5.0 s**;
+  honest fallbacks (`INCIDENT_TOOL_FALLBACK`, `INVENTORY_TOOL_FALLBACK`); no
+  create/update/delete; no parallel fake datasets. Graph
+  (`data/pipelines/agent_graph.py`): `decide_route` auto-routes ticket →
+  incidents, stock/SKU → inventory, policy+ticket → `hybrid_incidents`
+  (tool then RAG), policy+stock → `hybrid_inventory`, else RAG; hybrid
+  injects live tool chunk before policy hits so generate never invents
+  status/stock; nodes `lookup_incident` / `lookup_inventory` /
+  `answer_from_tool` / `tool_fallback`; state adds `route`, `tool_result`,
+  `sources_used`; traces expose source kind + order including both on hybrid
+  (`["incidents","rag"]`). Tests: `test_agent_tools.py`, extended
+  `test_agent_graph.py` + `test_agent_evals.py` (tool-not-RAG, RAG-not-tool,
+  hybrid both-sources, fallback honesty + golden fixtures). Docs:
+  `docs/rag/agent-graph.md`. Auth note for PR: tools are in-process domain
+  reads (HTTP routes stay Bearer-protected; no JWT inside the graph).
+  Validation: 54 passed, 1 skipped (`RUN_LIVE_EVALS`).
+
 - LangGraph agent base (branch `feature/langgraph-agent-base`, independent PR):
   `data/pipelines/agent_graph.py` (`AgentState` = `{question, context, answer}` only;
   5 single-responsibility nodes: `receive` (normalize), `retrieve` (only `retrieve()`),
