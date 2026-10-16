@@ -2,13 +2,11 @@
 
 ## 1. Purpose
 
-Make the support-agent reasoning flow explicit: stable **knowledge** via RAG
-(`retrieve` + `generate_answer` in `data/pipelines/rag.py`) and live
-**operational data** via read-only tools over the existing incident manager and
-inventory services. Compiled LangGraph with single-responsibility nodes,
-conditional routing, minimal state, queryable per-run traces, and checkpointing.
-
-Part 1 delivered the RAG graph. Part 2 adds external tools (this document).
+Make the RAG reasoning flow explicit: same behavior as `query()` in
+`data/pipelines/rag.py`, but running inside a compiled LangGraph with
+single-responsibility nodes, explicit conditional edges, a minimal state,
+queryable per-run traces, and checkpointing. No new capabilities in this pass
+(Part 2 adds tools as new nodes + edges).
 
 ## 2. Flow
 
@@ -16,26 +14,10 @@ Part 1 delivered the RAG graph. Part 2 adds external tools (this document).
 flowchart TD
     START --> RECEIVE[receive]
     RECEIVE -->|blank question| REFUSE[refuse]
-    RECEIVE -->|otherwise| DECIDE[decide_route]
-    DECIDE -->|ticket only| INC[lookup_incident]
-    DECIDE -->|stock only| INV[lookup_inventory]
-    DECIDE -->|ticket + policy| HINC[lookup_incident]
-    DECIDE -->|stock + policy| HINV[lookup_inventory]
-    DECIDE -->|policy only| RETRIEVE[retrieve]
-    INC -->|ok| ANS[answer_from_tool]
-    INC -->|fail| FALL[tool_fallback]
-    INV -->|ok| ANS
-    INV -->|fail| FALL
-    HINC --> RET2[retrieve]
-    HINV --> RET2
-    RET2 --> MERGE[merge live tool chunk + policy hits]
-    MERGE -->|no context| HONEST[honest]
-    MERGE -->|otherwise| GENERATE[generate]
-    RETRIEVE -->|no context| HONEST
-    RETRIEVE -->|otherwise| GENERATE
+    RECEIVE -->|otherwise| RETRIEVE[retrieve]
+    RETRIEVE -->|no context| HONEST[honest]
+    RETRIEVE -->|otherwise| GENERATE[generate]
     REFUSE --> END
-    ANS --> END
-    FALL --> END
     HONEST --> END
     GENERATE --> END
 ```
@@ -44,135 +26,61 @@ flowchart TD
    `data/pipelines/agent_graph.py` and returns `result["answer"]`.
    `POST /knowledge/query` keeps serving legacy `query()` so both paths coexist.
 2. `receive` normalizes the question; blank input short-circuits to `refuse`
-   (honest fallback, no retrieval, no LLM, no tools).
-3. `decide_route` classifies the question from its text alone (no user hint):
-   - ticket/incident only → `incidents` (tool only)
-   - stock/SKU only → `inventory` (tool only)
-   - ticket/incident **and** policy signals → `hybrid_incidents` (tool then RAG)
-   - stock/SKU **and** policy signals → `hybrid_inventory` (tool then RAG)
-   - otherwise → RAG only
-4. Tool nodes call typed helpers in `data/pipelines/agent_tools.py` only.
-5. Hybrid path: tool first (live facts), then `retrieve`; the live tool result is
-   injected as a context chunk (`live-incident-tool` / `live-inventory-tool`)
-   ahead of policy hits so `generate` never invents ticket status or stock.
-6. Tool-only path: `answer_from_tool` or `tool_fallback` (no RAG).
-7. Each run stores a trace (`get_trace` / `get_last_trace`) and a checkpoint
-   (`get_agent_state`).
+   (honest fallback, no retrieval, no LLM).
+3. `retrieve` calls ONLY `retrieve(question)` from `data/pipelines/rag.py`.
+4. `generate` calls ONLY `generate_answer(question, context)` with the
+   already-retrieved context. Empty retrieval routes to `honest`, which answers
+   via the existing empty-context path `generate_answer(question, [])`.
+5. Each run stores a trace (`get_trace(trace_id)` / `get_last_trace()`) and a
+   checkpoint (`get_agent_state(trace_id)`).
 
 ## 3. State
 
-```text
-AgentState = {
-  question: str,
-  context: list[dict],
-  answer: str,
-  route: str,              # refuse | incidents | inventory | hybrid_* | rag
-  tool_result: dict,       # serialized IncidentToolOutput | InventoryToolOutput
-  sources_used: list[str], # execution order, e.g. ["incidents","rag"] on hybrid
-}
-```
+`AgentState = {question: str, context: list[dict], answer: str}` — nothing else.
+No conversation history, no vectors, no scores, no `trace_id` inside the state.
+`k` / `min_score` stay as retrieval defaults, not state fields.
 
-No conversation history, no vectors, no `trace_id` inside the state.
+## 4. Node contract (binding)
 
-## 4. Tools (Part 2)
+- No node imports or calls the monolithic `query()` — it takes only a question
+  and would re-run retrieval, collapsing the explicit flow. Enforced by an AST
+  test in `tests/pipelines/test_agent_graph.py`.
+- `retrieve` never touches generation; `generate`/`honest` never touch
+  retrieval. End-to-end test asserts `retrieve` runs exactly once per run.
 
-| Tool | Module | Real backend | Timeout | Writes |
-|------|--------|--------------|---------|--------|
-| Incident lookup | `lookup_incident` | `incident_manager_service.get_incident` / `list_incidents` (TinyDB, same store as `GET /api/incidents`) | **5.0 s** | None (GET only) |
-| Inventory stock | `lookup_inventory` | `inventory_service.list_supplies` / `get_supply` (SQLModel, same as `GET /inventory/products`) | **5.0 s** | None (GET only) |
-
-### Contracts
-
-- **Incident input:** `IncidentToolInput` — `ticket_id` and/or filters
-  (`status`, `origin`, `branch`, `category`).
-- **Incident output:** `IncidentToolOutput` — `ok`, `incidents[]`
-  (`id`, `title`, `description`, `category`, `status`, `origin`, `branch`,
-  `created_at`, `updated_at`), `error`, `message`.
-- **Inventory input:** `InventoryToolInput` — `sku`, `name_query`, and/or
-  `supply_id`.
-- **Inventory output:** `InventoryToolOutput` — `ok`, `products[]`
-  (`id`, `name`, `sku`, `category`, `unit`, `country`, `current_stock`),
-  `error`, `message`.
-
-### Transport and auth
-
-Tools run **in-process** against the domain layer (same monorepo package as the
-FastAPI app). They do not open HTTP to localhost and do not pass a JWT: public
-HTTP routes remain Bearer-protected; the tool path is backend-internal
-read-only. No tokens are hardcoded.
-
-### Fallback
-
-On timeout, service error, missing ticket/product, or invalid input the graph
-routes to `tool_fallback` and returns a fixed honest message (e.g.
-`INCIDENT_TOOL_FALLBACK` / `INVENTORY_TOOL_FALLBACK`). The agent never invents
-ticket status or stock levels.
-
-### Why not index tickets in RAG
-
-Tickets and stock change in real time. RAG holds relatively stable policies and
-procedures. A live tool call always returns current operational data; an indexed
-copy goes stale as soon as status or stock changes.
-
-## 5. Node contract (binding)
-
-- No node imports or calls the monolithic `query()` — enforced by AST test.
-- `retrieve` never touches generation or tools; tool nodes never call RAG.
-- Each tool has a single responsibility (incidents ≠ inventory).
-- End-to-end tests assert ticket questions never call `retrieve`, and policy
-  questions never call tool nodes.
-
-## 6. Compilation and checkpointing
+## 5. Compilation and checkpointing
 
 The graph is compiled at module import with a `MemorySaver` checkpointer
-(`graph = builder.compile(checkpointer=...)`). `run_agent()` invokes with
-`thread_id == trace_id`.
+(`graph = builder.compile(checkpointer=...)`), so structural errors fail fast
+instead of in production. `run_agent()` invokes with
+`thread_id == trace_id`, making each run inspectable (and re-runnable from its
+checkpoint) via `graph.get_state(config)` / `get_agent_state(trace_id)`.
 
-## 7. Traces
+## 6. Traces
 
 Per run: `trace_id`/`thread_id`, timestamps, per-node spans in execution order,
-**per-node output summaries**, `sources_used` (which source kinds ran and in
-what order), `route`, totals, latency, and error on failure.
+**per-node output summaries** (`receive→question_chars`,
+`retrieve→{n_chunks, sources}`, `generate/honest→answer_chars`,
+`refuse→reason`), totals, latency, and error on failure. Bounded in-memory
+store (last 100). The HTTP contract is unchanged (`{question, answer}` only —
+never chunks or scores; no PHI at any point per HIPAA / UK GDPR).
 
-The brief requires the trace to show clearly whether RAG, a tool, **or both**
-were used, and in which order:
+## 7. Evals
 
-| Path | Example `sources_used` | Span order (core) |
-|------|------------------------|-------------------|
-| RAG only | `["rag"]` | `decide_route → retrieve → generate` |
-| Tool only | `["incidents"]` | `decide_route → lookup_incident → answer_from_tool` |
-| **Both (hybrid)** | `["incidents", "rag"]` | `lookup_incident → retrieve → generate` |
+`tests/pipelines/test_agent_evals.py` (single command) evaluates **traces**,
+not live runs: pure predicates over trace dicts against golden fixtures in
+`tests/pipelines/fixtures/agent_traces/` (routing order, blank short-circuit,
+empty-context honesty, KB grounding on the $50 USD / £40 GBP cancellation fact),
+plus generator tests proving fresh mocked runs satisfy the same predicates, plus
+a live grounding eval (skipped unless `RUN_LIVE_EVALS=1`). Evals are additional
+to the existing RAG tests, which keep passing unchanged.
 
-Examples of span outputs:
+## 8. Adding a tool (Part 2 preview)
 
-- `decide_route` → `{route, ticket_id, sku}` (`hybrid_incidents` when both)
-- `retrieve` → `{n_chunks, n_policy_chunks, sources, source_kind: "rag", hybrid}`
-- `lookup_incident` → `{source_kind: "incidents", ok, error, n_incidents, ticket_id}`
-- `lookup_inventory` → `{source_kind: "inventory", ok, error, n_products, sku}`
-- `tool_fallback` → `{reason, answer_chars}`
-
-Bounded in-memory store (last 100). HTTP contract unchanged:
-`{question, answer}` only — never chunks, scores, or raw tool dumps to clients.
-
-## 8. Evals
-
-`tests/pipelines/test_agent_evals.py` evaluates **traces**, not live runs
-(Part 1 predicates extended for Part 2 routing):
-
-| Eval | Intent |
-|------|--------|
-| `eval_routes_to_tool_not_rag` | Ticket question → incident tool, no `retrieve` |
-| `eval_routes_to_rag_not_tool` | Policy question → RAG, no tool nodes |
-| `eval_routes_to_hybrid_tool_and_rag` | Policy+ticket → tool **and** RAG, tool before RAG |
-| `eval_tool_fallback_honesty` | Incident tool failure → `tool_fallback`, honest answer |
-| Part 1 preds | routing order, blank short-circuit, empty-context honesty, grounding |
-
-Golden fixtures in `tests/pipelines/fixtures/agent_traces/` (incl.
-`hybrid_incident_rag.json`) plus generator anti-rot tests. Live grounding still
-skipped unless `RUN_LIVE_EVALS=1`.
+Add a node plus a conditional edge deciding when to route to it. Existing
+nodes and endpoints stay untouched.
 
 ## 9. Gaps (TODO)
 
-- TODO: decide trace/checkpoint persistence beyond memory if production review needs it.
+- TODO: decide trace/checkpoint persistence beyond memory (file/DB) if production review needs it.
 - TODO: re-tune `min_score` after any corpus change (see `docs/rag/rag-design.md`).
-- TODO: optional service-token path if tools ever move to pure HTTP out-of-process.
