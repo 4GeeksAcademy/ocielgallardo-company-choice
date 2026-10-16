@@ -1,0 +1,80 @@
+[
+  {
+    "label": "1 TOOL_TICKET",
+    "question": "What is the status of ticket 2?",
+    "http": 200,
+    "answer": "Ticket 2: status=open, category=patient_experience, origin=customer, branch=london_west, title='Patient not informed of appointment reschedule by clinic', updated_at=2024-01-17T00:00:00Z."
+  },
+  {
+    "label": "2 TOOL_TICKET_ES",
+    "question": "¿En qué estado está el ticket 2?",
+    "http": 200,
+    "answer": "Ticket 2: status=open, category=patient_experience, origin=customer, branch=london_west, title='Patient not informed of appointment reschedule by clinic', updated_at=2024-01-17T00:00:00Z."
+  },
+  {
+    "label": "3 FALLBACK_TICKET",
+    "question": "What is the status of ticket 99999?",
+    "http": 200,
+    "answer": "I could not find that ticket in the incident manager. Please verify the ticket id and try again."
+  },
+  {
+    "label": "4 RAG_CANCEL",
+    "question": "Is there a charge for cancelling 12 hours in advance?",
+    "http": 200,
+    "answer": "Yes, there is a charge.\n\nAccording to our policy, cancelling less than 24 hours in advance incurs a fee of **$50 USD** (or **£40 GBP** in the UK) for private-pay patients.\n\nPlease note that this fee does not apply to Medicare or Medicaid patients, though the incident will be logged in their record."
+  },
+  {
+    "label": "5 RAG_BRING",
+    "question": "What do I need to bring to my first appointment?",
+    "http": 200,
+    "answer": "Hello! I’d be happy to help you prepare for your first visit. To ensure we can see you smoothly, please bring the following items on the day of your appointment:\n\n*   **A valid ID document**\n*   **Your insurance card** (if applicable)\n*   **A list of your current medications** (if relevant to the reason for your visit)\n\nAdditionally, please note that you should have completed the medical history form, identity verification, insurance coverage verification (or self-pay confirmation), and the signed informed consent for data processing prior to your visit. If you haven’t completed the medical history form beforehand, you can still be seen, but your consultation time will be reduced as the physician will need to complete it during the visit.\n\nIf you have any questions about your specific insurance coverage or documents, please verify with our billing team or the front desk."
+  },
+  {
+    "label": "6 RAG_MEDICARE",
+    "question": "Are no-show fees applied to Medicare patients?",
+    "http": 200,
+    "answer": "No, no-show fees are never applied to Medicare patients. Per regulation, while the incident is logged in their record, they are not charged a fee."
+  },
+  {
+    "label": "7 HYBRID",
+    "question": "According to our cancellation policy, what is the status of ticket 2 and does a no-show fee apply?",
+    "http": 200,
+    "answer": "Hello! I can help clarify the policy details for you.\n\nFirst, regarding **Ticket 2**: The retrieved policy context does not contain specific information about the status of individual tickets or live incidents. To verify the current status of Ticket 2, please check with the front desk or the incident management team.\n\nSecond, regarding the **no-show fee**:\n*   **Private-pay patients:** A fee of **50 USD** (or **40 GBP** in the UK) applies if a patient cancels with less than 24 hours' notice or does not show up.\n*   **Medicare or Medicaid patients:** **No fee** is charged for no-shows, per regulation. However, the incident is still logged in their record.\n\nPlease note that if a patient has 3 no-shows in the last 6 months, they must be flagged for coordinator review before booking a new routine appointment.\n\nLet me know if you need further clarification on the cancellation timelines!"
+  },
+  {
+    "label": "8 HYBRID2",
+    "question": "According to appointment policy, can ticket 2 stay open if the patient was a no-show?",
+    "http": 200,
+    "answer": "I’m sorry, but the knowledge base has no relevant information regarding ticket management or status resolution for no-show incidents. Please verify with billing or the front desk."
+  },
+  {
+    "label": "9 INV_SKU",
+    "question": "Do we have stock of HCR-PPE-001?",
+    "http": 200,
+    "answer": "Guantes de nitrilo (caja de 100) (SKU HCR-PPE-001): current_stock=1289 box, category=ppe, country=US."
+  },
+  {
+    "label": "10 INV_MISSING",
+    "question": "Do we have stock of HCR-NOPE-000?",
+    "http": 200,
+    "answer": "I could not find that product in the inventory. Please verify the SKU or product name and try again."
+  },
+  {
+    "label": "11 INV_SKU_ES",
+    "question": "¿Hay stock de HCR-PPE-002?",
+    "http": 200,
+    "answer": "Mascarilla quirúrgica (pack de 50) (SKU HCR-PPE-002): current_stock=1108 pack, category=ppe, country=UK."
+  },
+  {
+    "label": "12 BLANK",
+    "question": "   ",
+    "http": 200,
+    "answer": "I don't have enough information in the clinic policies to answer that. Please verify it with billing or the clinic front desk."
+  },
+  {
+    "label": "13 OPEN_TICKETS",
+    "question": "What are open tickets?",
+    "http": 200,
+    "answer": "I could not confirm the status of that ticket right now. Please check the incident manager directly or try again shortly."
+  }
+]

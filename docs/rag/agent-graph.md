@@ -176,3 +176,5 @@ skipped unless `RUN_LIVE_EVALS=1`.
 - TODO: decide trace/checkpoint persistence beyond memory if production review needs it.
 - TODO: re-tune `min_score` after any corpus change (see `docs/rag/rag-design.md`).
 - TODO: optional service-token path if tools ever move to pure HTTP out-of-process.
+- TODO (post-merge follow-up, not Part 2 acceptance): hybrid answer quality — routing and traces are correct (`hybrid_incidents`, `sources_used: ["incidents","rag"]`), but the live battery (`docs/rag/agent-live-battery-results.json`, items 7–8) shows the LLM sometimes omits the live ticket status from the final text because `SYSTEM_PROMPT` in `data/pipelines/rag.py` is policy-only. Options if pursued: hybrid-only prompt (keep global RAG prompt unchanged), or fixed tool-fact block plus LLM paragraph for policy. See PR #40 follow-up comment.
+- TODO (post-merge follow-up, pending academy scope decision — do not implement unasked): backoffice Knowledge (`/knowledge`) still calls `POST /knowledge/query`; the Part 2 agent is `POST /agent/query`. Repointing the UI is out of the Part 2 brief. See PR #40 follow-up comment.

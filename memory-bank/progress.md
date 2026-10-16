@@ -22,6 +22,13 @@
   `docs/rag/agent-graph.md`. Auth note for PR: tools are in-process domain
   reads (HTTP routes stay Bearer-protected; no JWT inside the graph).
   Validation: 54 passed, 1 skipped (`RUN_LIVE_EVALS`).
+  Follow-up (saved, not implemented — PR approved as-is, academy scope
+  pending): live battery (`docs/rag/agent-live-battery-results.json`) shows
+  hybrid routing/traces correct but the LLM sometimes omits the live ticket
+  status in the final text (policy-only `SYSTEM_PROMPT`); and backoffice
+  Knowledge still points at `POST /knowledge/query` instead of
+  `POST /agent/query` (out of Part 2 scope). Both recorded as TODO in
+  `docs/rag/agent-graph.md` §9 and PR #40 follow-up comment.
 
 - LangGraph agent base (branch `feature/langgraph-agent-base`, independent PR):
   `data/pipelines/agent_graph.py` (`AgentState` = `{question, context, answer}` only;
