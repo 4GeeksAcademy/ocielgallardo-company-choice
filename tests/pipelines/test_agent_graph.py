@@ -215,6 +215,23 @@ def test_classify_and_extract_ticket() -> None:
     assert classify_route("   ") == "refuse"
 
 
+def test_classify_hybrid_when_ticket_and_policy() -> None:
+    from data.pipelines.agent_graph import has_policy_signal
+
+    q = (
+        "According to our cancellation policy, what is the status of ticket 482 "
+        "and does a no-show fee apply?"
+    )
+    assert has_policy_signal(q) is True
+    assert classify_route(q) == "hybrid_incidents"
+    assert classify_route("What is the status of ticket 482?") == "incidents"
+    assert (
+        classify_route("Do we have stock of HCR-PPE-001 per supply policy?")
+        == "hybrid_inventory"
+    )
+    assert classify_route("Do we have stock of HCR-PPE-001?") == "inventory"
+
+
 def test_run_agent_calls_retrieve_exactly_once(monkeypatch) -> None:
     counts = {"retrieve": 0, "generate": 0}
 
@@ -442,6 +459,101 @@ def test_run_agent_incident_not_found_is_honest(monkeypatch) -> None:
     assert route_after_incident_tool(
         _empty_state(tool_result=failed.model_dump())
     ) == "tool_fallback"
+
+
+def test_run_agent_hybrid_ticket_policy_uses_tool_then_rag(monkeypatch) -> None:
+    """Hybrid: live incident tool runs first, then RAG; trace shows both in order."""
+    tool_out = IncidentToolOutput(
+        ok=True,
+        incidents=[
+            IncidentRecord(
+                id=482,
+                title="Printer offline",
+                description="Front desk printer",
+                category="it_system",
+                status="in_progress",
+                origin="branch",
+                branch="austin_north",
+                created_at="2026-01-10T12:00:00Z",
+                updated_at="2026-01-11T09:30:00Z",
+            )
+        ],
+    )
+    monkeypatch.setattr(agent_graph, "lookup_incident", lambda payload, **kw: tool_out)
+    monkeypatch.setattr(
+        rag_pipeline,
+        "retrieve",
+        lambda q, **kw: [_payload("Cancel fee 50 USD", source="appointment-policy")],
+    )
+    monkeypatch.setattr(
+        rag_pipeline,
+        "generate_answer",
+        lambda q, ctx: (
+            f"Hybrid: status from tool={ctx[0]['text'][:40]}; "
+            f"policy={ctx[1]['text'] if len(ctx) > 1 else ''}"
+        ),
+    )
+
+    question = (
+        "According to cancellation policy, what is the status of ticket 482?"
+    )
+    result = run_agent(question)
+    trace = get_trace(result["trace_id"])
+    nodes = [span["node"] for span in trace["spans"]]
+
+    assert result["route"] == "hybrid_incidents"
+    assert result["sources_used"] == ["incidents", "rag"]
+    assert nodes == [
+        "receive",
+        "decide_route",
+        "lookup_incident",
+        "retrieve",
+        "generate",
+    ]
+    assert "in_progress" in result["answer"] or "482" in result["answer"]
+    assert trace["sources_used"] == ["incidents", "rag"]
+    assert trace["spans"][2]["output"]["source_kind"] == "incidents"
+    assert trace["spans"][3]["output"]["source_kind"] == "rag"
+    assert trace["spans"][3]["output"].get("hybrid") is True
+
+
+def test_run_agent_hybrid_tool_fail_still_runs_rag(monkeypatch) -> None:
+    """Hybrid must not invent ticket state when the tool fails; RAG still runs."""
+    failed = IncidentToolOutput(
+        ok=False, error="timeout", message=INCIDENT_TOOL_FALLBACK
+    )
+    monkeypatch.setattr(agent_graph, "lookup_incident", lambda payload, **kw: failed)
+    monkeypatch.setattr(
+        rag_pipeline,
+        "retrieve",
+        lambda q, **kw: [_payload("Policy only", source="appointment-policy")],
+    )
+
+    def _spy_generate(question: str, context: list[dict]) -> str:
+        assert context, "hybrid should keep a tool honesty chunk in context"
+        assert context[0]["source_document"] == agent_graph.LIVE_TOOL_SOURCE_INCIDENT
+        assert "could not confirm" in context[0]["text"].lower()
+        return f"Policy path: {context[-1]['text']}"
+
+    monkeypatch.setattr(rag_pipeline, "generate_answer", _spy_generate)
+
+    result = run_agent(
+        "According to policy, what is the status of ticket 999?"
+    )
+    trace = get_trace(result["trace_id"])
+
+    assert result["route"] == "hybrid_incidents"
+    assert result["sources_used"] == ["incidents", "rag"]
+    assert [span["node"] for span in trace["spans"]] == [
+        "receive",
+        "decide_route",
+        "lookup_incident",
+        "retrieve",
+        "generate",
+    ]
+    # Tool failed: answer comes from generate spy, never a fabricated ticket status.
+    assert result["answer"].startswith("Policy path:")
+    assert "in_progress" not in result["answer"].lower()
 
 
 def test_run_agent_stock_question_uses_inventory_tool_not_rag(monkeypatch) -> None:

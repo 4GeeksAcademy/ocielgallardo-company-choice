@@ -17,15 +17,22 @@ flowchart TD
     START --> RECEIVE[receive]
     RECEIVE -->|blank question| REFUSE[refuse]
     RECEIVE -->|otherwise| DECIDE[decide_route]
-    DECIDE -->|ticket / incident| INC[lookup_incident]
-    DECIDE -->|stock / SKU| INV[lookup_inventory]
-    DECIDE -->|policy / procedure| RETRIEVE[retrieve]
+    DECIDE -->|ticket only| INC[lookup_incident]
+    DECIDE -->|stock only| INV[lookup_inventory]
+    DECIDE -->|ticket + policy| HINC[lookup_incident]
+    DECIDE -->|stock + policy| HINV[lookup_inventory]
+    DECIDE -->|policy only| RETRIEVE[retrieve]
     INC -->|ok| ANS[answer_from_tool]
-    INC -->|fail / missing| FALL[tool_fallback]
+    INC -->|fail| FALL[tool_fallback]
     INV -->|ok| ANS
-    INV -->|fail / missing| FALL
-    RETRIEVE -->|no context| HONEST[honest]
-    RETRIEVE -->|otherwise| GENERATE[generate]
+    INV -->|fail| FALL
+    HINC --> RET2[retrieve]
+    HINV --> RET2
+    RET2 --> MERGE[merge live tool chunk + policy hits]
+    MERGE -->|no context| HONEST[honest]
+    MERGE -->|otherwise| GENERATE[generate]
+    RETRIEVE -->|no context| HONEST
+    RETRIEVE -->|otherwise| GENERATE
     REFUSE --> END
     ANS --> END
     FALL --> END
@@ -39,12 +46,17 @@ flowchart TD
 2. `receive` normalizes the question; blank input short-circuits to `refuse`
    (honest fallback, no retrieval, no LLM, no tools).
 3. `decide_route` classifies the question from its text alone (no user hint):
-   - ticket/incident phrasing → incident tool
-   - stock/SKU/inventory phrasing → inventory tool
-   - otherwise → RAG
+   - ticket/incident only → `incidents` (tool only)
+   - stock/SKU only → `inventory` (tool only)
+   - ticket/incident **and** policy signals → `hybrid_incidents` (tool then RAG)
+   - stock/SKU **and** policy signals → `hybrid_inventory` (tool then RAG)
+   - otherwise → RAG only
 4. Tool nodes call typed helpers in `data/pipelines/agent_tools.py` only.
-5. RAG path: `retrieve` → `generate` or `honest` (empty context).
-6. Each run stores a trace (`get_trace` / `get_last_trace`) and a checkpoint
+5. Hybrid path: tool first (live facts), then `retrieve`; the live tool result is
+   injected as a context chunk (`live-incident-tool` / `live-inventory-tool`)
+   ahead of policy hits so `generate` never invents ticket status or stock.
+6. Tool-only path: `answer_from_tool` or `tool_fallback` (no RAG).
+7. Each run stores a trace (`get_trace` / `get_last_trace`) and a checkpoint
    (`get_agent_state`).
 
 ## 3. State
@@ -54,9 +66,9 @@ AgentState = {
   question: str,
   context: list[dict],
   answer: str,
-  route: str,              # refuse | incidents | inventory | rag
+  route: str,              # refuse | incidents | inventory | hybrid_* | rag
   tool_result: dict,       # serialized IncidentToolOutput | InventoryToolOutput
-  sources_used: list[str], # ordered: rag / incidents / inventory
+  sources_used: list[str], # execution order, e.g. ["incidents","rag"] on hybrid
 }
 ```
 
@@ -120,12 +132,21 @@ The graph is compiled at module import with a `MemorySaver` checkpointer
 
 Per run: `trace_id`/`thread_id`, timestamps, per-node spans in execution order,
 **per-node output summaries**, `sources_used` (which source kinds ran and in
-what order via span sequence), `route`, totals, latency, and error on failure.
+what order), `route`, totals, latency, and error on failure.
+
+The brief requires the trace to show clearly whether RAG, a tool, **or both**
+were used, and in which order:
+
+| Path | Example `sources_used` | Span order (core) |
+|------|------------------------|-------------------|
+| RAG only | `["rag"]` | `decide_route → retrieve → generate` |
+| Tool only | `["incidents"]` | `decide_route → lookup_incident → answer_from_tool` |
+| **Both (hybrid)** | `["incidents", "rag"]` | `lookup_incident → retrieve → generate` |
 
 Examples of span outputs:
 
-- `decide_route` → `{route, ticket_id, sku}`
-- `retrieve` → `{n_chunks, sources, source_kind: "rag"}`
+- `decide_route` → `{route, ticket_id, sku}` (`hybrid_incidents` when both)
+- `retrieve` → `{n_chunks, n_policy_chunks, sources, source_kind: "rag", hybrid}`
 - `lookup_incident` → `{source_kind: "incidents", ok, error, n_incidents, ticket_id}`
 - `lookup_inventory` → `{source_kind: "inventory", ok, error, n_products, sku}`
 - `tool_fallback` → `{reason, answer_chars}`
@@ -135,17 +156,20 @@ Bounded in-memory store (last 100). HTTP contract unchanged:
 
 ## 8. Evals
 
-`tests/pipelines/test_agent_evals.py` evaluates **traces**, not live runs:
+`tests/pipelines/test_agent_evals.py` evaluates **traces**, not live runs
+(Part 1 predicates extended for Part 2 routing):
 
 | Eval | Intent |
 |------|--------|
 | `eval_routes_to_tool_not_rag` | Ticket question → incident tool, no `retrieve` |
 | `eval_routes_to_rag_not_tool` | Policy question → RAG, no tool nodes |
+| `eval_routes_to_hybrid_tool_and_rag` | Policy+ticket → tool **and** RAG, tool before RAG |
 | `eval_tool_fallback_honesty` | Incident tool failure → `tool_fallback`, honest answer |
 | Part 1 preds | routing order, blank short-circuit, empty-context honesty, grounding |
 
-Golden fixtures in `tests/pipelines/fixtures/agent_traces/` plus generator
-anti-rot tests. Live grounding still skipped unless `RUN_LIVE_EVALS=1`.
+Golden fixtures in `tests/pipelines/fixtures/agent_traces/` (incl.
+`hybrid_incident_rag.json`) plus generator anti-rot tests. Live grounding still
+skipped unless `RUN_LIVE_EVALS=1`.
 
 ## 9. Gaps (TODO)
 

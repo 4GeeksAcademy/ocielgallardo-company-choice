@@ -154,6 +154,37 @@ def eval_tool_fallback_honesty(trace: dict, answer: str) -> str | None:
     return None
 
 
+def eval_routes_to_hybrid_tool_and_rag(trace: dict) -> str | None:
+    """Hybrid run must use a tool and RAG, with tool before RAG in the trace order."""
+    nodes = _span_nodes(trace)
+    tool_nodes = [n for n in ("lookup_incident", "lookup_inventory") if n in nodes]
+    if not tool_nodes:
+        return f"hybrid expected a tool node, got {nodes}"
+    if "retrieve" not in nodes:
+        return f"hybrid expected retrieve after tool, got {nodes}"
+    tool_name = tool_nodes[0]
+    if nodes.index(tool_name) > nodes.index("retrieve"):
+        return f"tool must run before retrieve, got {nodes}"
+    used = list(trace.get("sources_used") or [])
+    if "rag" not in used:
+        return f"sources_used missing rag: {used}"
+    if "incidents" not in used and "inventory" not in used:
+        return f"sources_used missing tool kind: {used}"
+    # Order: tool kind(s) before rag
+    rag_i = used.index("rag")
+    tool_i = min(
+        (used.index(k) for k in ("incidents", "inventory") if k in used),
+        default=-1,
+    )
+    if tool_i < 0 or tool_i > rag_i:
+        return f"sources_used order must be tool then rag, got {used}"
+    decide = next((s for s in trace["spans"] if s["node"] == "decide_route"), None)
+    route = (decide or {}).get("output", {}).get("route") or trace.get("route")
+    if not str(route).startswith("hybrid_"):
+        return f"decide_route expected hybrid_* route, got {route!r}"
+    return None
+
+
 def _load_golden(name: str) -> tuple[dict, str]:
     case = json.loads((_FIXTURES / name).read_text(encoding="utf-8"))
     return case["trace"], case["answer"]
@@ -211,6 +242,13 @@ def test_eval_tool_fallback_on_golden_trace() -> None:
     """Optional Part 2: incident service failure takes the honest fallback path."""
     trace, answer = _load_golden("tool_fallback.json")
     assert eval_tool_fallback_honesty(trace, answer) is None
+
+
+def test_eval_hybrid_tool_and_rag_on_golden_trace() -> None:
+    """Tracing brief: a hybrid run must show both sources and tool→RAG order."""
+    trace, _ = _load_golden("hybrid_incident_rag.json")
+    assert eval_routes_to_hybrid_tool_and_rag(trace) is None
+    assert eval_spans_have_outputs(trace) is None
 
 
 # --- Generator tests: fresh mocked runs satisfy the same evals (anti-rot) ---
@@ -357,6 +395,49 @@ def test_generator_tool_failure_passes_fallback_eval(monkeypatch) -> None:
     trace = get_trace(result["trace_id"])
 
     assert eval_tool_fallback_honesty(trace, result["answer"]) is None
+
+
+HYBRID_QUESTION = (
+    "According to cancellation policy, what is the status of ticket 482?"
+)
+
+
+def test_generator_hybrid_run_passes_both_sources_eval(monkeypatch) -> None:
+    """Anti-rot: policy+ticket question → tool then RAG; sources_used ordered."""
+    tool_out = IncidentToolOutput(
+        ok=True,
+        incidents=[
+            IncidentRecord(
+                id=482,
+                title="Printer offline",
+                description="Front desk",
+                category="it_system",
+                status="in_progress",
+                origin="branch",
+                branch="austin_north",
+                created_at="2026-01-10T12:00:00Z",
+                updated_at="2026-01-11T09:30:00Z",
+            )
+        ],
+    )
+    monkeypatch.setattr(agent_graph, "lookup_incident", lambda payload, **kw: tool_out)
+    monkeypatch.setattr(
+        rag_pipeline,
+        "retrieve",
+        lambda q, **kw: [_payload("50 USD cancel fee", source="appointment-policy")],
+    )
+    monkeypatch.setattr(
+        rag_pipeline,
+        "generate_answer",
+        lambda q, ctx: f"Both: {ctx[0].get('text', '')[:30]} | {ctx[-1].get('text', '')}",
+    )
+
+    result = run_agent(HYBRID_QUESTION)
+    trace = get_trace(result["trace_id"])
+
+    assert eval_routes_to_hybrid_tool_and_rag(trace) is None
+    assert eval_spans_have_outputs(trace) is None
+    assert result["sources_used"] == ["incidents", "rag"]
 
 
 # --- Live grounding eval: the real acceptance criterion (skipped by default) ---

@@ -69,6 +69,18 @@ _INVENTORY_KEYWORDS_RE = re.compile(
     r"do we have|tenemos stock|hay stock|cu[aá]nto stock)\b",
     re.IGNORECASE,
 )
+# Policy/procedure phrasing that, combined with a live tool signal, triggers hybrid.
+_POLICY_SIGNAL_RE = re.compile(
+    r"\b(?:polic(?:y|ies)|procedure|procedimiento|pol[ií]tica|"
+    r"cancel(?:lation|ling)?|fee|cargo|coverage|insurance|seguro|"
+    r"hipaa|gdpr|appointment|cita|referral|document(?:s|ation)?|"
+    r"what do i need|according to|seg[uú]n (?:la |el )?|"
+    r"no-?show|medicare|medicaid)\b",
+    re.IGNORECASE,
+)
+
+LIVE_TOOL_SOURCE_INCIDENT = "live-incident-tool"
+LIVE_TOOL_SOURCE_INVENTORY = "live-inventory-tool"
 
 
 class AgentState(TypedDict):
@@ -170,21 +182,88 @@ def extract_inventory_name_query(question: str) -> str | None:
     return cleaned or None
 
 
+def has_policy_signal(question: str) -> bool:
+    """True when the question also asks about stable policy/procedure knowledge."""
+    return bool(_POLICY_SIGNAL_RE.search(question or ""))
+
+
+def _needs_incident_tool(text: str) -> bool:
+    return (
+        extract_ticket_id(text) is not None
+        or bool(_TICKET_STATUS_RE.search(text))
+        or bool(_INCIDENT_KEYWORDS_RE.search(text))
+    )
+
+
+def _needs_inventory_tool(text: str) -> bool:
+    return extract_sku(text) is not None or bool(_INVENTORY_KEYWORDS_RE.search(text))
+
+
 def classify_route(
     question: str,
-) -> Literal["refuse", "incidents", "inventory", "rag"]:
-    """Decide source from the question alone (no user-specified source)."""
+) -> Literal[
+    "refuse",
+    "incidents",
+    "inventory",
+    "hybrid_incidents",
+    "hybrid_inventory",
+    "rag",
+]:
+    """Decide source(s) from the question alone (no user-specified source).
+
+    Hybrid routes run a live tool first, then RAG, so the trace shows both
+    sources in execution order (``sources_used``).
+    """
     text = question.strip()
     if not text:
         return "refuse"
-    # Incidents first: ticket ids must never be confused with inventory.
-    if extract_ticket_id(text) is not None:
-        return "incidents"
-    if _TICKET_STATUS_RE.search(text) or _INCIDENT_KEYWORDS_RE.search(text):
-        return "incidents"
-    if extract_sku(text) is not None or _INVENTORY_KEYWORDS_RE.search(text):
-        return "inventory"
+    policy = has_policy_signal(text)
+    # Incidents before inventory: ticket ids must never be confused with stock.
+    if _needs_incident_tool(text):
+        return "hybrid_incidents" if policy else "incidents"
+    if _needs_inventory_tool(text):
+        return "hybrid_inventory" if policy else "inventory"
     return "rag"
+
+
+def is_hybrid_route(route: str | None) -> bool:
+    return bool(route) and str(route).startswith("hybrid_")
+
+
+def tool_context_chunk(tool_result: dict, sources_used: list[str]) -> dict:
+    """Build a non-invented context chunk from a typed tool payload for generate."""
+    from data.pipelines.agent_tools import (
+        IncidentToolOutput,
+        InventoryToolOutput,
+        format_incident_answer,
+        format_inventory_answer,
+    )
+
+    if "inventory" in sources_used or "products" in (tool_result or {}):
+        try:
+            result = InventoryToolOutput.model_validate(tool_result or {})
+            text = format_inventory_answer(result)
+        except Exception:
+            text = str((tool_result or {}).get("message") or "Inventory lookup failed.")
+        source = LIVE_TOOL_SOURCE_INVENTORY
+        section = "live_inventory"
+    else:
+        try:
+            result = IncidentToolOutput.model_validate(tool_result or {})
+            text = format_incident_answer(result)
+        except Exception:
+            text = str((tool_result or {}).get("message") or "Incident lookup failed.")
+        source = LIVE_TOOL_SOURCE_INCIDENT
+        section = "live_incident"
+
+    return {
+        "company": "healthcore",
+        "source_document": source,
+        "section": section,
+        "language": "en",
+        "chunk_index": 0,
+        "text": text,
+    }
 
 
 # --- Nodes: one responsibility each ---
@@ -224,14 +303,25 @@ def decide_route_node(state: AgentState) -> dict:
 
 
 def retrieve_node(state: AgentState) -> dict:
-    """Retrieve policy chunks for ``state['question']`` via ``retrieve()``."""
+    """Retrieve policy chunks; on hybrid paths, prepend the live tool chunk."""
     started = time.time()
     context: list[dict] = []
+    n_policy = 0
     try:
-        context = rag_pipeline.retrieve(state["question"])
+        policy_chunks = rag_pipeline.retrieve(state["question"])
+        n_policy = len(policy_chunks)
         sources = list(state.get("sources_used") or [])
         if "rag" not in sources:
             sources = [*sources, "rag"]
+
+        # Hybrid: tool already ran — keep live facts first, then policy hits.
+        if is_hybrid_route(state.get("route")) and state.get("tool_result"):
+            live = tool_context_chunk(
+                state.get("tool_result") or {}, sources
+            )
+            context = [live, *policy_chunks]
+        else:
+            context = policy_chunks
         return {"context": context, "sources_used": sources}
     finally:
         _record_span(
@@ -240,10 +330,12 @@ def retrieve_node(state: AgentState) -> dict:
             time.time(),
             {
                 "n_chunks": len(context),
+                "n_policy_chunks": n_policy,
                 "sources": sorted(
                     {str(chunk.get("source_document", "")) for chunk in context}
                 ),
                 "source_kind": "rag",
+                "hybrid": is_hybrid_route(state.get("route")),
             },
         )
 
@@ -441,24 +533,31 @@ def route_after_receive(state: AgentState) -> Literal["refuse", "decide_route"]:
 def route_after_decide(
     state: AgentState,
 ) -> Literal["lookup_incident", "lookup_inventory", "retrieve"]:
-    """Send operational questions to the matching tool; policies to RAG."""
+    """Send operational / hybrid questions to tools; pure policy to RAG."""
     route = state.get("route")
-    if route == "incidents":
+    if route in ("incidents", "hybrid_incidents"):
         return "lookup_incident"
-    if route == "inventory":
+    if route in ("inventory", "hybrid_inventory"):
         return "lookup_inventory"
     return "retrieve"
 
 
 def route_context(state: AgentState) -> Literal["honest", "generate"]:
-    """Empty retrieval routes to ``honest``; otherwise generate."""
+    """Empty context routes to ``honest``; hybrid with a tool chunk still generates.
+
+    On hybrid paths ``retrieve_node`` always injects a live tool chunk, so
+    ``context`` is non-empty even when policy retrieval returns nothing — the
+    model answers from the tool fact without inventing ticket/stock fields.
+    """
     return "honest" if not state["context"] else "generate"
 
 
 def route_after_tool(
     state: AgentState,
-) -> Literal["answer_from_tool", "tool_fallback"]:
-    """Successful lookup answers from tool data; failures take the fallback path."""
+) -> Literal["answer_from_tool", "tool_fallback", "retrieve"]:
+    """Tool-only ends here; hybrid continues to RAG so the trace shows both."""
+    if is_hybrid_route(state.get("route")):
+        return "retrieve"
     tool_result = state.get("tool_result") or {}
     if tool_result.get("ok"):
         return "answer_from_tool"
