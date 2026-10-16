@@ -1,0 +1,29 @@
+{
+  "answer": "Ticket 2: status=open, category=patient_experience, origin=customer, branch=london_west, title='Patient not informed of appointment reschedule', updated_at=2024-01-17T00:00:00Z.\n\nPolicy: cancelling less than 24 hours in advance is 50 USD (40 GBP).",
+  "trace": {
+    "trace_id": "golden-hybrid-001",
+    "thread_id": "golden-hybrid-001",
+    "question": "According to cancellation policy, what is the status of ticket 2?",
+    "status": "success",
+    "n_chunks": 1,
+    "sources": ["appointment-policy"],
+    "sources_used": ["incidents", "rag"],
+    "route": "hybrid_incidents",
+    "spans": [
+      {"node": "receive", "duration_ms": 0.01, "output": {"question_chars": 66}},
+      {"node": "decide_route", "duration_ms": 0.02, "output": {"route": "hybrid_incidents", "ticket_id": 2, "sku": null}},
+      {
+        "node": "lookup_incident",
+        "duration_ms": 4.1,
+        "output": {"source_kind": "incidents", "ok": true, "error": null, "n_incidents": 1, "ticket_id": 2}
+      },
+      {
+        "node": "retrieve",
+        "duration_ms": 3.0,
+        "output": {"n_chunks": 1, "sources": ["appointment-policy"], "source_kind": "rag", "hybrid": true}
+      },
+      {"node": "synthesize_hybrid", "duration_ms": 95.0, "output": {"answer_chars": 240, "tool_ok": true, "n_policy_chunks": 1}}
+    ],
+    "error": null
+  }
+}
