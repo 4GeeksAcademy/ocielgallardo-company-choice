@@ -7,12 +7,9 @@
     "status": "success",
     "n_chunks": 0,
     "sources": [],
-    "sources_used": ["rag"],
-    "route": "rag",
     "spans": [
       {"node": "receive", "duration_ms": 0.01, "output": {"question_chars": 29}},
-      {"node": "decide_route", "duration_ms": 0.02, "output": {"route": "rag", "ticket_id": null}},
-      {"node": "retrieve", "duration_ms": 2.8, "output": {"n_chunks": 0, "sources": [], "source_kind": "rag"}},
+      {"node": "retrieve", "duration_ms": 2.8, "output": {"n_chunks": 0, "sources": []}},
       {"node": "honest", "duration_ms": 110.0, "output": {"answer_chars": 50}}
     ],
     "error": null

@@ -7,12 +7,9 @@
     "status": "success",
     "n_chunks": 1,
     "sources": ["appointment-policy"],
-    "sources_used": ["rag"],
-    "route": "rag",
     "spans": [
       {"node": "receive", "duration_ms": 0.01, "output": {"question_chars": 53}},
-      {"node": "decide_route", "duration_ms": 0.02, "output": {"route": "rag", "ticket_id": null}},
-      {"node": "retrieve", "duration_ms": 3.2, "output": {"n_chunks": 1, "sources": ["appointment-policy"], "source_kind": "rag"}},
+      {"node": "retrieve", "duration_ms": 3.2, "output": {"n_chunks": 1, "sources": ["appointment-policy"]}},
       {"node": "generate", "duration_ms": 120.5, "output": {"answer_chars": 116}}
     ],
     "error": null
