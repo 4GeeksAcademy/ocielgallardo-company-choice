@@ -97,10 +97,16 @@ No conversation history, no vectors, no `trace_id` inside the state.
 
 Tools call the APIs over **HTTP** (`httpx`) at `AGENT_TOOL_API_URL`
 (default `http://127.0.0.1:8000`, overridable; Compose passes it through to
-`backend`). Auth is a valid Bearer JWT from `AGENT_TOOL_API_TOKEN`
-(env/config — **never hardcoded**). Timeouts, 404s, and transport/auth
-failures map to typed errors (`timeout` / `not_found` / `unavailable`) and
-honest fallbacks; the graph never hangs and never invents state.
+`backend`). Auth is a short-lived **service JWT** that the agent obtains
+itself through the OAuth2 client-credentials grant (`POST /auth/token` with
+`AGENT_TOOL_CLIENT_ID` / `AGENT_TOOL_CLIENT_SECRET`), auto-renewed by
+`data/pipelines/service_token_provider.py` — env/config, **never
+hardcoded**, never a pasted human session (see §9.1). Timeouts, 404s, and
+transport failures map to typed errors (`timeout` / `not_found` /
+`unavailable`) and honest fallbacks; **401/403 map to a typed `auth`
+error** with its own honest message and a warning log, so credential
+expiry is observable in traces instead of a silent fallback. The graph
+never hangs and never invents state.
 
 ### Fallback
 
@@ -109,6 +115,10 @@ routes to `tool_fallback` (tool-only) or answers with the tool honesty message
 inside `synthesize_hybrid` (hybrid). Fixed messages
 (`INCIDENT_TOOL_FALLBACK`, `INVENTORY_TOOL_FALLBACK`,
 `INCIDENT_NOT_FOUND_MESSAGE`, `INVENTORY_NOT_FOUND_MESSAGE`).
+Rejected service credentials (HTTP 401/403) surface as typed
+`error="auth"` with `INCIDENT_TOOL_AUTH_MESSAGE` /
+`INVENTORY_TOOL_AUTH_MESSAGE` plus a warning log line — observable,
+never a silent fallback-only path (§9.1 criterion 5).
 
 ### Why not index tickets in RAG
 
@@ -165,59 +175,78 @@ anti-rot tests. Live grounding still skipped unless `RUN_LIVE_EVALS=1`.
 - TODO: decide trace/checkpoint persistence beyond memory if production review needs it.
 - TODO: re-tune `min_score` after any corpus change (see `docs/rag/rag-design.md`).
 
-### 9.1 Proposed improvement — Service identity for agent tools
+### 9.1 Service identity for agent tools (implemented)
 
-**Status:** Accepted in instructor review (2026-10-17). Out of scope for this
-milestone; tracked here as the design baseline for a production hardening pass.
+**Status:** Implemented on `feature/agent-tool-service-identity`
+(2026-10-17). Accepted in instructor review the same day ("Ojo con el
+token temporal: para producción tocaría sustituirlo por una identidad de
+servicio").
 
-**Current state.** `AGENT_TOOL_API_TOKEN` is a pasted user JWT obtained via
-`POST /auth/login` and injected via `.env` → Compose `env_file` → `os.getenv`
-in `data/pipelines/agent_tools.py`. Expiry is governed by
-`ACCESS_TOKEN_EXPIRE_MINUTES` (default **30**, see `services/app/core/security.py:18`).
-When the token expires, `httpx` calls return **401** and the graph routes to
-`tool_fallback`, producing an honest "could not confirm" answer instead of
-live data. This was reproduced end-to-end: a UI battery ran within the token
-window (live `status=open`, `current_stock=1289`); a later run after expiry
-degraded all tool routes to fallback while RAG routes continued to work.
+**Previous state (retired).** `AGENT_TOOL_API_TOKEN` was a pasted user JWT
+obtained via `POST /auth/login` and injected via `.env` → Compose
+`env_file` → `os.getenv` in `data/pipelines/agent_tools.py`. When it
+expired, `httpx` calls returned **401** and the graph routed to
+`tool_fallback`, silently degrading all live tool routes while RAG routes
+continued to work.
 
-**Risks carried by the current mechanism.**
+**Risks carried by the retired mechanism** (why this change was made):
 
-1. **Silent degradation.** No alert fires when the tool token expires; the
-   agent quietly stops delivering live ticket/stock data until a human
-   notices and refreshes the env var.
-2. **Audit attribution.** API access logs attribute every tool call to the
-   human user account (`sub=11`), not to the agent service. In a HIPAA-adjacent
-   environment this breaks the human-vs-machine access distinction.
-3. **Manual rotation.** Refreshing the token requires: login → edit `.env` →
-   recreate backend. No automated lifecycle.
-4. **Blast radius.** The token carries the full session rights of its user
-   account; if leaked it grants everything that user can reach, not just
-   read-only incident/inventory lookups.
+1. **Silent degradation** — no alert when the token expired; live data
+   quietly stopped until a human refreshed the env var.
+2. **Audit attribution** — every tool call was attributed to the human
+   user account (`sub=11`), not the agent service (HIPAA-adjacent
+   human-vs-machine distinction broken).
+3. **Manual rotation** — login → edit `.env` → recreate backend.
+4. **Blast radius** — the token carried the full session rights of its
+   user account, not just the two read-only lookups the agent needs.
 
-**Proposed direction.** Replace the pasted user JWT with a dedicated machine
-principal (service identity) that:
+**Delivered mechanism.**
 
-- Obtains and renews its own credentials automatically (OAuth2
-  *client-credentials* flow, or an internal service key minted by the
-  backend at startup and rotated on a schedule).
-- Holds a **read-only, resource-scoped** grant limited to
-  `GET /api/incidents[/{id}]` and `GET /inventory/products[/{id}]` —
-  nothing more.
-- Is attributable in every API log as a distinct principal (e.g.
-  `svc:langgraph-agent`), never as a human user.
-- Survives > 24 h without human intervention; credential material never
-  appears in developer `.env` files.
+- **Token grant.** `POST /auth/token` (OAuth2 client-credentials) issues a
+  short-lived JWT (`typ=service`, `sub=svc:langgraph-agent`, TTL
+  `SERVICE_TOKEN_EXPIRE_MINUTES`, default 15 min) signed with the existing
+  `SECRET_KEY`/`ALGORITHM`.
+- **Client registry.** `scripts/seed_service_client.py` registers the
+  machine client in TinyDB `service_clients` (bcrypt-hashed secret);
+  re-running rotates the secret and prints it once.
+- **Agent-side renewal.** `data/pipelines/service_token_provider.py` holds
+  an in-process cache with a 120 s refresh margin; if a renewal fails but
+  the current token is still valid it keeps serving it (grace), and
+  returns `None` once past absolute expiry. The secret can come from a
+  mounted Docker secret (`AGENT_TOOL_CLIENT_SECRET_FILE`) so credential
+  material never needs to live in a developer `.env`.
+- **Scope enforcement.** The four read GET routes
+  (`GET /api/incidents[/{id}]`, `GET /inventory/products[/{id}]`) accept
+  humans via `get_current_user` or the service principal via
+  `require_scope("incidents:read" | "inventory:read")`. Every other route
+  stays human-only: `get_current_user` rejects `typ=service` → 401
+  (fail-closed for free).
+- **Attribution.** Dependencies write `request.state.principal`
+  (`user:<id>` / `svc:<client_id>`); the API timing middleware logs it as
+  `principal=…` in every `api.timing` record.
+- **Observable expiry.** Tool 401/403 responses map to typed
+  `error="auth"` with `INCIDENT_TOOL_AUTH_MESSAGE` /
+  `INVENTORY_TOOL_AUTH_MESSAGE` plus a warning log — the span shows the
+  auth error explicitly; it is never a silent fallback-only path.
 
-**Acceptance criteria (production pass).**
+**Acceptance criteria.**
 
-- [ ] Agent tools authenticate with a principal that is not a human user
-      account.
-- [ ] Credentials are renewed automatically; no manual env edit required
-      for > 24 h of continuous operation.
-- [ ] API access logs attribute tool calls to the service principal.
-- [ ] Tool scope is limited to the two read-only GET routes above.
-- [ ] Expiry of tool credentials is observable (alert or explicit error
-      span), never a silent fallback-only path.
+- [x] Agent tools authenticate with a principal that is not a human user
+      account (`svc:langgraph-agent` via client-credentials grant).
+- [x] Credentials are renewed automatically; no manual env edit required
+      for > 24 h of continuous operation (15 min TTL, in-process renewal).
+- [x] API access logs attribute tool calls to the service principal
+      (`principal=svc:langgraph-agent` in `api.timing`).
+- [x] Tool scope is limited to the two read-only GET routes above
+      (scope enforcement + `typ=service` rejected everywhere else).
+- [x] Expiry of tool credentials is observable (explicit `error="auth"`
+      span + warning log), never a silent fallback-only path.
 
 **Non-goals.** Write access for the agent; cross-service impersonation;
 changing the HTTP transport (`httpx` remains the chosen client).
+
+**Remaining TODO (production pass).** Client-secret rotation is still
+manual (re-run the seed script and update the secret). The
+`service_clients` registry lives in `auth.json`, which has no persistent
+volume in prod Compose — a backend recreate wipes it and the seed must be
+re-run before the agent can authenticate again.

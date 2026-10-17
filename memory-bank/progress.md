@@ -21,17 +21,30 @@
   + `test_agent_evals.py` (tool-not-RAG, RAG-not-tool, hybrid, fallback +
   golden fixtures). Docs: `docs/rag/agent-graph.md`. Dependency `httpx`
   via `uv add`, `services/requirements.txt` synced.
-  TODO (see `agent-graph.md` §9.1): long-lived service identity for
-  `AGENT_TOOL_API_TOKEN`. Accepted in instructor review 2026-10-17
-  ("Ojo con el token temporal: para producción tocaría sustituirlo por
-  una identidad de servicio"). Design baseline documented: risks of the
-  pasted-user-JWT approach (silent 401 fallback, human audit attribution,
-  manual rotation, blast radius); proposed machine principal (OAuth2
-  client-credentials or internal service key, read-only scope on the two
-  GET routes, auto-renewal, distinct API log principal). Acceptance
-  criteria + non-goals recorded in `docs/rag/agent-graph.md` §9.1.
-  Branch `feature/agent-tool-service-identity` opened from `main` to
-  carry this documentation. Out of scope for the bootcamp milestone.
+  Service identity (`agent-graph.md` §9.1, accepted in instructor review
+  2026-10-17) implemented on `feature/agent-tool-service-identity`:
+  pasted user JWT (`AGENT_TOOL_API_TOKEN`) retired — `POST /auth/token`
+  client-credentials grant issues short-lived `typ=service` JWTs (TTL
+  `SERVICE_TOKEN_EXPIRE_MINUTES`, default 15 min) for machine principal
+  `svc:langgraph-agent` (bcrypt-hashed secret in TinyDB `service_clients`,
+  seeded via `scripts/seed_service_client.py`). Scoped deps
+  `require_scope("incidents:read"|"inventory:read")` on the 4 read GET
+  routes (humans unchanged; service tokens 401 everywhere else via
+  `get_current_user` rejection — fail-closed);
+  `request.state.principal` + `principal=` field in `api.timing` log
+  (`services/app/core/middleware.py`). Agent side:
+  `data/pipelines/service_token_provider.py` auto-renews the token
+  (`*_FILE` secret indirection for Docker secrets, 120 s refresh margin,
+  grace on failed renewal); tools map 401/403 to typed `error="auth"`
+  (explicit trace span + warning log, never silent). Env:
+  `AGENT_TOOL_CLIENT_ID`/`AGENT_TOOL_CLIENT_SECRET` +
+  `SERVICE_TOKEN_EXPIRE_MINUTES` replace `AGENT_TOOL_API_TOKEN`
+  (`.env.example` + Compose). Tests: 19 backend
+  (`tests/test_service_identity.py`) + 8 provider
+  (`tests/pipelines/test_service_token_provider.py`) + tools auth
+  guards; full suite **162 passed, 1 skipped**. TODO: client-secret
+  rotation still manual; re-seed required after a prod backend recreate
+  (no persistent volume for `auth.json`).
 
 - LangGraph agent base (branch `feature/langgraph-agent-base`, independent PR):
   `data/pipelines/agent_graph.py` (`AgentState` = `{question, context, answer}` only;
