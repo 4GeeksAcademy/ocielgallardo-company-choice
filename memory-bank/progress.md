@@ -21,7 +21,17 @@
   + `test_agent_evals.py` (tool-not-RAG, RAG-not-tool, hybrid, fallback +
   golden fixtures). Docs: `docs/rag/agent-graph.md`. Dependency `httpx`
   via `uv add`, `services/requirements.txt` synced.
-  TODO: long-lived service identity for `AGENT_TOOL_API_TOKEN`.
+  TODO (see `agent-graph.md` §9.1): long-lived service identity for
+  `AGENT_TOOL_API_TOKEN`. Accepted in instructor review 2026-10-17
+  ("Ojo con el token temporal: para producción tocaría sustituirlo por
+  una identidad de servicio"). Design baseline documented: risks of the
+  pasted-user-JWT approach (silent 401 fallback, human audit attribution,
+  manual rotation, blast radius); proposed machine principal (OAuth2
+  client-credentials or internal service key, read-only scope on the two
+  GET routes, auto-renewal, distinct API log principal). Acceptance
+  criteria + non-goals recorded in `docs/rag/agent-graph.md` §9.1.
+  Branch `feature/agent-tool-service-identity` opened from `main` to
+  carry this documentation. Out of scope for the bootcamp milestone.
 
 - LangGraph agent base (branch `feature/langgraph-agent-base`, independent PR):
   `data/pipelines/agent_graph.py` (`AgentState` = `{question, context, answer}` only;

@@ -164,4 +164,60 @@ anti-rot tests. Live grounding still skipped unless `RUN_LIVE_EVALS=1`.
 
 - TODO: decide trace/checkpoint persistence beyond memory if production review needs it.
 - TODO: re-tune `min_score` after any corpus change (see `docs/rag/rag-design.md`).
-- TODO: long-lived service identity for `AGENT_TOOL_API_TOKEN` (today a pasted user JWT that expires with `ACCESS_TOKEN_EXPIRE_MINUTES`).
+
+### 9.1 Proposed improvement — Service identity for agent tools
+
+**Status:** Accepted in instructor review (2026-10-17). Out of scope for this
+milestone; tracked here as the design baseline for a production hardening pass.
+
+**Current state.** `AGENT_TOOL_API_TOKEN` is a pasted user JWT obtained via
+`POST /auth/login` and injected via `.env` → Compose `env_file` → `os.getenv`
+in `data/pipelines/agent_tools.py`. Expiry is governed by
+`ACCESS_TOKEN_EXPIRE_MINUTES` (default **30**, see `services/app/core/security.py:18`).
+When the token expires, `httpx` calls return **401** and the graph routes to
+`tool_fallback`, producing an honest "could not confirm" answer instead of
+live data. This was reproduced end-to-end: a UI battery ran within the token
+window (live `status=open`, `current_stock=1289`); a later run after expiry
+degraded all tool routes to fallback while RAG routes continued to work.
+
+**Risks carried by the current mechanism.**
+
+1. **Silent degradation.** No alert fires when the tool token expires; the
+   agent quietly stops delivering live ticket/stock data until a human
+   notices and refreshes the env var.
+2. **Audit attribution.** API access logs attribute every tool call to the
+   human user account (`sub=11`), not to the agent service. In a HIPAA-adjacent
+   environment this breaks the human-vs-machine access distinction.
+3. **Manual rotation.** Refreshing the token requires: login → edit `.env` →
+   recreate backend. No automated lifecycle.
+4. **Blast radius.** The token carries the full session rights of its user
+   account; if leaked it grants everything that user can reach, not just
+   read-only incident/inventory lookups.
+
+**Proposed direction.** Replace the pasted user JWT with a dedicated machine
+principal (service identity) that:
+
+- Obtains and renews its own credentials automatically (OAuth2
+  *client-credentials* flow, or an internal service key minted by the
+  backend at startup and rotated on a schedule).
+- Holds a **read-only, resource-scoped** grant limited to
+  `GET /api/incidents[/{id}]` and `GET /inventory/products[/{id}]` —
+  nothing more.
+- Is attributable in every API log as a distinct principal (e.g.
+  `svc:langgraph-agent`), never as a human user.
+- Survives > 24 h without human intervention; credential material never
+  appears in developer `.env` files.
+
+**Acceptance criteria (production pass).**
+
+- [ ] Agent tools authenticate with a principal that is not a human user
+      account.
+- [ ] Credentials are renewed automatically; no manual env edit required
+      for > 24 h of continuous operation.
+- [ ] API access logs attribute tool calls to the service principal.
+- [ ] Tool scope is limited to the two read-only GET routes above.
+- [ ] Expiry of tool credentials is observable (alert or explicit error
+      span), never a silent fallback-only path.
+
+**Non-goals.** Write access for the agent; cross-service impersonation;
+changing the HTTP transport (`httpx` remains the chosen client).
