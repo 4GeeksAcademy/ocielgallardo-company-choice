@@ -17,9 +17,11 @@ import httpx  # noqa: E402
 import data.pipelines.agent_tools as agent_tools  # noqa: E402
 from data.pipelines.agent_tools import (  # noqa: E402
     INCIDENT_NOT_FOUND_MESSAGE,
+    INCIDENT_TOOL_AUTH_MESSAGE,
     INCIDENT_TOOL_FALLBACK,
     INCIDENT_TOOL_TIMEOUT_SECONDS,
     INVENTORY_NOT_FOUND_MESSAGE,
+    INVENTORY_TOOL_AUTH_MESSAGE,
     INVENTORY_TOOL_FALLBACK,
     INVENTORY_TOOL_TIMEOUT_SECONDS,
     IncidentToolInput,
@@ -136,6 +138,31 @@ def test_lookup_incident_server_error_returns_fallback(monkeypatch) -> None:
     assert format_incident_answer(out) == INCIDENT_TOOL_FALLBACK
 
 
+def test_lookup_incident_auth_rejection_is_explicit_not_fallback(monkeypatch) -> None:
+    """401 (expired service credential) → error='auth', own honest message."""
+    monkeypatch.setattr(
+        agent_tools, "_http_get", lambda *a, **k: _FakeResponse({}, 401)
+    )
+
+    out = lookup_incident(IncidentToolInput(ticket_id=2))
+
+    assert out.ok is False
+    assert out.error == "auth"
+    assert out.message == INCIDENT_TOOL_AUTH_MESSAGE
+    assert out.message != INCIDENT_TOOL_FALLBACK
+
+
+def test_lookup_incident_scope_rejection_is_auth_error(monkeypatch) -> None:
+    monkeypatch.setattr(
+        agent_tools, "_http_get", lambda *a, **k: _FakeResponse({}, 403)
+    )
+
+    out = lookup_incident(IncidentToolInput(status="open"))
+
+    assert out.ok is False
+    assert out.error == "auth"
+
+
 def test_lookup_incident_invalid_input_without_id_or_filters() -> None:
     out = lookup_incident(IncidentToolInput())
 
@@ -206,6 +233,19 @@ def test_lookup_inventory_timeout_returns_fallback(monkeypatch) -> None:
     assert format_inventory_answer(out) == INVENTORY_TOOL_FALLBACK
 
 
+def test_lookup_inventory_auth_rejection_is_explicit_not_fallback(monkeypatch) -> None:
+    monkeypatch.setattr(
+        agent_tools, "_http_get", lambda *a, **k: _FakeResponse({}, 401)
+    )
+
+    out = lookup_inventory(InventoryToolInput(sku="HCR-PPE-001"))
+
+    assert out.ok is False
+    assert out.error == "auth"
+    assert out.message == INVENTORY_TOOL_AUTH_MESSAGE
+    assert out.message != INVENTORY_TOOL_FALLBACK
+
+
 def test_tools_are_read_only_get_only() -> None:
     """Static guard: tools must only ever issue HTTP GET (never write)."""
     source = Path(agent_tools.__file__).read_text(encoding="utf-8")
@@ -228,15 +268,24 @@ def test_tools_are_read_only_get_only() -> None:
     assert "_http_get" in source
 
 
-def test_auth_comes_from_env_never_hardcoded(monkeypatch) -> None:
-    """Static + runtime guard: Bearer token is read from env, not literals."""
-    source = Path(agent_tools.__file__).read_text(encoding="utf-8")
-    assert "AGENT_TOOL_API_TOKEN" in source
-    assert "AGENT_TOOL_API_URL" in source
+def test_auth_comes_from_service_client_credentials_never_hardcoded() -> None:
+    """Static guard: env-driven client credentials; legacy user JWT retired."""
+    tools_source = Path(agent_tools.__file__).read_text(encoding="utf-8")
+    provider_source = (
+        Path(agent_tools.__file__).parent / "service_token_provider.py"
+    ).read_text(encoding="utf-8")
+    combined = tools_source + provider_source
 
-    monkeypatch.setenv("AGENT_TOOL_API_TOKEN", "secret-token")
-    headers = agent_tools._auth_headers()
-    assert headers == {"Authorization": "Bearer secret-token"}
+    assert "AGENT_TOOL_CLIENT_ID" in provider_source
+    assert "AGENT_TOOL_CLIENT_SECRET" in provider_source
+    assert "AGENT_TOOL_API_URL" in provider_source
+    # Pasted user JWT mechanism fully removed (agent-graph.md §9.1).
+    assert "AGENT_TOOL_API_TOKEN" not in combined
 
-    monkeypatch.delenv("AGENT_TOOL_API_TOKEN", raising=False)
+
+def test_auth_headers_use_the_token_provider(monkeypatch) -> None:
+    monkeypatch.setattr(agent_tools, "get_service_token", lambda: "service-jwt")
+    assert agent_tools._auth_headers() == {"Authorization": "Bearer service-jwt"}
+
+    monkeypatch.setattr(agent_tools, "get_service_token", lambda: None)
     assert agent_tools._auth_headers() == {}
