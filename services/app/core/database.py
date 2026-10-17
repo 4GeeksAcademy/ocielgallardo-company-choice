@@ -86,6 +86,8 @@ def get_db() -> Generator[Session, None, None]:
     with Session(get_engine()) as session:
         yield session
 password_reset_tokens_table = auth_db.table("password_reset_tokens")
+# Machine (service) identities for internal tool callers — client-credentials.
+service_clients_table = auth_db.table("service_clients")
 
 INCIDENTS_DB_PATH = DATA_DIR / "process" / "incidents" / "incidents.json"
 INCIDENTS_DB_PATH.parent.mkdir(parents=True, exist_ok=True)

@@ -6,19 +6,24 @@ inventory (``GET /inventory/products`` / ``GET /inventory/products/{id}``).
 Tools never create/update/delete; only HTTP GET is used (statically guarded).
 
 Transport: ``httpx`` against ``AGENT_TOOL_API_URL`` (default
-``http://127.0.0.1:8000``) with Bearer ``AGENT_TOOL_API_TOKEN`` read from
-environment/config — never hardcoded. Timeouts are explicit and numeric
-(5.0 s); failures map to honest fallbacks, never invented state.
+``http://127.0.0.1:8000``) with a short-lived service JWT from the
+client-credentials provider (``data/pipelines/service_token_provider.py``:
+``AGENT_TOOL_CLIENT_ID`` / ``AGENT_TOOL_CLIENT_SECRET``, auto-renewed — never
+a pasted user session, see ``docs/rag/agent-graph.md`` §9.1). Timeouts are
+explicit and numeric (5.0 s); 401/403 map to an explicit ``auth`` error
+(observable in traces), other failures to honest fallbacks, never invented
+state.
 """
 
 from __future__ import annotations
 
 import logging
-import os
 from typing import Literal
 
 import httpx
 from pydantic import BaseModel, Field
+
+from data.pipelines.service_token_provider import api_base_url, get_service_token
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +41,11 @@ INCIDENT_NOT_FOUND_MESSAGE = (
     "Please verify the ticket id and try again."
 )
 
+INCIDENT_TOOL_AUTH_MESSAGE = (
+    "I could not confirm the status of that ticket because the service "
+    "credentials were rejected. Please try again shortly."
+)
+
 INVENTORY_TOOL_FALLBACK = (
     "I could not confirm inventory stock right now. "
     "Please check the inventory module directly or try again shortly."
@@ -46,20 +56,24 @@ INVENTORY_NOT_FOUND_MESSAGE = (
     "Please verify the SKU or product name and try again."
 )
 
-
-def api_base_url() -> str:
-    """Base URL of the HealthCore API the tools call (env, never hardcoded)."""
-    return os.getenv("AGENT_TOOL_API_URL", "http://127.0.0.1:8000").rstrip("/")
+INVENTORY_TOOL_AUTH_MESSAGE = (
+    "I could not confirm inventory stock because the service credentials "
+    "were rejected. Please try again shortly."
+)
 
 
 def _auth_headers() -> dict[str, str]:
-    token = os.getenv("AGENT_TOOL_API_TOKEN", "").strip()
+    """Bearer header from the auto-renewing service token (env-driven)."""
+    token = get_service_token()
     if not token:
-        logger.warning(
-            "AGENT_TOOL_API_TOKEN is not set; API tool calls will lack auth"
-        )
+        logger.warning("No service token available; API tool calls will lack auth")
         return {}
     return {"Authorization": f"Bearer {token}"}
+
+
+def _is_auth_rejected(response: httpx.Response) -> bool:
+    """401/403 = credential problem (expired/scope), distinct from outages."""
+    return response.status_code in (401, 403)
 
 
 def _http_get(
@@ -114,7 +128,8 @@ class IncidentToolOutput(BaseModel):
     ok: bool
     incidents: list[IncidentRecord] = Field(default_factory=list)
     error: (
-        Literal["not_found", "timeout", "unavailable", "invalid_input"] | None
+        Literal["not_found", "timeout", "unavailable", "invalid_input", "auth"]
+        | None
     ) = None
     message: str | None = None
 
@@ -142,7 +157,8 @@ def lookup_incident(
 
     - ``GET /api/incidents/{ticket_id}`` for id lookups (404 → not_found).
     - ``GET /api/incidents`` with filters otherwise.
-    - Timeout/unreachable/auth errors → honest fallback (never invented state).
+    - 401/403 → explicit ``auth`` error (credential expiry observable).
+    - Timeout/unreachable errors → honest fallback (never invented state).
     """
     if payload.ticket_id is None and not any(
         (payload.status, payload.origin, payload.branch, payload.category)
@@ -159,6 +175,15 @@ def lookup_incident(
                 f"/api/incidents/{payload.ticket_id}",
                 timeout_seconds=timeout_seconds,
             )
+            if _is_auth_rejected(response):
+                logger.warning(
+                    "incident tool auth rejected (HTTP %s): service "
+                    "credential expired or unauthorized",
+                    response.status_code,
+                )
+                return IncidentToolOutput(
+                    ok=False, error="auth", message=INCIDENT_TOOL_AUTH_MESSAGE
+                )
             if response.status_code == 404:
                 return IncidentToolOutput(
                     ok=False,
@@ -183,6 +208,15 @@ def lookup_incident(
         response = _http_get(
             "/api/incidents", params=params, timeout_seconds=timeout_seconds
         )
+        if _is_auth_rejected(response):
+            logger.warning(
+                "incident tool auth rejected (HTTP %s): service "
+                "credential expired or unauthorized",
+                response.status_code,
+            )
+            return IncidentToolOutput(
+                ok=False, error="auth", message=INCIDENT_TOOL_AUTH_MESSAGE
+            )
         response.raise_for_status()
         rows = response.json()
         return IncidentToolOutput(
@@ -259,7 +293,8 @@ class InventoryToolOutput(BaseModel):
     ok: bool
     products: list[InventoryRecord] = Field(default_factory=list)
     error: (
-        Literal["not_found", "timeout", "unavailable", "invalid_input"] | None
+        Literal["not_found", "timeout", "unavailable", "invalid_input", "auth"]
+        | None
     ) = None
     message: str | None = None
 
@@ -285,6 +320,7 @@ def lookup_inventory(
 
     - ``GET /inventory/products/{supply_id}`` for id lookups (404 → not_found).
     - ``GET /inventory/products`` (client-side SKU/name filter) otherwise.
+    - 401/403 → explicit ``auth`` error (credential expiry observable).
     - Never invents stock levels on failure, timeout, or missing product.
     """
     if payload.supply_id is None and not payload.sku and not payload.name_query:
@@ -300,6 +336,15 @@ def lookup_inventory(
                 f"/inventory/products/{payload.supply_id}",
                 timeout_seconds=timeout_seconds,
             )
+            if _is_auth_rejected(response):
+                logger.warning(
+                    "inventory tool auth rejected (HTTP %s): service "
+                    "credential expired or unauthorized",
+                    response.status_code,
+                )
+                return InventoryToolOutput(
+                    ok=False, error="auth", message=INVENTORY_TOOL_AUTH_MESSAGE
+                )
             if response.status_code == 404:
                 return InventoryToolOutput(
                     ok=False,
@@ -314,6 +359,15 @@ def lookup_inventory(
         response = _http_get(
             "/inventory/products", timeout_seconds=timeout_seconds
         )
+        if _is_auth_rejected(response):
+            logger.warning(
+                "inventory tool auth rejected (HTTP %s): service "
+                "credential expired or unauthorized",
+                response.status_code,
+            )
+            return InventoryToolOutput(
+                ok=False, error="auth", message=INVENTORY_TOOL_AUTH_MESSAGE
+            )
         response.raise_for_status()
         rows = response.json()
         products = (

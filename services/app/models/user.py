@@ -1,5 +1,6 @@
 from enum import Enum
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -55,6 +56,23 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class ClientCredentialsRequest(BaseModel):
+    """Service-token grant payload (machine callers only, never humans)."""
+
+    grant_type: Literal["client_credentials"] = "client_credentials"
+    client_id: str = Field(min_length=1)
+    client_secret: str = Field(min_length=1)
+
+
+class ServiceTokenResponse(BaseModel):
+    """Short-lived service JWT plus its renewal metadata."""
+
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    scope: str
 
 
 class AuthMeResponse(BaseModel):

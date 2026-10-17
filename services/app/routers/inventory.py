@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
 from services.app.core.database import get_db
-from services.app.core.deps import get_current_user
+from services.app.core.deps import get_current_user, require_scope
+from services.app.core.service_identity import ServicePrincipal
 from services.app.domain import inventory_service
 from services.app.models.user import UserPublic
 from services.app.schemas import (
@@ -27,7 +28,7 @@ def _user_uuid(user: UserPublic) -> str:
 
 @router.get("/products", response_model=list[MedicalSupplyResponse])
 def list_products(
-    _: UserPublic = Depends(get_current_user),
+    _: UserPublic | ServicePrincipal = Depends(require_scope("inventory:read")),
     session: Session = Depends(get_db),
 ) -> list[MedicalSupplyResponse]:
     return inventory_service.list_supplies(session)
@@ -46,7 +47,7 @@ def create_product(
 @router.get("/products/{supply_id}", response_model=MedicalSupplyResponse)
 def get_product(
     supply_id: int,
-    _: UserPublic = Depends(get_current_user),
+    _: UserPublic | ServicePrincipal = Depends(require_scope("inventory:read")),
     session: Session = Depends(get_db),
 ) -> MedicalSupplyResponse:
     return inventory_service.get_supply(session, supply_id)

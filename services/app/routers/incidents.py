@@ -3,7 +3,8 @@
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 
-from services.app.core.deps import get_current_user
+from services.app.core.deps import get_current_user, require_scope
+from services.app.core.service_identity import ServicePrincipal
 from services.app.domain.incident_manager_service import (
     IncidentNotFoundError,
     IncidentValidationError,
@@ -84,7 +85,9 @@ def list_incidents_endpoint(
     origin: str | None = Query(default=None),
     branch: str | None = Query(default=None),
     category: str | None = Query(default=None),
-    _current_user: UserPublic = Depends(get_current_user),
+    _reader: UserPublic | ServicePrincipal = Depends(
+        require_scope("incidents:read")
+    ),
 ):
     """List incidents with optional filters (lean list projection)."""
     return list_incidents(
@@ -98,7 +101,9 @@ def list_incidents_endpoint(
 @router.get("/{incident_id}", response_model=Incident)
 def get_incident_endpoint(
     incident_id: int,
-    _current_user: UserPublic = Depends(get_current_user),
+    _reader: UserPublic | ServicePrincipal = Depends(
+        require_scope("incidents:read")
+    ),
 ):
     """Return one incident or 404."""
     try:

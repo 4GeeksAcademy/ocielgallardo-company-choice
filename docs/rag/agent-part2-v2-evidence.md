@@ -2,7 +2,11 @@
 
 Branch `feature/langgraph-part2-v2` (after PR #40 merge + revert PR #41).
 Backend rebuilt from this branch (`docker compose up --build -d backend`);
-`AGENT_TOOL_API_URL`/`AGENT_TOOL_API_TOKEN` set from local `.env` (gitignored).
+`AGENT_TOOL_API_URL` set from local `.env` (gitignored). Tool auth has
+since moved to a service identity (§9.1): `AGENT_TOOL_CLIENT_ID` /
+`AGENT_TOOL_CLIENT_SECRET` (replacing the old pasted
+`AGENT_TOOL_API_TOKEN`), auto-renewed via
+`data/pipelines/service_token_provider.py`.
 
 ## 1. Live `run_agent` battery (real HTTP tools → live APIs)
 
@@ -36,7 +40,11 @@ pytest tests/pipelines/test_agent_tools.py \
 ## 4. Environment notes (pre-existing, out of scope)
 
 - Prod compose has no volume for TinyDB: every `backend` recreate wipes
-  runtime users/incidents, invalidating pasted `AGENT_TOOL_API_TOKEN`s
-  (re-login required). Tracked as delivery-note limitation, not fixed here.
-- `AGENT_TOOL_API_TOKEN` is a pasted user JWT today; see `agent-graph.md`
-  §9 TODO for a long-lived service identity.
+  runtime users/incidents **and the `service_clients` registry**, so
+  `scripts/seed_service_client.py` must be re-run after a recreate before
+  the agent can authenticate. Tracked as delivery-note limitation, not
+  fixed here.
+- §9 TODO (service identity) **has since been implemented** — the pasted
+  user JWT no longer exists; tools authenticate as `svc:langgraph-agent`
+  via a short-lived auto-renewed service token (see `agent-graph.md`
+  §9.1).

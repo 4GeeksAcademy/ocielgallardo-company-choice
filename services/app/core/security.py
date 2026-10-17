@@ -36,9 +36,14 @@ def create_access_token(subject: str | int) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
+def decode_token_claims(token: str) -> dict:
+    """Decode and validate a JWT; raise JWTError if invalid/expired."""
+    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+
 def decode_access_token(token: str) -> str:
     """Return the user id (sub) or raise JWTError if invalid/expired."""
-    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    payload = decode_token_claims(token)
     subject = payload.get("sub")
     if subject is None:
         raise JWTError("Token missing subject")

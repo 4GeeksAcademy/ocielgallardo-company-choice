@@ -1,5 +1,4 @@
 import logging
-import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi import FastAPI, HTTPException, Request
@@ -7,6 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from services.app.core.middleware import timing_middleware
 from services.app.routers.incidents import router as incidents_router
 from services.app.routers.suppliers import router as suppliers_router
 from services.app.routers.users import router as users_router
@@ -20,7 +20,6 @@ from services.app.routers.tasks import router as tasks_router
 from services.reporting.router import router as reporting_router
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
-timing_logger = logging.getLogger("api.timing")
 
 
 @asynccontextmanager
@@ -55,19 +54,7 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
-async def timing_middleware(request: Request, call_next):
-    start = time.perf_counter()
-    response = await call_next(request)
-    duration_ms = (time.perf_counter() - start) * 1000
-    timing_logger.info(
-        "%s %s → %s | %.1fms",
-        request.method,
-        request.url.path,
-        response.status_code,
-        duration_ms,
-    )
-    return response
+app.middleware("http")(timing_middleware)
 
 
 @app.exception_handler(RequestValidationError)
