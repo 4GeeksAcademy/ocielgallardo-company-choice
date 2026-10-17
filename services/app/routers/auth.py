@@ -4,6 +4,8 @@ from services.app.domain.user_service import authenticate_user, InvalidCredentia
 from services.app.models.user import (
     LoginRequest,
     TokenResponse,
+    ClientCredentialsRequest,
+    ServiceTokenResponse,
     ForgotPasswordRequest,
     ResetPasswordRequest,
     ChangePasswordRequest,
@@ -11,6 +13,7 @@ from services.app.models.user import (
     MessageResponse,
 )
 from services.app.core.deps import get_current_user
+from services.app.core.service_identity import grant_client_credentials
 from services.app.domain.profile_service import (
     get_profile_by_user_id,
     ProfileNotFoundError,
@@ -33,6 +36,28 @@ def login(payload: LoginRequest):
         return TokenResponse(access_token=token)
     except InvalidCredentialsError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
+
+
+@router.post("/token", response_model=ServiceTokenResponse)
+def service_token(payload: ClientCredentialsRequest):
+    """Client-credentials grant for machine callers (service identity).
+
+    Returns a short-lived ``typ=service`` JWT scoped to read-only tool
+    routes. Unknown client and wrong secret share one generic 401 message
+    (no account enumeration).
+    """
+    grant = grant_client_credentials(payload.client_id, payload.client_secret)
+    if grant is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid client credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return ServiceTokenResponse(
+        access_token=grant.access_token,
+        expires_in=grant.expires_in,
+        scope=grant.scope,
+    )
 
 
 @router.get("/me", response_model=AuthMeResponse)
