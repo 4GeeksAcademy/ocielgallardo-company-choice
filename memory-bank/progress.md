@@ -2,6 +2,27 @@
 
 ## Current Status Snapshot
 
+- LangGraph support agent Part 2 v2 (branch `feature/langgraph-part2-v2`,
+  after PR #40 merge + revert PR #41 per teacher review): one agent handles
+  policies (RAG), tickets (incidents API), and stock (inventory API) with
+  automatic routing per question. `data/pipelines/agent_tools.py` — typed
+  `IncidentToolInput/Output` + `InventoryToolInput/Output`; read-only **HTTP
+  GET** via `httpx` to the live `GET /api/incidents[/{id}]` and
+  `GET /inventory/products[/{id}]` endpoints (no fake datasets, no writes);
+  auth from `AGENT_TOOL_API_TOKEN` env (never hardcoded), base URL from
+  `AGENT_TOOL_API_URL`; explicit **5.0 s** timeouts; honest fallbacks. Graph
+  (`data/pipelines/agent_graph.py`): `decide_route` auto-routes ticket →
+  incidents, stock/SKU → inventory, policy+live → `hybrid_incidents` /
+  `hybrid_inventory` (tool then RAG), else RAG; `synthesize_hybrid` renders
+  deterministic tool facts + LLM policy paragraph; state adds `route`,
+  `tool_result`, `sources_used`; traces expose source kind + order including
+  both on hybrid. Backoffice Knowledge panel now calls `POST /agent/query`.
+  Tests: `test_agent_tools.py` (HTTP mocked), extended `test_agent_graph.py`
+  + `test_agent_evals.py` (tool-not-RAG, RAG-not-tool, hybrid, fallback +
+  golden fixtures). Docs: `docs/rag/agent-graph.md`. Dependency `httpx`
+  via `uv add`, `services/requirements.txt` synced.
+  TODO: long-lived service identity for `AGENT_TOOL_API_TOKEN`.
+
 - LangGraph agent base (branch `feature/langgraph-agent-base`, independent PR):
   `data/pipelines/agent_graph.py` (`AgentState` = `{question, context, answer}` only;
   5 single-responsibility nodes: `receive` (normalize), `retrieve` (only `retrieve()`),

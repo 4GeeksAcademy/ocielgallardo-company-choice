@@ -1,0 +1,24 @@
+{
+  "answer": "Ticket 2: status=open, category=patient_experience, origin=customer, branch=london_west, title='Patient not informed of appointment reschedule', updated_at=2024-01-17T00:00:00Z.",
+  "trace": {
+    "trace_id": "golden-ticket-001",
+    "thread_id": "golden-ticket-001",
+    "question": "What is the status of ticket 2?",
+    "status": "success",
+    "n_chunks": 0,
+    "sources": [],
+    "sources_used": ["incidents"],
+    "route": "incidents",
+    "spans": [
+      {"node": "receive", "duration_ms": 0.01, "output": {"question_chars": 30}},
+      {"node": "decide_route", "duration_ms": 0.02, "output": {"route": "incidents", "ticket_id": 2, "sku": null}},
+      {
+        "node": "lookup_incident",
+        "duration_ms": 4.5,
+        "output": {"source_kind": "incidents", "ok": true, "error": null, "n_incidents": 1, "ticket_id": 2}
+      },
+      {"node": "answer_from_tool", "duration_ms": 0.05, "output": {"answer_chars": 170, "source_kind": "incidents"}}
+    ],
+    "error": null
+  }
+}

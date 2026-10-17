@@ -1,7 +1,8 @@
-"""Unit tests for the LangGraph knowledge assistant (agent base).
+"""Unit tests for the LangGraph support agent (Part 1 RAG + Part 2 tools).
 
-All tests run offline: ``retrieve`` and ``generate_answer`` are replaced with
-spies via ``monkeypatch`` — no Qdrant, embedding API, or LLM in CI.
+All tests run offline: ``retrieve``, ``generate_answer``, and the HTTP tool
+layer are replaced with spies via ``monkeypatch`` — no Qdrant, LLM, or
+backend in CI.
 
 Run:
     python -m pytest tests/pipelines/test_agent_graph.py
@@ -21,20 +22,36 @@ if str(_REPO_ROOT) not in sys.path:
 import pytest  # noqa: E402
 
 import data.pipelines.agent_graph as agent_graph  # noqa: E402
+import data.pipelines.agent_tools as agent_tools  # noqa: E402
 import data.pipelines.rag as rag_pipeline  # noqa: E402
 from data.pipelines.agent_graph import (  # noqa: E402
     AgentState,
+    classify_route,
+    extract_sku,
+    extract_ticket_id,
     generate_node,
     get_agent_state,
     get_last_trace,
     get_trace,
     honest_node,
+    is_hybrid_route,
     receive_node,
     refuse_node,
     retrieve_node,
+    route_after_decide,
+    route_after_tool,
     route_context,
     route_question,
     run_agent,
+)
+from data.pipelines.agent_tools import (  # noqa: E402
+    INCIDENT_NOT_FOUND_MESSAGE,
+    INCIDENT_TOOL_FALLBACK,
+    INVENTORY_TOOL_FALLBACK,
+    IncidentRecord,
+    IncidentToolOutput,
+    InventoryRecord,
+    InventoryToolOutput,
 )
 from data.pipelines.rag import INSUFFICIENT_INFO_ANSWER  # noqa: E402
 
@@ -57,12 +74,32 @@ def _payload(text: str, source: str = "appointment-policy") -> dict:
     }
 
 
+def _state(**overrides) -> dict:
+    base = {
+        "question": "",
+        "context": [],
+        "answer": "",
+        "route": "",
+        "tool_result": {},
+        "sources_used": [],
+    }
+    base.update(overrides)
+    return base
+
+
 def test_graph_is_compiled_at_import() -> None:
     assert hasattr(agent_graph.graph, "invoke")
 
 
-def test_state_holds_only_minimal_keys() -> None:
-    assert set(AgentState.__annotations__) == {"question", "context", "answer"}
+def test_state_holds_expected_keys() -> None:
+    assert set(AgentState.__annotations__) == {
+        "question",
+        "context",
+        "answer",
+        "route",
+        "tool_result",
+        "sources_used",
+    }
 
 
 def test_nodes_never_use_monolithic_query() -> None:
@@ -84,7 +121,7 @@ def test_nodes_never_use_monolithic_query() -> None:
 
 
 def test_receive_node_strips_question() -> None:
-    out = receive_node({"question": "  hello?  ", "context": [], "answer": ""})
+    out = receive_node(_state(question="  hello?  "))
     assert out == {"question": "hello?"}
 
 
@@ -97,10 +134,11 @@ def test_retrieve_node_delegates_to_retrieve_once(monkeypatch) -> None:
 
     monkeypatch.setattr(rag_pipeline, "retrieve", _spy_retrieve)
 
-    out = retrieve_node({"question": "my question", "context": [], "answer": ""})
+    out = retrieve_node(_state(question="my question"))
 
     assert calls == ["my question"]
-    assert out == {"context": [_payload("ctx")]}
+    assert out["context"] == [_payload("ctx")]
+    assert out["sources_used"] == ["rag"]
 
 
 def test_generate_node_uses_given_context_without_retrieval(monkeypatch) -> None:
@@ -118,7 +156,7 @@ def test_generate_node_uses_given_context_without_retrieval(monkeypatch) -> None
     monkeypatch.setattr(rag_pipeline, "retrieve", _forbidden_retrieve)
 
     given = [_payload("already retrieved")]
-    out = generate_node({"question": "q", "context": given, "answer": ""})
+    out = generate_node(_state(question="q", context=given))
 
     assert out == {"answer": "Final string"}
     assert seen["question"] == "q"
@@ -127,12 +165,14 @@ def test_generate_node_uses_given_context_without_retrieval(monkeypatch) -> None
 
 def test_refuse_node_answers_without_retrieval_or_llm(monkeypatch) -> None:
     def _forbidden(*args, **kwargs):
-        raise AssertionError("refuse_node must call neither retrieve() nor generate_answer()")
+        raise AssertionError(
+            "refuse_node must call neither retrieve() nor generate_answer()"
+        )
 
     monkeypatch.setattr(rag_pipeline, "retrieve", _forbidden)
     monkeypatch.setattr(rag_pipeline, "generate_answer", _forbidden)
 
-    out = refuse_node({"question": "   ", "context": [], "answer": ""})
+    out = refuse_node(_state(question="   "))
 
     assert out == {"answer": INSUFFICIENT_INFO_ANSWER}
 
@@ -147,27 +187,57 @@ def test_honest_node_generates_from_empty_context(monkeypatch) -> None:
 
     monkeypatch.setattr(rag_pipeline, "generate_answer", _spy_generate)
 
-    out = honest_node({"question": "q", "context": [], "answer": ""})
+    out = honest_node(_state(question="q"))
 
     assert out == {"answer": "Honest model answer"}
-    assert seen["context"] == []  # existing empty-context path, now explicit
+    assert seen["context"] == []
 
 
 def test_route_question() -> None:
-    assert route_question({"question": "   ", "context": [], "answer": ""}) == "refuse"
-    assert route_question({"question": "", "context": [], "answer": ""}) == "refuse"
+    assert route_question(_state(question="   ")) == "refuse"
+    assert route_question(_state(question="")) == "refuse"
+    assert route_question(_state(question="hello?")) == "decide_route"
+
+
+def test_route_after_decide() -> None:
+    assert route_after_decide(_state(route="incidents")) == "lookup_incident"
     assert (
-        route_question({"question": "hello?", "context": [], "answer": ""})
-        == "retrieve"
+        route_after_decide(_state(route="hybrid_incidents")) == "lookup_incident"
     )
+    assert route_after_decide(_state(route="inventory")) == "lookup_inventory"
+    assert (
+        route_after_decide(_state(route="hybrid_inventory")) == "lookup_inventory"
+    )
+    assert route_after_decide(_state(route="rag")) == "retrieve"
 
 
 def test_route_context() -> None:
-    assert route_context({"question": "q", "context": [], "answer": ""}) == "honest"
+    assert route_context(_state()) == "honest"
+    assert route_context(_state(context=[_payload("ctx")])) == "generate"
     assert (
-        route_context({"question": "q", "context": [_payload("ctx")], "answer": ""})
-        == "generate"
+        route_context(_state(route="hybrid_incidents", context=[]))
+        == "synthesize_hybrid"
     )
+
+
+def test_classify_routes() -> None:
+    assert extract_ticket_id("status of ticket 482?") == 482
+    assert extract_sku("stock of HCR-PPE-001?") == "HCR-PPE-001"
+    assert classify_route("What is the status of ticket 482?") == "incidents"
+    assert classify_route("Do we have stock of HCR-PPE-001?") == "inventory"
+    assert (
+        classify_route("Is there a charge for cancelling 12 hours in advance?")
+        == "rag"
+    )
+    assert classify_route("   ") == "refuse"
+    assert (
+        classify_route(
+            "According to cancellation policy, what is the status of ticket 482?"
+        )
+        == "hybrid_incidents"
+    )
+    assert is_hybrid_route("hybrid_incidents") is True
+    assert is_hybrid_route("rag") is False
 
 
 def test_run_agent_calls_retrieve_exactly_once(monkeypatch) -> None:
@@ -187,15 +257,18 @@ def test_run_agent_calls_retrieve_exactly_once(monkeypatch) -> None:
 
     result = run_agent("my question")
 
-    assert counts == {"retrieve": 1, "generate": 1}  # no double retrieval
+    assert counts == {"retrieve": 1, "generate": 1}
     assert result["question"] == "my question"
     assert result["answer"] == "Model answer"
     assert result["trace_id"]
+    assert result["sources_used"] == ["rag"]
 
 
 def test_run_agent_produces_queryable_trace(monkeypatch) -> None:
     monkeypatch.setattr(
-        rag_pipeline, "retrieve", lambda q, **kw: [_payload("ctx", source="referral-process")]
+        rag_pipeline,
+        "retrieve",
+        lambda q, **kw: [_payload("ctx", source="referral-process")],
     )
     monkeypatch.setattr(
         rag_pipeline, "generate_answer", lambda q, ctx: "Answer text"
@@ -210,8 +283,10 @@ def test_run_agent_produces_queryable_trace(monkeypatch) -> None:
     assert trace["question"] == "trace me"
     assert trace["n_chunks"] == 1
     assert trace["sources"] == ["referral-process"]
+    assert trace["sources_used"] == ["rag"]
     assert [span["node"] for span in trace["spans"]] == [
         "receive",
+        "decide_route",
         "retrieve",
         "generate",
     ]
@@ -220,7 +295,9 @@ def test_run_agent_produces_queryable_trace(monkeypatch) -> None:
 
 def test_spans_carry_per_node_outputs(monkeypatch) -> None:
     monkeypatch.setattr(
-        rag_pipeline, "retrieve", lambda q, **kw: [_payload("ctx", source="referral-process")]
+        rag_pipeline,
+        "retrieve",
+        lambda q, **kw: [_payload("ctx", source="referral-process")],
     )
     monkeypatch.setattr(
         rag_pipeline, "generate_answer", lambda q, ctx: "Answer text"
@@ -230,19 +307,19 @@ def test_spans_carry_per_node_outputs(monkeypatch) -> None:
     spans = {span["node"]: span for span in get_trace(result["trace_id"])["spans"]}
 
     assert spans["receive"]["output"] == {"question_chars": len("outputs check")}
-    assert spans["retrieve"]["output"] == {
-        "n_chunks": 1,
-        "sources": ["referral-process"],
-    }
-    assert spans["generate"]["output"] == {"answer_chars": len("Answer text")}
+    assert spans["decide_route"]["output"]["route"] == "rag"
+    assert spans["retrieve"]["output"]["n_chunks"] == 1
+    assert spans["retrieve"]["output"]["source_kind"] == "rag"
 
 
 def test_run_agent_empty_question_short_circuits(monkeypatch) -> None:
     def _forbidden(*args, **kwargs):
-        raise AssertionError("blank question must never reach retrieve()/generate_answer()")
+        raise AssertionError("blank question must never reach tools/RAG")
 
     monkeypatch.setattr(rag_pipeline, "retrieve", _forbidden)
     monkeypatch.setattr(rag_pipeline, "generate_answer", _forbidden)
+    monkeypatch.setattr(agent_tools, "lookup_incident", _forbidden)
+    monkeypatch.setattr(agent_tools, "lookup_inventory", _forbidden)
 
     result = run_agent("   ")
 
@@ -265,6 +342,7 @@ def test_run_agent_empty_context_routes_to_honest(monkeypatch) -> None:
     trace = get_trace(result["trace_id"])
     assert [span["node"] for span in trace["spans"]] == [
         "receive",
+        "decide_route",
         "retrieve",
         "honest",
     ]
@@ -302,3 +380,162 @@ def test_run_agent_records_failed_trace(monkeypatch) -> None:
     assert trace is not None
     assert trace["status"] == "error"
     assert "Qdrant down" in (trace["error"] or "")
+
+
+def _incident_tool_output() -> IncidentToolOutput:
+    return IncidentToolOutput(
+        ok=True,
+        incidents=[
+            IncidentRecord(
+                id=2,
+                title="Patient not informed of appointment reschedule",
+                description="Patient not informed of appointment reschedule",
+                category="patient_experience",
+                status="open",
+                origin="customer",
+                branch="london_west",
+                created_at="2024-01-17T00:00:00Z",
+                updated_at="2024-01-17T00:00:00Z",
+            )
+        ],
+    )
+
+
+def test_run_agent_ticket_uses_incident_api_tool_not_rag(monkeypatch) -> None:
+    def _forbidden(*args, **kwargs):
+        raise AssertionError("ticket questions must not call retrieve()/generate")
+
+    monkeypatch.setattr(rag_pipeline, "retrieve", _forbidden)
+    monkeypatch.setattr(rag_pipeline, "generate_answer", _forbidden)
+    monkeypatch.setattr(
+        agent_graph, "lookup_incident", lambda payload, **kw: _incident_tool_output()
+    )
+
+    result = run_agent("What is the status of ticket 2?")
+    trace = get_trace(result["trace_id"])
+
+    assert "open" in result["answer"]
+    assert result["sources_used"] == ["incidents"]
+    assert [span["node"] for span in trace["spans"]] == [
+        "receive",
+        "decide_route",
+        "lookup_incident",
+        "answer_from_tool",
+    ]
+
+
+def test_run_agent_incident_tool_fallback_on_failure(monkeypatch) -> None:
+    failed = IncidentToolOutput(
+        ok=False, error="timeout", message=INCIDENT_TOOL_FALLBACK
+    )
+    monkeypatch.setattr(agent_graph, "lookup_incident", lambda payload, **kw: failed)
+
+    def _forbidden(*args, **kwargs):
+        raise AssertionError("failed tool must not fall through to RAG")
+
+    monkeypatch.setattr(rag_pipeline, "retrieve", _forbidden)
+
+    result = run_agent("status of ticket 999?")
+    trace = get_trace(result["trace_id"])
+
+    assert result["answer"] == INCIDENT_TOOL_FALLBACK
+    assert [span["node"] for span in trace["spans"]] == [
+        "receive",
+        "decide_route",
+        "lookup_incident",
+        "tool_fallback",
+    ]
+
+
+def test_run_agent_stock_uses_inventory_api_tool(monkeypatch) -> None:
+    tool_out = InventoryToolOutput(
+        ok=True,
+        products=[
+            InventoryRecord(
+                id=1,
+                name="Guantes de nitrilo (caja de 100)",
+                sku="HCR-PPE-001",
+                category="ppe",
+                unit="box",
+                country="US",
+                current_stock=1289,
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        agent_graph, "lookup_inventory", lambda payload, **kw: tool_out
+    )
+
+    def _forbidden(*args, **kwargs):
+        raise AssertionError("stock questions must not call RAG or incident tool")
+
+    monkeypatch.setattr(rag_pipeline, "retrieve", _forbidden)
+    monkeypatch.setattr(agent_graph, "lookup_incident", _forbidden)
+
+    result = run_agent("Do we have stock of HCR-PPE-001?")
+    trace = get_trace(result["trace_id"])
+
+    assert "1289" in result["answer"]
+    assert result["sources_used"] == ["inventory"]
+    assert [span["node"] for span in trace["spans"]] == [
+        "receive",
+        "decide_route",
+        "lookup_inventory",
+        "answer_from_tool",
+    ]
+
+
+def test_run_agent_hybrid_cites_tool_facts_deterministically(
+    monkeypatch,
+) -> None:
+    """Hybrid: tool fact block is rendered, never left to the model."""
+    monkeypatch.setattr(
+        agent_graph, "lookup_incident", lambda payload, **kw: _incident_tool_output()
+    )
+    monkeypatch.setattr(
+        rag_pipeline,
+        "retrieve",
+        lambda q, **kw: [_payload("50 USD cancel fee")],
+    )
+    monkeypatch.setattr(
+        rag_pipeline, "generate_answer", lambda q, ctx: "Policy: fee 50 USD."
+    )
+
+    result = run_agent(
+        "According to cancellation policy, what is the status of ticket 2?"
+    )
+    trace = get_trace(result["trace_id"])
+
+    assert result["route"] == "hybrid_incidents"
+    assert result["sources_used"] == ["incidents", "rag"]
+    assert [span["node"] for span in trace["spans"]] == [
+        "receive",
+        "decide_route",
+        "lookup_incident",
+        "retrieve",
+        "synthesize_hybrid",
+    ]
+    # Deterministic tool block first, policy paragraph after.
+    assert "status=open" in result["answer"]
+    assert "Policy: fee 50 USD." in result["answer"]
+    assert result["answer"].index("status=open") < result["answer"].index("Policy:")
+
+
+def test_run_agent_hybrid_tool_fail_still_answers_policy(monkeypatch) -> None:
+    failed = IncidentToolOutput(
+        ok=False, error="not_found", message=INCIDENT_NOT_FOUND_MESSAGE
+    )
+    monkeypatch.setattr(agent_graph, "lookup_incident", lambda payload, **kw: failed)
+    monkeypatch.setattr(
+        rag_pipeline, "retrieve", lambda q, **kw: [_payload("Policy only")]
+    )
+    monkeypatch.setattr(
+        rag_pipeline, "generate_answer", lambda q, ctx: "Policy text."
+    )
+
+    result = run_agent("According to policy, what is the status of ticket 999?")
+
+    assert result["route"] == "hybrid_incidents"
+    assert "Policy text." in result["answer"]
+    assert INCIDENT_NOT_FOUND_MESSAGE in result["answer"]
+    assert "status=open" not in result["answer"]
