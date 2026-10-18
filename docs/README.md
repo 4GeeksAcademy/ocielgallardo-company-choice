@@ -37,6 +37,10 @@ docs/
 │   ├── CONTEXT-HealthCore.md
 │   └── CONTEXT-HealthCore.es.md
 │
+├── mcp/                        ← MCP server (hito 25): OAuth-protected tools
+│   ├── mcp-server.md           ← design decisions, error catalog, evidence
+│   └── playground-codespaces.md
+│
 ├── telemetry/                  ← telemetry plan (design docs; no capture code yet)
 │   ├── CONTEXT-healthcore.md
 │   ├── CONTEXT-healthcore.es.md
