@@ -89,6 +89,30 @@ uv run python scripts/measure_cache_candidates.py --http --base-url http://127.0
 
 Use before and after `seed_inventory_volume.py` to fill [`docs/audit/CACHING_REPORT.md`](../docs/audit/CACHING_REPORT.md) Phase 2 tables.
 
+### `mint_service_token.py` — mint a service token for manual use (hito 25)
+
+Exchanges a service identity for a short-lived RS256 JWT (`POST /auth/token`, client-credentials) and prints the raw token on stdout for pasting into the MCP Playground's Authorization header. Credentials come from `<ENV_PREFIX>_CLIENT_ID` / `<ENV_PREFIX>_CLIENT_SECRET(_FILE)`; the `aud` claim must equal `MCP_RESOURCE_URL` (use `--audience` with the public Codespaces URL when validating from MCP Playground).
+
+```bash
+# from repo root (API must be reachable, identity registered)
+PYTHONPATH=. uv run python scripts/mint_service_token.py
+PYTHONPATH=. uv run python scripts/mint_service_token.py \
+    --audience https://<codespace>-8100.app.github.dev/mcp
+```
+
+### `mcp_playground_runbook.sh` — MCP Playground validation runbook (hito 25)
+
+Preflight checks (health, RFC 9728 metadata, 401 without/with garbage token, authenticated `tools/list` with all 6 tools), token minting wrapper, and the printed manual steps for the public-URL Playground session.
+
+```bash
+bash scripts/mcp_playground_runbook.sh preflight
+MCP_PLAYGROUND_TOKEN=<token> bash scripts/mcp_playground_runbook.sh preflight
+bash scripts/mcp_playground_runbook.sh mint --audience <public-mcp-url>
+bash scripts/mcp_playground_runbook.sh info
+```
+
+Full walkthrough: [`docs/mcp/playground-codespaces.md`](../docs/mcp/playground-codespaces.md).
+
 ## 💡 Tips
 
 - Keep each script focused: parse args, call services, present results.
