@@ -32,6 +32,20 @@
   Shield exception for `localhost:8100`, or validate via the container network /
   the Codespaces public URL. See
   `docs/mcp/playground-codespaces.md` ("Local environment caveat").
+- **MCP Playground session over the public URL — done (2026-10-18)**: a real
+  GitHub Codespace forwarded port 8100 as **Public**; `preflight` passed
+  against that URL and the MCP Playground browser session ran **6/6** tool
+  flows (`get_incident_status` 42, `list_incidents open`, `create_incident` →
+  ticket 95, `open → in_progress → resolved`, `get_inventory_stock` 1289,
+  `update_inventory_stock` → `inventory_write_denied`), plus the lifecycle
+  rejection (`open → resolved` → `invalid_input`) and `401` evidence with the
+  Playground's egress IPs; every call audited as
+  `mcp_tool … client=mcp-server result=ok|denied_policy`. Raw evidence:
+  `docs/mcp/evidence/playground-session-2026-10-18.md`. Environment note: this
+  org's Codespaces did **not** apply the repo devcontainer features (no `uv`,
+  no docker-in-docker), so backend + MCP ran as the native uvicorn processes
+  with the repo `.env`; `auth.json`/`incidents.json` were re-seeded there and
+  the secrets minted in the Codespace were discarded with it.
 - Docs: new `docs/mcp/mcp-server.md` (transport/permissions/discovery/migration
   decisions, error catalog, audit logging, live acceptance evidence) +
   `docs/mcp/playground-codespaces.md` (JWKS override rationale, environment

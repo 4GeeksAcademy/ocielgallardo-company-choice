@@ -328,4 +328,7 @@ preflight` passed. Audit logs record `tool= client= result= ms=` per call.
   `MCP_BACKEND_CLIENT_SECRET_FILE` when a secret store exists. The container also
   needs a restart policy (it exits when it starts before the API is reachable for
   discovery).
-- TODO: complete the MCP Playground session against the public Codespaces URL.
+- MCP Playground session against the public Codespaces URL: **done**
+  (2026-10-18) — 6/6 tool flows, controlled inventory-write refusal, lifecycle
+  rejection and 401 evidence in
+  `docs/mcp/evidence/playground-session-2026-10-18.md`.

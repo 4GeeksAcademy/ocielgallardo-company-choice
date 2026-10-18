@@ -146,6 +146,43 @@ PYTHONPATH=. uv run python -c "from data.pipelines.agent_graph import run_agent;
 The agent mints its own token with `aud = MCP_RESOURCE_URL` and goes through
 the MCP server only (no direct HTTP tool path exists anymore).
 
+## 11. Session results (executed 2026-10-18)
+
+Full raw evidence: `docs/mcp/evidence/playground-session-2026-10-18.md`.
+
+- Public URL published (port 8100 → **Public**); `preflight` against it →
+  **PREFLIGHT OK** without and with a token (6 tools advertised).
+- MCP Playground (human browser session, server-side connections):
+  discovery listed the 6 tools and the **6/6** flows ran — ticket 42 read,
+  open list, `create_incident` → ticket **95**, `open → in_progress → resolved`
+  (direct `open → resolved` correctly rejected with `invalid_input`),
+  HCR-PPE-001 stock read, and the required controlled refusal
+  `update_inventory_stock → inventory_write_denied`.
+- Auth evidence: without/with a malformed `Authorization` header the Playground
+  shows the rejection and the server logs `401` with the Playground's egress
+  IPs; every invocation is audited (`mcp_tool … result=ok|denied_policy`).
+- Agent side: `run_agent` answered two questions with real data and spans
+  `transport=mcp` (the agent mints its own token with the public `aud`).
+
+### Environment notes from the real run
+
+- In this org the Codespace came up on the **default image** and the
+  repository devcontainer features were not applied (no `uv`, no
+  docker-in-docker), so `docker compose` was unavailable. Backend and MCP ran
+  as **native processes** with the same uvicorn entrypoints the images use
+  (``uvicorn services.app.main:app --port 8000`` and
+  ``uvicorn incidents_inventory_mcp.app:app --port 8100``), started with
+  ``PYTHONPATH=.`` and the repo-root `.env`.
+- Start the MCP process **after** the backend: its startup fetches the OIDC
+  discovery document and exits if the API is not up yet.
+- `auth.json` and `incidents.json` are gitignored → the Codespace re-seeded
+  them (`scripts/seed_service_client.py` ×2, `scripts/seed_incidents.py` → 94
+  tickets) and the new secrets were written into the Codespace `.env` only.
+- Codespace idle timeout is 15 min in this org and the minted token TTL is
+  15 min: mint immediately before the browser session.
+- Production-shaped alternative for environments where Docker-in-Docker does
+  apply: the compose path in sections 2–9 (unchanged).
+
 ## Local environment caveat (antivirus HTTP interception)
 
 Some endpoint-security products inspect plain-HTTP traffic on loopback and

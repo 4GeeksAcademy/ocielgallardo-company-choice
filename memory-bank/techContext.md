@@ -113,7 +113,7 @@
 - Update `memory-bank/progress.md` after meaningful repository changes.
 
 ## TODO Gaps
-- TODO: Complete the MCP Playground session against the public Codespaces URL (manual browser step) and attach evidence.
+- DONE (2026-10-18): MCP Playground session against the public Codespaces URL executed and evidenced in `docs/mcp/evidence/playground-session-2026-10-18.md` (6/6 tool flows, write refusal, lifecycle rejection, 401 without/with malformed header).
 - TODO: Document canonical lint/test commands across all subprojects if/when standardized.
 - TODO: Local endpoint-security software (Avast Web Shield) can rewrite plain-HTTP `/mcp` responses; add an exception for `localhost:8100` on dev machines (see `docs/mcp/playground-codespaces.md`).
 - TODO: Formalize branching strategy and release policy if this evolves beyond milestone delivery.

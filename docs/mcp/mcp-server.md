@@ -147,14 +147,29 @@ client-credentials service token (`scripts/mint_service_token.py`):
 | Distinct auth/authz/validation codes | 401 set above; `insufficient_scope: missing incidents:write`; Pydantic validation tool error |
 | One log per invocation | `mcp_tool tool= client= result= ms=` (§5) |
 | Agent uses MCP only | `run_agent` spans record `transport: "mcp"`; no direct-`httpx` tool route remains |
-| Playground with public URL | see `playground-codespaces.md` (manual browser step) |
+| Playground with public URL | MCP Playground session over the public Codespaces URL: 6/6 tool flows, `inventory_write_denied`, lifecycle rejection (`invalid_input`), `401` without/with malformed header — evidence in `docs/mcp/evidence/playground-session-2026-10-18.md` |
 
 `scripts/mcp_playground_runbook.sh preflight` automates the first four rows.
 
+### 6.1 MCP Playground session (public URL, 2026-10-18)
+
+Human session from the **MCP Playground** against the Codespaces-forwarded
+public URL (server-side connections from the Playground's egress IPs):
+
+- Discovery: all 6 tools with schemas; one full flow per tool (`get_incident_status`
+  on ticket 42, `list_incidents open`, `create_incident` → ticket **95**,
+  `update_incident_status` `open → in_progress → resolved`, `get_inventory_stock`
+  HCR-PPE-001 → 1289, `update_inventory_stock` → controlled refusal).
+- Lifecycle: `open → resolved` is rejected (`invalid_input`); the two-step path
+  is the only accepted one.
+- Auth: without/with a malformed `Authorization` header the Playground shows the
+  rejection and the server logs `401` with the Playground IPs; every invocation
+  is audited (`mcp_tool … client=mcp-server result=ok|denied_policy`).
+
+Full raw evidence: `docs/mcp/evidence/playground-session-2026-10-18.md`.
+
 ## 7. Known limits / TODOs
 
-- TODO: run the MCP Playground session against the public Codespaces URL and
-  attach a screenshot (manual, human step).
 - Local endpoint-security software can rewrite plain-HTTP `/mcp` responses;
   see the caveat in `playground-codespaces.md`.
 - Client-credentials only: no authorization-code flow or RFC 7523 client
