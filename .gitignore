@@ -66,6 +66,8 @@ data/process/results.csv
 # Runtime TinyDB file for Supplier Directory API
 data/process/suppliers/suppliers.json
 data/process/auth/auth.json
+# RS256 OAuth signing key (auto-generated, never commit)
+data/process/auth/*.pem
 # Runtime TinyDB for incident manager
 data/process/incidents/incidents.json
 

@@ -80,11 +80,57 @@ services:
       AGENT_TOOL_CLIENT_SECRET: ${AGENT_TOOL_CLIENT_SECRET:-}
       AGENT_TOOL_CLIENT_SECRET_FILE: ${AGENT_TOOL_CLIENT_SECRET_FILE:-}
       SERVICE_TOKEN_EXPIRE_MINUTES: ${SERVICE_TOKEN_EXPIRE_MINUTES:-15}
+      # MCP is the agent's only path to the incidents/inventory server (hito 25);
+      # a failing hop surfaces an honest `unavailable` answer, never a fallback.
+      MCP_SERVER_URL: http://mcp:8100/mcp
+      MCP_TOOL_TIMEOUT_SECONDS: ${MCP_TOOL_TIMEOUT_SECONDS:-10}
     ports:
       - "8000:8000"
     depends_on:
       - redis
       - qdrant
+    networks:
+      - healthcore_net
+
+  # MCP server: OAuth-protected resource exposing the incident/inventory tools.
+  # Same image as the backend; it reaches the API over the compose network with
+  # its own service identity (MCP_BACKEND_CLIENT_ID / MCP_BACKEND_CLIENT_SECRET).
+  # In-network URLs are literals: inside a container localhost is the container.
+  mcp:
+    build:
+      context: .
+      dockerfile: services/Dockerfile.prod
+    container_name: healthcore-mcp
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app:/app/packages/shared
+      MCP_AUTH_ISSUER_URL: http://backend:8000
+      # Discovery (fetched in-network) advertises the public issuer's
+      # localhost JWKS URL, which this container cannot resolve. Tokens keep
+      # `iss` = the public issuer; only the JWKS fetch is pointed in-network.
+      MCP_AUTH_JWKS_URI: http://backend:8000/.well-known/jwks.json
+      # Resource identifier = token `aud` + advertised metadata URL. Read from
+      # .env so the agent (backend service) and this server agree on it; set it
+      # to the public Codespaces URL for the MCP Playground validation.
+      MCP_RESOURCE_URL: ${MCP_RESOURCE_URL:-http://localhost:8100/mcp}
+      MCP_BACKEND_URL: http://backend:8000
+    command:
+      [
+        "uvicorn",
+        "incidents_inventory_mcp.app:app",
+        "--app-dir",
+        "/app/mcps/incidents-inventory-mcp",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8100",
+      ]
+    ports:
+      - "8100:8100"
+    depends_on:
+      - backend
     networks:
       - healthcore_net
 
