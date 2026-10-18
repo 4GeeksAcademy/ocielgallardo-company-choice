@@ -1,6 +1,99 @@
 # Progress
 
+## Latest Update (2026-10-18) — hito 25 OAuth resource server (supersedes the snapshot below)
+
+- The MCP server now delegates OAuth to **MCP Auth (`mcpauth==0.2.0b1`)**; the
+  HealthCore API is the authorization server (OIDC discovery + RS256 JWKS +
+  client-credentials), and the agent is MCP-only (the direct HTTP fallback and
+  the `lookup_*` HTTP tools were removed). `transport: "mcp" | "http"` no
+  longer exists: a failed hop surfaces an honest `unavailable` contract.
+- **Fixed**: tokens failed with `401 invalid_token` inside Compose because
+  discovery advertises the public issuer's `jwks_uri`
+  (`http://localhost:8000/.well-known/jwks.json`), unreachable from the `mcp`
+  container. `incidents_inventory_mcp/auth.py` now honors an optional
+  `MCP_AUTH_JWKS_URI` that overrides only the JWKS URL (compose sets
+  `http://backend:8000/.well-known/jwks.json`), so token `iss` stays
+  `http://localhost:8000`.
+- **Verified live (in-network, and host-side once antivirus shields were
+  paused)**: `initialize` 200; `tools/list` 200 with the 6 tools;
+  `update_inventory_stock` returns the explicit `inventory_write_denied` error;
+  `create_incident` on the read-only agent grant returns
+  `insufficient_scope: missing incidents:write`; a token with the wrong `aud`
+  returns `401 invalid_audience`; `run_agent("What is the status of ticket 1?")`
+  and `run_agent("Do we have stock of HCR-PPE-001?")` answer with real data and
+  record `transport: "mcp"`; `scripts/mcp_playground_runbook.sh preflight`
+  passes all five checks against `http://localhost:8100/mcp`.
+- **Environment caveat (root-caused)**: this dev machine's **Avast** Web Shield
+  intercepted plain-HTTP responses for request paths whose last segment is
+  `mcp`, dropping `content-length` and adding unframed `transfer-encoding:
+  chunked` (clients fail with `chunk hex-length char not a hex digit`). It
+  affects loopback and the LAN IP, not the container network; pausing Avast
+  shields restored correct responses and the host-side E2E above. Add a Web
+  Shield exception for `localhost:8100`, or validate via the container network /
+  the Codespaces public URL. See
+  `docs/mcp/playground-codespaces.md` ("Local environment caveat").
+- Docs: new `docs/mcp/mcp-server.md` (transport/permissions/discovery/migration
+  decisions, error catalog, audit logging, live acceptance evidence) +
+  `docs/mcp/playground-codespaces.md` (JWKS override rationale, environment
+  caveat); `docs/rag/agent-graph.md` §4/§9.1/§9.2 updated to the MCP-only,
+  mcpauth/RS256 reality; package README `MCP_AUTH_JWKS_URI` documented;
+  `docs/README.md` indexes `docs/mcp/`.
+- Note: scope denials are tool results (`isError` + `insufficient_scope` /
+  `inventory_write_denied`), not HTTP 403 — MCP Auth's `403
+  missing_required_scopes` applies only to transport-wide `required_scopes`,
+  which this server deliberately does not set so read-only clients can connect.
+- Tests: `tests/mcps/` 57 passed (adds
+  `test_jwks_uri_env_override_redirects_the_verification_source`).
+
 ## Current Status Snapshot
+
+- MCP milestone — "hito 25 - MCP" (branch `feature/mcp-oauth-tools`,
+  2026-10-17): the agent's incident/inventory tools are now exposed as an
+  independent **MCP server** in `mcps/incidents-inventory-mcp/` and consumed by
+  the graph as an MCP client, with the previous direct HTTP tools kept as the
+  fallback. **Server** (official SDK `mcp`, `streamable_http` on `:8100`,
+  `stateless_http=True`): tools `get_incident_status`, `list_incidents`,
+  `create_incident`, `update_incident_status` (scopes `incidents:read|write`)
+  and read-only `get_inventory_stock` (`inventory:read`); same tool contracts as
+  `data/pipelines/agent_tools.py`. OAuth **resource server** (RFC 9728):
+  `AuthSettings` + `token_verifier=ServiceTokenVerifier` (HS256 `SECRET_KEY`,
+  `typ=service`, `sub=svc:*`, 30 s leeway, fail-closed), PRM metadata at
+  `/.well-known/oauth-protected-resource/mcp`, `401` +
+  `WWW-Authenticate: … resource_metadata=…`, per-tool scope enforcement in
+  `permissions.py` (fail-closed, explicit `insufficient_scope` tool errors);
+  transport auth ≠ authorization (SDK validates, tools assert scope). The server
+  calls the API as its own identity `svc:mcp-server` (`MCP_BACKEND_*`, seeded
+  with `scripts/seed_service_client.py --client-id mcp-server --env-prefix
+  MCP_BACKEND --scopes incidents:read incidents:write inventory:read`), so a
+  caller can never write a scope it was not granted. Inventory read-only in 5
+  layers (no write tool → protocol unknown-tool error → `deny_inventory_write`
+  → GET-only `ENDPOINTS` allowlist → API rejects service tokens on inventory
+  writes, static-AST tested). DNS-rebinding allowlists cover loopback, the
+  `mcp` compose service and `testserver` (`MCP_ALLOWED_HOSTS`/`_ORIGINS`).
+  **Client**: `data/pipelines/mcp_client.py` (`MultiServerMCPClient`,
+  `handle_tool_errors=False`, agent presents its own service JWT per call,
+  sync→async bridge, `MCP_TOOL_TIMEOUT_SECONDS`); `lookup_incident_node` /
+  `lookup_inventory_node` try MCP first and fall back to the direct HTTP tool,
+  recording `transport: "mcp" | "http"` in the node span; empty
+  `MCP_SERVER_URL` disables the hop (hermetic via `tests/pipelines/conftest.py`).
+  `service_token_provider.py` generalized (credential prefix / URL var /
+  `get_service_token()`), keeping the default behavior byte-compatible.
+  **Infra**: compose service `mcp` (same image; `services/Dockerfile.prod` now
+  `COPY mcps ./mcps`), backend `MCP_SERVER_URL=http://mcp:8100/mcp` (in-network
+  literal), dev overlay with `--reload`. Deps `mcp>=1.24,<2` +
+  `langchain-mcp-adapters>=0.3.2` (fastmcp/mcpauth rejected: mcp≥2 vs adapters
+  mcp<2). **Verification**: `tests/mcps/` 54 passed, `test_mcp_client.py` 12,
+  `test_agent_graph_mcp.py` 5, `tests/pipelines` 125+ passed; live E2E on the
+  dev machine answered both demo questions with `transport=mcp` and real data
+  (`principal=svc:mcp-server` in `api.timing`), a write attempt with a read-only
+  token was denied `insufficient_scope: missing incidents:write`, a `PATCH` with
+  write scope hit the API as `404 not_found` (write gate passed, nothing
+  mutated), and with the MCP server stopped the same questions fell back to
+  `transport=http`. Docs: `agent-graph.md` §4 "MCP transport" + §9.2 (deviation
+  of §9.1) + `mcps/**/README{,.es}.md`. TODOs: HS256/shared `SECRET_KEY` (no
+  JWKS/RFC 7523, no authorization-code flow); revocation window = 15 min TTL;
+  no persistent secret for the `mcp` service in prod Compose; no repo-wide MCP
+  checklist — validate against the academy rubric before closing the PR.
 
 - LangGraph support agent Part 2 v2 (branch `feature/langgraph-part2-v2`,
   after PR #40 merge + revert PR #41 per teacher review): one agent handles
