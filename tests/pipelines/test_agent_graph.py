@@ -1,8 +1,8 @@
 """Unit tests for the LangGraph support agent (Part 1 RAG + Part 2 tools).
 
-All tests run offline: ``retrieve``, ``generate_answer``, and the HTTP tool
-layer are replaced with spies via ``monkeypatch`` — no Qdrant, LLM, or
-backend in CI.
+All tests run offline: ``retrieve``, ``generate_answer``, and the MCP tool
+layer are replaced with spies via ``monkeypatch`` — no Qdrant, LLM, MCP
+server, or backend in CI.
 
 Run:
     python -m pytest tests/pipelines/test_agent_graph.py
@@ -22,7 +22,6 @@ if str(_REPO_ROOT) not in sys.path:
 import pytest  # noqa: E402
 
 import data.pipelines.agent_graph as agent_graph  # noqa: E402
-import data.pipelines.agent_tools as agent_tools  # noqa: E402
 import data.pipelines.rag as rag_pipeline  # noqa: E402
 from data.pipelines.agent_graph import (  # noqa: E402
     AgentState,
@@ -318,8 +317,12 @@ def test_run_agent_empty_question_short_circuits(monkeypatch) -> None:
 
     monkeypatch.setattr(rag_pipeline, "retrieve", _forbidden)
     monkeypatch.setattr(rag_pipeline, "generate_answer", _forbidden)
-    monkeypatch.setattr(agent_tools, "lookup_incident", _forbidden)
-    monkeypatch.setattr(agent_tools, "lookup_inventory", _forbidden)
+    monkeypatch.setattr(
+        agent_graph.mcp_client, "lookup_incident_via_mcp", _forbidden
+    )
+    monkeypatch.setattr(
+        agent_graph.mcp_client, "lookup_inventory_via_mcp", _forbidden
+    )
 
     result = run_agent("   ")
 
@@ -401,14 +404,14 @@ def _incident_tool_output() -> IncidentToolOutput:
     )
 
 
-def test_run_agent_ticket_uses_incident_api_tool_not_rag(monkeypatch) -> None:
+def test_run_agent_ticket_uses_incident_mcp_tool_not_rag(monkeypatch) -> None:
     def _forbidden(*args, **kwargs):
         raise AssertionError("ticket questions must not call retrieve()/generate")
 
     monkeypatch.setattr(rag_pipeline, "retrieve", _forbidden)
     monkeypatch.setattr(rag_pipeline, "generate_answer", _forbidden)
     monkeypatch.setattr(
-        agent_graph, "lookup_incident", lambda payload, **kw: _incident_tool_output()
+        agent_graph.mcp_client, "lookup_incident_via_mcp", lambda payload, **kw: _incident_tool_output()
     )
 
     result = run_agent("What is the status of ticket 2?")
@@ -428,7 +431,7 @@ def test_run_agent_incident_tool_fallback_on_failure(monkeypatch) -> None:
     failed = IncidentToolOutput(
         ok=False, error="timeout", message=INCIDENT_TOOL_FALLBACK
     )
-    monkeypatch.setattr(agent_graph, "lookup_incident", lambda payload, **kw: failed)
+    monkeypatch.setattr(agent_graph.mcp_client, "lookup_incident_via_mcp", lambda payload, **kw: failed)
 
     def _forbidden(*args, **kwargs):
         raise AssertionError("failed tool must not fall through to RAG")
@@ -447,7 +450,7 @@ def test_run_agent_incident_tool_fallback_on_failure(monkeypatch) -> None:
     ]
 
 
-def test_run_agent_stock_uses_inventory_api_tool(monkeypatch) -> None:
+def test_run_agent_stock_uses_inventory_mcp_tool(monkeypatch) -> None:
     tool_out = InventoryToolOutput(
         ok=True,
         products=[
@@ -463,14 +466,14 @@ def test_run_agent_stock_uses_inventory_api_tool(monkeypatch) -> None:
         ],
     )
     monkeypatch.setattr(
-        agent_graph, "lookup_inventory", lambda payload, **kw: tool_out
+        agent_graph.mcp_client, "lookup_inventory_via_mcp", lambda payload, **kw: tool_out
     )
 
     def _forbidden(*args, **kwargs):
         raise AssertionError("stock questions must not call RAG or incident tool")
 
     monkeypatch.setattr(rag_pipeline, "retrieve", _forbidden)
-    monkeypatch.setattr(agent_graph, "lookup_incident", _forbidden)
+    monkeypatch.setattr(agent_graph.mcp_client, "lookup_incident_via_mcp", _forbidden)
 
     result = run_agent("Do we have stock of HCR-PPE-001?")
     trace = get_trace(result["trace_id"])
@@ -490,7 +493,7 @@ def test_run_agent_hybrid_cites_tool_facts_deterministically(
 ) -> None:
     """Hybrid: tool fact block is rendered, never left to the model."""
     monkeypatch.setattr(
-        agent_graph, "lookup_incident", lambda payload, **kw: _incident_tool_output()
+        agent_graph.mcp_client, "lookup_incident_via_mcp", lambda payload, **kw: _incident_tool_output()
     )
     monkeypatch.setattr(
         rag_pipeline,
@@ -525,7 +528,7 @@ def test_run_agent_hybrid_tool_fail_still_answers_policy(monkeypatch) -> None:
     failed = IncidentToolOutput(
         ok=False, error="not_found", message=INCIDENT_NOT_FOUND_MESSAGE
     )
-    monkeypatch.setattr(agent_graph, "lookup_incident", lambda payload, **kw: failed)
+    monkeypatch.setattr(agent_graph.mcp_client, "lookup_incident_via_mcp", lambda payload, **kw: failed)
     monkeypatch.setattr(
         rag_pipeline, "retrieve", lambda q, **kw: [_payload("Policy only")]
     )

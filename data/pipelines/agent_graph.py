@@ -2,7 +2,7 @@
 
 Responsibility: route each coordinator question to the right source —
 stable knowledge via RAG (``retrieve`` + ``generate_answer``), live tickets
-via the incidents API tool, live stock via the inventory API tool — with
+and stock via the MCP server tools — with
 single-responsibility nodes, conditional routing, minimal state, per-run
 traces, and checkpointing.
 
@@ -12,7 +12,8 @@ Node contract (binding):
 - ``retrieve_node`` calls ONLY ``retrieve(question)``.
 - ``generate_node`` calls ONLY ``generate_answer(question, context)``.
 - ``lookup_incident_node`` / ``lookup_inventory_node`` call ONLY their
-  read-only HTTP tool (never RAG, never each other).
+  MCP tool (MCP is the single transport — no direct HTTP fallback; never RAG,
+  never each other).
 - ``answer_from_tool_node`` surfaces successful tool data deterministically.
 - ``synthesize_hybrid_node`` prefixes the deterministic tool fact block and
   appends the LLM policy paragraph (tool facts are never left to the model).
@@ -42,7 +43,7 @@ from typing import Literal, TypedDict
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
-from data.pipelines import rag as rag_pipeline
+from data.pipelines import mcp_client, rag as rag_pipeline
 from data.pipelines.agent_tools import (
     INCIDENT_TOOL_FALLBACK,
     INVENTORY_TOOL_FALLBACK,
@@ -50,8 +51,6 @@ from data.pipelines.agent_tools import (
     InventoryToolInput,
     format_incident_answer,
     format_inventory_answer,
-    lookup_incident,
-    lookup_inventory,
 )
 
 logger = logging.getLogger(__name__)
@@ -329,13 +328,19 @@ def honest_node(state: AgentState) -> dict:
 
 
 def lookup_incident_node(state: AgentState) -> dict:
-    """Call the read-only incidents API tool; never invent ticket state."""
+    """Call the incidents tool over MCP (the only transport); never invent state.
+
+    ``mcp_client`` always answers with a contract payload: transport/config
+    failures surface as an honest ``unavailable`` result, which the routing
+    then sends to ``tool_fallback``.
+    """
     started = time.time()
     tool_payload: dict = {}
     sources = list(state.get("sources_used") or [])
     try:
         ticket_id = extract_ticket_id(state["question"])
-        result = lookup_incident(IncidentToolInput(ticket_id=ticket_id))
+        payload = IncidentToolInput(ticket_id=ticket_id)
+        result = mcp_client.lookup_incident_via_mcp(payload)
         tool_payload = result.model_dump()
         if "incidents" not in sources:
             sources = [*sources, "incidents"]
@@ -352,6 +357,7 @@ def lookup_incident_node(state: AgentState) -> dict:
             time.time(),
             {
                 "source_kind": "incidents",
+                "transport": "mcp",
                 "ok": bool(tool_payload.get("ok")),
                 "error": tool_payload.get("error"),
                 "n_incidents": len(tool_payload.get("incidents") or []),
@@ -361,16 +367,15 @@ def lookup_incident_node(state: AgentState) -> dict:
 
 
 def lookup_inventory_node(state: AgentState) -> dict:
-    """Call the read-only inventory API tool; never invent stock levels."""
+    """Call the inventory tool over MCP (the only transport); never invent stock."""
     started = time.time()
     tool_payload: dict = {}
     sources = list(state.get("sources_used") or [])
     try:
         sku = extract_sku(state["question"])
         name_query = None if sku else extract_inventory_name_query(state["question"])
-        result = lookup_inventory(
-            InventoryToolInput(sku=sku, name_query=name_query)
-        )
+        payload = InventoryToolInput(sku=sku, name_query=name_query)
+        result = mcp_client.lookup_inventory_via_mcp(payload)
         tool_payload = result.model_dump()
         if "inventory" not in sources:
             sources = [*sources, "inventory"]
@@ -387,6 +392,7 @@ def lookup_inventory_node(state: AgentState) -> dict:
             time.time(),
             {
                 "source_kind": "inventory",
+                "transport": "mcp",
                 "ok": bool(tool_payload.get("ok")),
                 "error": tool_payload.get("error"),
                 "n_products": len(tool_payload.get("products") or []),
