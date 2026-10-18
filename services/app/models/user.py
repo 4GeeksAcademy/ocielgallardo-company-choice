@@ -64,6 +64,9 @@ class ClientCredentialsRequest(BaseModel):
     grant_type: Literal["client_credentials"] = "client_credentials"
     client_id: str = Field(min_length=1)
     client_secret: str = Field(min_length=1)
+    # RFC 8707 resource indicator; defaults to the API issuer when omitted.
+    # The agent passes the MCP resource URL so MCP Auth can enforce `aud`.
+    audience: str | None = Field(default=None, max_length=500)
 
 
 class ServiceTokenResponse(BaseModel):

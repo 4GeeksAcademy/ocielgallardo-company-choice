@@ -42,11 +42,13 @@ def login(payload: LoginRequest):
 def service_token(payload: ClientCredentialsRequest):
     """Client-credentials grant for machine callers (service identity).
 
-    Returns a short-lived ``typ=service`` JWT scoped to read-only tool
-    routes. Unknown client and wrong secret share one generic 401 message
-    (no account enumeration).
+    Returns a short-lived RS256 ``typ=service`` JWT scoped to the caller's
+    grants (``iss``/``aud``/``kid`` set for OAuth resource servers). Unknown
+    client and wrong secret share one generic 401 message (no enumeration).
     """
-    grant = grant_client_credentials(payload.client_id, payload.client_secret)
+    grant = grant_client_credentials(
+        payload.client_id, payload.client_secret, audience=payload.audience
+    )
     if grant is None:
         raise HTTPException(
             status_code=401,

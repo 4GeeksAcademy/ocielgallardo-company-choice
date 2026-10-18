@@ -12,6 +12,8 @@ import logging
 import os
 from datetime import datetime, timezone
 
+import pytest
+
 os.environ.setdefault("SECRET_KEY", "service-identity-test-secret")
 
 from fastapi import FastAPI  # noqa: E402
@@ -30,6 +32,7 @@ from services.app.core.security import (  # noqa: E402
 )
 from services.app.domain.user_service import UserNotFoundError  # noqa: E402
 from services.app.models.user import UserPublic, UserRole  # noqa: E402
+from services.app.routers import incidents as incidents_module  # noqa: E402
 from services.app.routers.auth import router as auth_router  # noqa: E402
 from services.app.routers.incidents import router as incidents_router  # noqa: E402
 
@@ -38,7 +41,7 @@ CLIENT_SECRET = "unit-test-secret-not-a-real-one"
 
 _VALID_INCIDENT_WRITE = {
     "title": "Service identity write attempt",
-    "description": "Must be rejected for service principals",
+    "description": "Requires the incidents:write scope for service principals",
     "category": "it_system",
     "origin": "internal",
     "branch": "central",
@@ -57,6 +60,13 @@ def _fake_user_getter(user_id: int) -> UserPublic:
     if user_id == _HUMAN.id:
         return _HUMAN
     raise UserNotFoundError(f"User {user_id} not found")
+
+
+class _FakeRequest:
+    """Minimal stand-in for FastAPI's Request (state only)."""
+
+    def __init__(self) -> None:
+        self.state = type("State", (), {})()
 
 
 def _make_app() -> FastAPI:
@@ -223,7 +233,8 @@ def test_service_token_rejected_on_unscoped_routes(monkeypatch) -> None:
     assert auth_me.status_code == 401
 
 
-def test_service_token_rejected_on_write_route(monkeypatch) -> None:
+def test_service_token_without_write_scope_is_403_on_create(monkeypatch) -> None:
+    """Default read-only scopes cannot create incidents (403, not 401)."""
     fixture = _app(monkeypatch)
     fixture.register()
 
@@ -233,7 +244,92 @@ def test_service_token_rejected_on_write_route(monkeypatch) -> None:
         headers=fixture.service_headers,
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Insufficient scope"
+
+
+def test_service_token_with_write_scope_creates_incident(monkeypatch) -> None:
+    """A service principal granted incidents:write may create tickets (MCP server)."""
+    fixture = _app(monkeypatch)
+    fixture.register(
+        scopes=("incidents:read", "incidents:write", "inventory:read")
+    )
+
+    created: dict = {}
+
+    def _stub_create(payload):
+        created.update(payload.model_dump())
+        return incidents_module.Incident(id=4242, created_at="2026-01-01T00:00:00Z", updated_at="2026-01-01T00:00:00Z", **payload.model_dump())
+
+    monkeypatch.setattr(incidents_module, "create_incident", _stub_create)
+
+    response = fixture.client.post(
+        "/api/incidents",
+        json=_VALID_INCIDENT_WRITE,
+        headers=fixture.service_headers,
+    )
+
+    assert response.status_code == 201
+    assert created["title"] == _VALID_INCIDENT_WRITE["title"]
+
+
+def test_service_token_with_write_scope_updates_status(monkeypatch) -> None:
+    """PATCH status also requires incidents:write and accepts it when granted."""
+    fixture = _app(monkeypatch)
+    fixture.register(
+        scopes=("incidents:read", "incidents:write", "inventory:read")
+    )
+
+    def _stub_update(incident_id: int, payload):
+        return incidents_module.Incident(
+            id=incident_id,
+            title="t",
+            description="d",
+            category="it_system",
+            status=payload.status.value if hasattr(payload.status, "value") else payload.status,
+            origin="internal",
+            branch="central",
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+        )
+
+    monkeypatch.setattr(incidents_module, "update_incident_status", _stub_update)
+
+    response = fixture.client.patch(
+        "/api/incidents/4242/status",
+        json={"status": "in_progress"},
+        headers=fixture.service_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "in_progress"
+
+
+def test_human_only_dependency_still_rejects_service_tokens(monkeypatch) -> None:
+    """Inventory/user write routes use get_current_user: service tokens stay 401.
+
+    The write scope added for incidents does not leak anywhere else — every
+    route that still depends on ``get_current_user`` (e.g. all inventory
+    writes) keeps rejecting ``typ=service`` tokens fail-closed.
+    """
+    fixture = _app(monkeypatch)
+    fixture.register(scopes=("incidents:read", "incidents:write", "inventory:read"))
+
+    claims = decode_token_claims(fixture.grant()["access_token"])
+    assert service_identity.is_service_claims(claims) is True
+
+    with pytest.raises(Exception) as excinfo:
+        deps.get_current_user(
+            request=_FakeRequest(),
+            token=fixture.grant()["access_token"],
+        )
+    assert getattr(excinfo.value, "status_code", None) == 401
+
+    # Same human-only dependency guards /api/incidents/summary today.
+    summary = fixture.client.get(
+        "/api/incidents/summary", headers=fixture.service_headers
+    )
+    assert summary.status_code == 401
 
 
 def test_missing_scope_is_403_not_401(monkeypatch) -> None:
