@@ -19,6 +19,8 @@ COPY packages/shared ./packages/shared
 COPY services ./services
 COPY scripts ./scripts
 COPY data ./data
+# MCP server (incidents + inventory tools), served by the `mcp` compose service
+COPY mcps ./mcps
 # Telemetry allowlists (event-schemas.json) loaded at ingest time
 COPY docs/telemetry ./docs/telemetry
 
