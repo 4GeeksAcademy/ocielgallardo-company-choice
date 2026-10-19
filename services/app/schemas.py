@@ -160,6 +160,17 @@ class RagQueryRequest(BaseModel):
     question: str = Field(min_length=3, max_length=1000)
 
 
+class AgentQueryRequest(RagQueryRequest):
+    """Agent question with an optional memory-session scope.
+
+    ``session_id`` scopes the agent's memory conversation (at most one
+    pending memory proposal per session). When omitted, the router derives
+    it from the authenticated user so continuity survives across requests.
+    """
+
+    session_id: str | None = Field(default=None, max_length=64)
+
+
 class RagQueryResponse(BaseModel):
     """Model-generated answer only — never raw Qdrant chunks or scores."""
 
