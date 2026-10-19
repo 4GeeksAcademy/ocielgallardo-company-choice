@@ -1,6 +1,71 @@
 # Progress
 
-## Latest Update (2026-10-18) — hito 25 OAuth resource server (supersedes the snapshot below)
+## Latest Update (2026-10-19) — hito 26 Part 1: agent memory & self-improvement
+
+- Branch `feature/agent-memory` (rebased onto `feature/mcp-oauth-tools`, tip
+  `0e721f5`; PR #44 / hito 25 MCP stays OPEN). Phase 1 design doc
+  `docs/memory/agent-memory.md` is developer-owned (not written or edited by
+  this pass); evidence lives in
+  `docs/memory/evidence/agent-memory-evidence.md`.
+- **What landed**: the agent can remember durable operational facts across
+  turns, but only with explicit user confirmation, and never PHI.
+  - `data/pipelines/agent_memory.py` — `MemoryStore` Protocol +
+    `InMemoryMemoryStore` (default) + `RedisMemoryStore` (Compose default via
+    `AGENT_MEMORY_BACKEND=redis`, client injectable for tests); pending
+    proposals (one per session, `AGENT_MEMORY_PENDING_TTL_HOURS` 7 days,
+    silence/ambiguity → audited `default_rejected`); audit ring buffer
+    (`proposed|approved|edited|rejected|default_rejected|expired_default_rejected|rejected_phi`);
+    consolidation (normalized/near-duplicate merge Jaccard ≥ 0.9, per-bucket cap
+    `AGENT_MEMORY_MAX_ENTRIES_PER_KEY` 20, TTL `AGENT_MEMORY_TTL_DAYS` 180);
+    `_assert_agent_namespace` keeps every key under `agent:memory:*` (Qdrant
+    `healthcore_knowledge` stays read-only); CLI
+    `python -m data.pipelines.agent_memory consolidate|audit`.
+  - `data/pipelines/memory_phi_guard.py` — deterministic PHI screen
+    (patient name/record number/DOB/government id/insurance id/clinical
+    content/long identifiers); reason codes only, matched text never stored or
+    logged; applied before showing a proposal, before storing approved/edited
+    facts, and re-run at consolidation.
+  - `data/pipelines/memory_proposer.py` — structured LLM classification of the
+    next message against the pending proposal (`approve|edit|reject|unrelated`)
+    and the proposal/self-evaluation call; every parse failure degrades to a
+    safe default (no memory write).
+  - `data/pipelines/rag.py` — `build_prompt(..., memory=...)` injects approved
+    facts; `generate_answer_with_proposal()` returns `(answer, proposal)` from a
+    **single** structured call (fallback to `generate_answer` on transport
+    failure), preserving token cost and the one-answer contract.
+  - `data/pipelines/agent_graph.py` — state gains `session_id`,
+    `memory_context`, `proposal` (no new nodes: memory orchestrated in
+    `run_agent`, so spans/evals contracts are unchanged); nodes read
+    `memory_context` and return candidates; `run_agent` resolves pending →
+    consolidates/rejects → loads relevant facts → runs the graph →
+    PHI-gates and asks the proposal inside the same answer; per-run
+    `trace["memory"]` block; bilingual suffixes
+    `PROPOSAL_QUESTION_ES`/`_EN`.
+  - API: `AgentQueryRequest` extends `RagQueryRequest` with optional
+    `session_id`; the router derives `f"user:{current_user.id}"`.
+  - Infra/deps: `redis>=5` (`uv add`, `services/requirements.txt`), Compose
+    backend `AGENT_MEMORY_BACKEND=redis`, `.env.example` memory block.
+- **Evidence**: offline demo `scripts/agent_memory_demo.py` (scripted LLM
+  seams, real store/graph/PHI/audit) shows the approved cycle (proposal →
+  confirm → fact answers a later question), the rejected cycle (store
+  unchanged, decision audited) and a PHI refusal; transcripts +
+  memorable/non-memorable examples in
+  `docs/memory/evidence/agent-memory-evidence.md`.
+- **Tests**: new `tests/pipelines/test_agent_memory.py` +
+  `test_agent_graph_memory.py`; existing agent suites adapted to the combined
+  call (`_combined` adapter); autouse offline fixtures in
+  `tests/pipelines/conftest.py`. `tests/pipelines` **203 passed, 1 skipped**;
+  full repo suite **312 passed, 1 skipped** (2026-10-19, via `subst W:` for the
+  Windows MAX_PATH/langsmith limitation). Docs updated: `docs/rag/agent-graph.md`
+  §3/§5/§10.
+- **Known gaps / TODO**: Redis store not yet exercised against a live server
+  (client injectable, mocked in tests); memory has no backoffice visibility;
+  consolidation sweep runs opportunistically inside `run_agent`
+  (`maybe_sweep`, default 600 s) rather than a scheduled job; no vector-based
+  memory retrieval (keyword overlap via `select_relevant` is enough for the
+  current entry volume); PR for `feature/agent-memory` not opened yet.
+
+## Previous Update (2026-10-18) — hito 25 OAuth resource server (supersedes the snapshot below)
 
 - The MCP server now delegates OAuth to **MCP Auth (`mcpauth==0.2.0b1`)**; the
   HealthCore API is the authorization server (OIDC discovery + RS256 JWKS +

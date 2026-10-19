@@ -69,10 +69,16 @@ AgentState = {
   route: str,              # refuse | incidents | inventory | hybrid_* | rag
   tool_result: dict,       # serialized IncidentToolOutput | InventoryToolOutput
   sources_used: list[str], # execution order, e.g. ["incidents","rag"] on hybrid
+  session_id: str,         # memory conversation scope (hito 26)
+  memory_context: list[dict],  # approved agent-memory facts relevant to the question
+  proposal: dict,          # candidate memory from the structured call ({} = none)
 }
 ```
 
 No conversation history, no vectors, no `trace_id` inside the state.
+`session_id` / `memory_context` / `proposal` are set by the `run_agent`
+memory orchestration (§10); the LLM nodes read `memory_context` and return
+their candidate proposal in `proposal`.
 
 ## 4. Tools (Part 2)
 
@@ -159,6 +165,10 @@ indexed copy goes stale as soon as status or stock changes.
   never each other (single responsibility).
 - `synthesize_hybrid` is the only node combining sources, and tool facts stay
   deterministic inside it.
+- Nodes never read or write the memory store directly (hito 26): they receive
+  `memory_context` through state and return their candidate `proposal`; all
+  store I/O (pending, approval, consolidation, audit) happens in `run_agent`
+  (§10).
 
 ## 6. Compilation and checkpointing
 
@@ -332,3 +342,69 @@ preflight` passed. Audit logs record `tool= client= result= ms=` per call.
   (2026-10-18) — 6/6 tool flows, controlled inventory-write refusal, lifecycle
   rejection and 401 evidence in
   `docs/mcp/evidence/playground-session-2026-10-18.md`.
+
+## 10. Agent memory (hito 26, Part 1)
+
+Persistent, user-confirmed operational memory for the agent — a separate
+namespace in the store, never a write path into RAG. The full loop evidence
+(live transcripts of the approved and rejected cycles) is in
+`docs/memory/evidence/agent-memory-evidence.md`; the store and PHI modules are
+`data/pipelines/agent_memory.py` and `data/pipelines/memory_phi_guard.py`.
+
+### Loop
+
+`run_agent(question, session_id=...)` orchestrates the loop around the
+existing graph (no new nodes), so spans and eval contracts stay intact:
+
+1. `session_id` defaults to `f"user:{current_user.id}"` at the API layer
+   (`services/app/routers/agent.py`); `AgentQueryRequest` may carry one
+   explicitly (`services/app/schemas.py`).
+2. Before invoking the graph, the pending proposal for the session (if any) is
+   resolved against the new message by `classify_decision`
+   (`approve` / `edit` / `reject` / `unrelated`) — silence, ambiguity or a
+   topic change counts as a rejection and is audited as `default_rejected`.
+3. Approved facts are re-screened for PHI, then consolidated into the store
+   (dedupe + per-bucket cap); rejected proposals leave the store unchanged but
+   the decision is audited.
+4. `select_relevant()` loads approved facts into `memory_context`; the
+   generation nodes include them in the prompt via
+   `build_prompt(..., memory=...)` and return a candidate `proposal` from the
+   single structured call (`generate_answer_with_proposal` in
+   `data/pipelines/rag.py` — answer + `propuesta_memoria` in one call).
+5. The proposal is PHI-screened before it is shown; clean proposals are asked
+   inside the same answer (`PROPOSAL_QUESTION_ES` / `_EN`), PHI proposals are
+   refused explicitly with reason codes only (matched text is never stored).
+
+### Safety and retention
+
+- **PHI gate** (`memory_phi_guard.py`): deterministic screen, applied before
+  showing a proposal, before storing an approved/edited fact, and again at
+  consolidation. Reason codes only in the audit.
+- **Audit**: every outcome (`proposed`, `approved`, `edited`, `rejected`,
+  `default_rejected`, `expired_default_rejected`, `rejected_phi`) is recorded
+  with the decision label and reason codes.
+- **Retention** (env knobs, defaults in `.env.example`): entry TTL 180 days,
+  20 entries per clinic+category bucket, audit ring buffer of 1000 records
+  (90-day sliding retention), pending proposals expire after 7 days. CLI:
+  `python -m data.pipelines.agent_memory consolidate|audit`.
+- **Store separation**: keys live under `agent:memory:*` only
+  (`_assert_agent_namespace`); Qdrant `healthcore_knowledge` is read-only.
+
+### Backends and config
+
+`AGENT_MEMORY_BACKEND` selects the backend: `memory` (in-process, the default
+outside Compose) or `redis` (Compose default, `redis>=5`,
+`services/requirements.txt`). The Redis client is injectable, so the store
+behaviour is unit-tested without a server
+(`tests/pipelines/test_agent_memory.py`).
+
+### Tests and evidence
+
+- `tests/pipelines/test_agent_memory.py` — store, consolidation, TTL/cap,
+  PHI screen, namespace guard, proposer/decision parsing fallbacks.
+- `tests/pipelines/test_agent_graph_memory.py` — end-to-end loop with the
+  LLM seams scripted (approve/reject/silence, PHI refusal, Spanish prompts,
+  memory-context injection, audit and trace block).
+- Offline demo: `uv run python scripts/agent_memory_demo.py`.
+- Suites: `tests/pipelines/` 203 passed, 1 skipped; full repo 312 passed,
+  1 skipped (2026-10-18).
