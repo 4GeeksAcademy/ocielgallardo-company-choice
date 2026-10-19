@@ -58,6 +58,12 @@ app.add_middleware(
 app.middleware("http")(timing_middleware)
 
 
+@app.get("/health", tags=["system"])
+async def health() -> dict[str, str]:
+    """Unauthenticated liveness probe for the orchestrator (Compose healthcheck)."""
+    return {"status": "ok", "service": "healthcore-api"}
+
+
 @app.exception_handler(RequestValidationError)
 async def request_validation_exception_handler(
     _request: Request, exc: RequestValidationError
