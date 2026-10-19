@@ -101,6 +101,9 @@ services:
       # a failing hop surfaces an honest `unavailable` answer, never a fallback.
       MCP_SERVER_URL: http://mcp:8100/mcp
       MCP_TOOL_TIMEOUT_SECONDS: ${MCP_TOOL_TIMEOUT_SECONDS:-10}
+      # Agent memory (hito 26): Redis-backed episodic store, separate from RAG
+      # (`agent:memory:*` keys only; the Qdrant *_knowledge collection stays read-only).
+      AGENT_MEMORY_BACKEND: ${AGENT_MEMORY_BACKEND:-redis}
     ports:
       - "8000:8000"
     healthcheck:
