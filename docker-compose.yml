@@ -6,6 +6,12 @@ services:
     command: ["redis-server", "--maxmemory-policy", "noeviction"]
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
     networks:
       - healthcore_net
 
@@ -17,6 +23,17 @@ services:
       - "6334:6334"
     volumes:
       - qdrant_storage:/qdrant/storage
+    # The qdrant image ships no curl/wget; probe /readyz over bash's /dev/tcp.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333; printf \"GET /readyz HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; grep -q \"HTTP/1.1 200\" <&3'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - healthcore_net
 
@@ -86,9 +103,23 @@ services:
       MCP_TOOL_TIMEOUT_SECONDS: ${MCP_TOOL_TIMEOUT_SECONDS:-10}
     ports:
       - "8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
-      - redis
-      - qdrant
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
     networks:
       - healthcore_net
 
@@ -129,8 +160,21 @@ services:
       ]
     ports:
       - "8100:8100"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - healthcore_net
 

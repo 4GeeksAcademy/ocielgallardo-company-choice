@@ -491,7 +491,8 @@
 - Root `docker-compose.yml`: prod default (`Dockerfile.prod`, `next start`); dev hot-reload via `docker-compose.dev.yml` overlay (`npm run docker:dev`).
 - Port map per brief: website `3000`, backoffice `3001`, API `8000`. Browser `NEXT_PUBLIC_*` uses `http://localhost:8000`; container DNS hostname for API is `backend`.
 - `.env.example` documents UI public URLs + Docker prod/dev commands. Local `.env` remains gitignored.
-- Validation: `docker compose up --build` (prod) and `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build` (dev) verified locally.
+- Healthchecks added (Compose): `redis` (redis-cli ping), `qdrant` (`/readyz` via bash `/dev/tcp`), `backend` (`GET /health` via urllib), `mcp` (`GET /health` via urllib). `backend` depends on `redis`+`qdrant` healthy; `mcp` depends on `backend` healthy (gates MCP startup to avoid discovery race with OAuth issuer). API exposes `GET /health` (unauthenticated). Dev overlay inherits healthchecks.
+- Validation: `docker compose up --build` (prod) and `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build` (dev) verified locally; `depends_on` uses `condition: service_healthy` for the core services.
 - Merged to `main` via PR #19; prod-default model extended on `feature/performance-audit` for Lighthouse evidence.
 
 ## Recently Completed (feature/inventory — sync with main)
