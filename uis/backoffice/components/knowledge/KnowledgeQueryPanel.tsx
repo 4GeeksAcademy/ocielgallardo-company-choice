@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/Button";
 import { healthcoreRequest } from "@/lib/services/healthcoreClient";
 
 interface KnowledgeQueryResponse {
@@ -86,13 +87,12 @@ export function KnowledgeQueryPanel() {
           placeholder="e.g. Is there a charge for cancelling 12 hours in advance? What is the status of ticket 2? Do we have stock of HCR-PPE-001?"
           className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
         />
-        <button
+        <Button
           type="submit"
           disabled={question.trim().length < 3 || loading}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
           {loading ? "Asking…" : "Ask"}
-        </button>
+        </Button>
       </form>
 
       {error && (
@@ -119,30 +119,29 @@ export function KnowledgeQueryPanel() {
                 The agent asked whether to remember something. Quick reply:
               </p>
               <div className="flex flex-wrap gap-2">
-                <button
+                <Button
                   type="button"
                   onClick={() => handleMemoryDecision(APPROVE_REPLY)}
-                  className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                   disabled={loading}
                 >
                   Yes, remember it
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="secondary"
                   onClick={() => handleMemoryDecision(REJECT_REPLY)}
-                  className="rounded-md bg-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-300 disabled:opacity-50 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
                   disabled={loading}
                 >
                   No, don&apos;t store it
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={handleCorrect}
-                  className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
                   disabled={loading}
                 >
                   Correct it
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -167,21 +166,20 @@ export function KnowledgeQueryPanel() {
                 autoFocus
               />
               <div className="flex gap-2">
-                <button
+                <Button
                   type="button"
                   onClick={() => handleMemoryDecision(question.trim())}
                   disabled={question.trim().length < 3 || loading}
-                  className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
                 >
                   Send correction
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => setCorrecting(false)}
-                  className="rounded-md bg-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           )}
