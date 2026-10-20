@@ -845,7 +845,8 @@ def run_agent(question: str, session_id: str | None = None) -> dict:
 
     Returns ``{"question": ..., "context": [...], "answer": ..., "route": ...,
     "tool_result": ..., "sources_used": [...], "session_id": ...,
-    "memory_context": [...], "proposal": ..., "trace_id": ...}``.
+    "memory_context": [...], "proposal": ..., "trace_id": ...,
+    "memory_proposal_pending": bool}``.
     """
     session_id = (session_id or "").strip() or DEFAULT_MEMORY_SESSION
     trace_id = uuid.uuid4().hex
@@ -968,7 +969,14 @@ def run_agent(question: str, session_id: str | None = None) -> dict:
             f"{trace['memory']['resolution']}/{trace['memory']['proposal']}",
             trace["duration_ms"],
         )
-        return {**result, "trace_id": trace_id}
+        return {
+            **result,
+            "trace_id": trace_id,
+            # UI hint: the agent just asked whether to remember something, so a
+            # client can offer quick confirm/correct actions. Only the action
+            # label is exposed, never the proposed fact (PHI/PII rule).
+            "memory_proposal_pending": proposal_summary.get("action") == "proposed",
+        }
     except Exception as exc:
         finished = time.time()
         trace.update(

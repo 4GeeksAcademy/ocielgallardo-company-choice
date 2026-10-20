@@ -171,6 +171,20 @@ class AgentQueryRequest(RagQueryRequest):
     session_id: str | None = Field(default=None, max_length=64)
 
 
+class AgentQueryResponse(BaseModel):
+    """Agent answer plus a memory-proposal flag for the UI.
+
+    ``memory_proposal_pending`` tells the client that the agent just asked
+    whether to remember something, so the UI can offer quick confirm/correct
+    actions. Only the boolean is exposed — never the proposed fact or any
+    stored memory text (HealthCore PHI/PII rule).
+    """
+
+    question: str
+    answer: str
+    memory_proposal_pending: bool = False
+
+
 class RagQueryResponse(BaseModel):
     """Model-generated answer only — never raw Qdrant chunks or scores."""
 
