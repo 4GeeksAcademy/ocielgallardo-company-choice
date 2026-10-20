@@ -70,9 +70,17 @@ def incidents_summary(
 @router.post("", response_model=Incident, status_code=201)
 def create_incident_endpoint(
     payload: IncidentCreate,
-    _current_user: UserPublic = Depends(get_current_user),
+    _writer: UserPublic | ServicePrincipal = Depends(
+        require_scope("incidents:write")
+    ),
 ):
-    """Register a new incident with field-level validation."""
+    """Register a new incident with field-level validation.
+
+    Humans keep full access; service principals need the explicit
+    ``incidents:write`` scope (MCP server identity). Service tokens without
+    the scope get 403; every other service token stays rejected elsewhere
+    (fail-closed, ``agent-graph.md`` §9.1).
+    """
     try:
         return create_incident(payload)
     except IncidentValidationError as exc:
@@ -116,9 +124,14 @@ def get_incident_endpoint(
 def patch_incident_status_endpoint(
     incident_id: int,
     payload: IncidentStatusUpdate,
-    _current_user: UserPublic = Depends(get_current_user),
+    _writer: UserPublic | ServicePrincipal = Depends(
+        require_scope("incidents:write")
+    ),
 ):
-    """Update incident status when the lifecycle transition is allowed."""
+    """Update incident status when the lifecycle transition is allowed.
+
+    Same scope contract as ``POST /api/incidents`` (``incidents:write``).
+    """
     try:
         return update_incident_status(incident_id, payload)
     except IncidentNotFoundError:

@@ -5,9 +5,10 @@ short-lived service JWT via ``POST /auth/token`` and caches it until shortly
 before expiry, so more than 24 h of continuous operation needs no human
 intervention (acceptance criteria: ``docs/rag/agent-graph.md`` §9.1).
 
-This module issues the only HTTP POST made by the agent tools: an auth grant
-against ``/auth/token``. Business-data access stays GET-only in
-``agent_tools.py`` (statically guarded there).
+This module issues the only HTTP POST in the agent data path: an auth grant
+against ``/auth/token``. Business data itself is reached over MCP only
+(``data/pipelines/mcp_client.py``), never with direct HTTP calls from the
+agent (``agent_tools.py`` holds contracts and formatters, statically guarded).
 
 Credentials come from environment/config — never hardcoded:
 
@@ -15,6 +16,17 @@ Credentials come from environment/config — never hardcoded:
 - ``AGENT_TOOL_CLIENT_ID`` — service client id (or ``..._FILE`` path).
 - ``AGENT_TOOL_CLIENT_SECRET`` — service client secret; in Docker prefer
   ``AGENT_TOOL_CLIENT_SECRET_FILE`` pointing at a mounted secret.
+
+The same provider serves other service identities (e.g. the MCP server, which
+authenticates to the same API) by passing its own credential prefix:
+``get_service_token("MCP_BACKEND", "MCP_BACKEND_URL")`` reads
+``MCP_BACKEND_CLIENT_ID`` / ``MCP_BACKEND_CLIENT_SECRET`` against the URL in
+``MCP_BACKEND_URL``.
+
+Audience (RFC 8707): the MCP client mints its agent token with
+``audience=<MCP_RESOURCE_URL>`` so the MCP resource server can require it;
+tokens without an audience keep working for callers that do not check it (the
+API itself does not validate ``aud`` — that is the resource server's job).
 """
 
 from __future__ import annotations
@@ -30,14 +42,16 @@ import httpx
 logger = logging.getLogger(__name__)
 
 DEFAULT_API_BASE_URL = "http://127.0.0.1:8000"
+DEFAULT_CREDENTIAL_PREFIX = "AGENT_TOOL"
+DEFAULT_API_URL_VAR = "AGENT_TOOL_API_URL"
 TOKEN_TIMEOUT_SECONDS = 5.0
 # Renew before expiry so in-flight calls never race the TTL.
 REFRESH_MARGIN_SECONDS = 120.0
 
 
-def api_base_url() -> str:
+def api_base_url(var: str = DEFAULT_API_URL_VAR) -> str:
     """Base URL of the HealthCore API (env, never hardcoded)."""
-    return os.getenv("AGENT_TOOL_API_URL", DEFAULT_API_BASE_URL).rstrip("/")
+    return os.getenv(var, DEFAULT_API_BASE_URL).rstrip("/")
 
 
 def _read_credential(name: str) -> str:
@@ -56,9 +70,25 @@ def _read_credential(name: str) -> str:
 
 
 class ServiceTokenProvider:
-    """Thread-safe cached service token with automatic renewal."""
+    """Thread-safe cached service token with automatic renewal.
 
-    def __init__(self) -> None:
+    ``credential_prefix`` selects which identity is used (``AGENT_TOOL`` by
+    default; the MCP server uses ``MCP_BACKEND``), so several service
+    identities can coexist in one process without sharing tokens. When
+    ``audience`` is set it is forwarded to ``POST /auth/token`` (``aud`` claim),
+    which is what the MCP resource server validates; cached tokens are keyed by
+    prefix + URL + audience, so different audiences never share a cache entry.
+    """
+
+    def __init__(
+        self,
+        credential_prefix: str = DEFAULT_CREDENTIAL_PREFIX,
+        api_url_var: str = DEFAULT_API_URL_VAR,
+        audience: str | None = None,
+    ) -> None:
+        self._credential_prefix = credential_prefix
+        self._api_url_var = api_url_var
+        self._audience = audience
         self._lock = threading.Lock()
         self._token: str | None = None
         self._expires_at: float = 0.0
@@ -79,23 +109,28 @@ class ServiceTokenProvider:
             return None
 
     def _fetch_token(self, now: float) -> tuple[str, float] | None:
-        client_id = _read_credential("AGENT_TOOL_CLIENT_ID")
-        client_secret = _read_credential("AGENT_TOOL_CLIENT_SECRET")
+        client_id = _read_credential(f"{self._credential_prefix}_CLIENT_ID")
+        client_secret = _read_credential(f"{self._credential_prefix}_CLIENT_SECRET")
         if not client_id or not client_secret:
             logger.warning(
                 "Service credentials not configured "
-                "(AGENT_TOOL_CLIENT_ID / AGENT_TOOL_CLIENT_SECRET); "
-                "agent tool calls will lack auth"
+                "(%s_CLIENT_ID / %s_CLIENT_SECRET); "
+                "agent tool calls will lack auth",
+                self._credential_prefix,
+                self._credential_prefix,
             )
             return None
         try:
+            body = {
+                "grant_type": "client_credentials",
+                "client_id": client_id,
+                "client_secret": client_secret,
+            }
+            if self._audience:
+                body["audience"] = self._audience
             response = httpx.post(
-                f"{api_base_url()}/auth/token",
-                json={
-                    "grant_type": "client_credentials",
-                    "client_id": client_id,
-                    "client_secret": client_secret,
-                },
+                f"{api_base_url(self._api_url_var)}/auth/token",
+                json=body,
                 timeout=TOKEN_TIMEOUT_SECONDS,
             )
         except httpx.TimeoutException:
@@ -128,9 +163,34 @@ class ServiceTokenProvider:
         return token, now + expires_in
 
 
-_provider = ServiceTokenProvider()
+_providers: dict[str, ServiceTokenProvider] = {}
+_providers_lock = threading.Lock()
+_agent_provider = ServiceTokenProvider()
 
 
-def get_service_token() -> str | None:
-    """Shared provider entry point used by the agent tools' auth headers."""
-    return _provider.get_token()
+def get_service_token(
+    credential_prefix: str = DEFAULT_CREDENTIAL_PREFIX,
+    api_url_var: str = DEFAULT_API_URL_VAR,
+    audience: str | None = None,
+) -> str | None:
+    """Shared provider entry point used by service identities.
+
+    The default call returns the agent identity token without an audience
+    (unchanged behavior); the MCP client passes ``audience=<resource url>`` so
+    the minted token satisfies the MCP resource server's ``aud`` check. Pass a
+    different ``credential_prefix`` for another service identity (the MCP
+    server uses ``MCP_BACKEND`` + ``MCP_BACKEND_URL``).
+    """
+    if (
+        credential_prefix == DEFAULT_CREDENTIAL_PREFIX
+        and api_url_var == DEFAULT_API_URL_VAR
+        and audience is None
+    ):
+        return _agent_provider.get_token()
+    key = f"{credential_prefix}|{api_url_var}|{audience or ''}"
+    with _providers_lock:
+        provider = _providers.get(key)
+        if provider is None:
+            provider = ServiceTokenProvider(credential_prefix, api_url_var, audience)
+            _providers[key] = provider
+    return provider.get_token()

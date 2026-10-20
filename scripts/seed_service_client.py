@@ -11,7 +11,10 @@ Then set in the repo-root ``.env`` (gitignored, local dev):
     AGENT_TOOL_CLIENT_SECRET=<printed secret>
 
 Re-running the script rotates the secret (previous secret stops working).
-Scope is fixed to the two read-only tool routes of agent-graph.md §9.1.
+Default scope is the two read-only tool routes of agent-graph.md §9.1; use
+``--scopes`` to register identities that need more (e.g. the MCP server with
+``incidents:write``) and ``--env-prefix`` to print the env var names that
+identity reads, e.g. ``--env-prefix MCP_BACKEND_CLIENT``.
 """
 
 from __future__ import annotations
@@ -32,10 +35,21 @@ from services.app.core.service_identity import (  # noqa: E402
 )
 
 
-def run_seed(client_id: str, secret: str | None = None) -> str:
-    """Register/rotate the client; returns the plaintext secret to configure."""
+def run_seed(
+    client_id: str,
+    secret: str | None = None,
+    scopes: tuple[str, ...] | list[str] | None = None,
+) -> str:
+    """Register/rotate the client; returns the plaintext secret to configure.
+
+    ``scopes`` defaults to the read-only agent tool scopes; pass an explicit
+    list only for identities that need more (e.g. ``incidents:write`` for the
+    MCP server).
+    """
     plaintext = secret or secrets.token_urlsafe(32)
-    register_service_client(client_id, plaintext, DEFAULT_SERVICE_SCOPES)
+    register_service_client(
+        client_id, plaintext, tuple(scopes) if scopes else DEFAULT_SERVICE_SCOPES
+    )
     return plaintext
 
 
@@ -53,14 +67,33 @@ def main() -> int:
         default=None,
         help="Optional explicit secret (default: random token_urlsafe)",
     )
+    parser.add_argument(
+        "--scopes",
+        nargs="+",
+        default=None,
+        help=(
+            "Optional explicit scopes (default: the two read-only tool "
+            "scopes). Example: --scopes incidents:read incidents:write "
+            "inventory:read"
+        ),
+    )
+    parser.add_argument(
+        "--env-prefix",
+        default="AGENT_TOOL",
+        help=(
+            "Env var prefix used by the caller that presents this identity "
+            "(default: AGENT_TOOL; the MCP server uses MCP_BACKEND_CLIENT)"
+        ),
+    )
     args = parser.parse_args()
 
-    plaintext = run_seed(args.client_id, args.secret)
+    scopes = tuple(args.scopes) if args.scopes else tuple(DEFAULT_SERVICE_SCOPES)
+    plaintext = run_seed(args.client_id, args.secret, scopes)
     print(f"Service client registered: svc:{args.client_id}")
-    print(f"Scopes: {', '.join(DEFAULT_SERVICE_SCOPES)}")
+    print(f"Scopes: {', '.join(scopes)}")
     print("Plaintext secret (shown once, never commit it):")
-    print(f"  AGENT_TOOL_CLIENT_ID={args.client_id}")
-    print(f"  AGENT_TOOL_CLIENT_SECRET={plaintext}")
+    print(f"  {args.env_prefix}_CLIENT_ID={args.client_id}")
+    print(f"  {args.env_prefix}_CLIENT_SECRET={plaintext}")
     print("Set them in the repo-root .env (gitignored) and recreate the backend.")
     return 0
 

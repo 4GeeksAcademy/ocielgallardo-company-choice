@@ -5,10 +5,10 @@ criterion covers grounding). Golden traces live in
 ``tests/pipelines/fixtures/agent_traces/``; generator tests prove a fresh mocked
 run satisfies the same predicates, so fixtures cannot silently rot.
 
-Part 2 routing evals: a ticket question must use the incidents API tool (not
-RAG), a stock question the inventory API tool, a policy question RAG (not a
+Part 2 routing evals: a ticket question must use the incidents MCP tool (not
+RAG), a stock question the inventory MCP tool, a policy question RAG (not a
 tool), and a hybrid question both in tool-then-RAG order. An optional fallback
-eval covers unavailable incident service.
+eval covers an unavailable incident service.
 
 The live grounding eval needs real Qdrant + LLM credentials and is skipped
 unless ``RUN_LIVE_EVALS=1``.
@@ -111,7 +111,7 @@ def eval_grounded_answer(
 
 
 def eval_routes_to_tool_not_rag(trace: dict, *, tool: str) -> str | None:
-    """Operational question must use its API tool and skip RAG entirely."""
+    """Operational question must use its MCP tool and skip RAG entirely."""
     node = f"lookup_{tool}"
     nodes = _span_nodes(trace)
     if node not in nodes:
@@ -125,12 +125,12 @@ def eval_routes_to_tool_not_rag(trace: dict, *, tool: str) -> str | None:
 
 
 def eval_routes_to_rag_not_tool(trace: dict) -> str | None:
-    """Policy question must use RAG and never an API tool."""
+    """Policy question must use RAG and never a tool node."""
     nodes = _span_nodes(trace)
     if "retrieve" not in nodes:
         return f"expected retrieve in spans, got {nodes}"
     if "lookup_incident" in nodes or "lookup_inventory" in nodes:
-        return f"policy question must not call API tools, got {nodes}"
+        return f"policy question must not call tool nodes, got {nodes}"
     if "rag" not in trace.get("sources_used", []):
         return f"sources_used missing rag: {trace.get('sources_used')}"
     return None
@@ -160,7 +160,7 @@ def eval_routes_to_hybrid_tool_and_rag(trace: dict) -> str | None:
 
 
 def eval_tool_fallback_honesty(trace: dict, answer: str) -> str | None:
-    """When the API tool fails, the graph must take tool_fallback (no invent)."""
+    """When the tool fails, the graph must take tool_fallback (no invent)."""
     nodes = _span_nodes(trace)
     if "tool_fallback" not in nodes:
         return f"expected tool_fallback in spans, got {nodes}"
@@ -212,14 +212,14 @@ def test_eval_grounded_answer_on_golden_trace() -> None:
 
 
 def test_eval_tool_not_rag_on_golden_trace() -> None:
-    """Part 2: ticket question must resolve via incidents API, not RAG."""
+    """Part 2: ticket question must resolve via the incidents MCP tool, not RAG."""
     trace, _ = _load_golden("ticket_tool.json")
     assert eval_routes_to_tool_not_rag(trace, tool="incident") is None
     assert eval_spans_have_outputs(trace) is None
 
 
 def test_eval_rag_not_tool_on_golden_trace() -> None:
-    """Part 2: policy question must resolve via RAG, not an API tool."""
+    """Part 2: policy question must resolve via RAG, not a tool node."""
     trace, _ = _load_golden("happy.json")
     assert eval_routes_to_rag_not_tool(trace) is None
 
@@ -348,14 +348,14 @@ def test_generator_grounded_run_uses_real_corpus_chunk(monkeypatch) -> None:
 
 
 def test_generator_ticket_run_passes_tool_routing_eval(monkeypatch) -> None:
-    """Part 2 anti-rot: ticket question → incidents API, never RAG."""
+    """Part 2 anti-rot: ticket question → incidents MCP tool, never RAG."""
 
     def _forbidden(*args, **kwargs):
         raise AssertionError("ticket question must not call retrieve/generate")
 
     monkeypatch.setattr(rag_pipeline, "retrieve", _forbidden)
     monkeypatch.setattr(rag_pipeline, "generate_answer", _forbidden)
-    monkeypatch.setattr(agent_graph, "lookup_incident", lambda payload, **kw: _incident_ok())
+    monkeypatch.setattr(agent_graph.mcp_client, "lookup_incident_via_mcp", lambda payload, **kw: _incident_ok())
 
     result = run_agent(TICKET_QUESTION)
     trace = get_trace(result["trace_id"])
@@ -365,14 +365,14 @@ def test_generator_ticket_run_passes_tool_routing_eval(monkeypatch) -> None:
 
 
 def test_generator_stock_run_passes_tool_routing_eval(monkeypatch) -> None:
-    """Part 2 anti-rot: stock question → inventory API, never RAG."""
+    """Part 2 anti-rot: stock question → inventory MCP tool, never RAG."""
 
     def _forbidden(*args, **kwargs):
         raise AssertionError("stock question must not call RAG or incident tool")
 
     monkeypatch.setattr(rag_pipeline, "retrieve", _forbidden)
-    monkeypatch.setattr(agent_graph, "lookup_incident", _forbidden)
-    monkeypatch.setattr(agent_graph, "lookup_inventory", lambda payload, **kw: _inventory_ok())
+    monkeypatch.setattr(agent_graph.mcp_client, "lookup_incident_via_mcp", _forbidden)
+    monkeypatch.setattr(agent_graph.mcp_client, "lookup_inventory_via_mcp", lambda payload, **kw: _inventory_ok())
 
     result = run_agent(STOCK_QUESTION)
     trace = get_trace(result["trace_id"])
@@ -382,17 +382,17 @@ def test_generator_stock_run_passes_tool_routing_eval(monkeypatch) -> None:
 
 
 def test_generator_policy_run_passes_rag_routing_eval(monkeypatch) -> None:
-    """Part 2 anti-rot: policy question → RAG, never API tools."""
+    """Part 2 anti-rot: policy question → RAG, never tool nodes."""
     monkeypatch.setattr(
         rag_pipeline, "retrieve", lambda q, **kw: [_payload("ctx")]
     )
     monkeypatch.setattr(rag_pipeline, "generate_answer", lambda q, ctx: "Policy answer")
 
     def _forbidden_tool(*args, **kwargs):
-        raise AssertionError("policy question must not call API tools")
+        raise AssertionError("policy question must not call tool nodes")
 
-    monkeypatch.setattr(agent_graph, "lookup_incident", _forbidden_tool)
-    monkeypatch.setattr(agent_graph, "lookup_inventory", _forbidden_tool)
+    monkeypatch.setattr(agent_graph.mcp_client, "lookup_incident_via_mcp", _forbidden_tool)
+    monkeypatch.setattr(agent_graph.mcp_client, "lookup_inventory_via_mcp", _forbidden_tool)
 
     result = run_agent(CANCELLATION_QUESTION)
     trace = get_trace(result["trace_id"])
@@ -403,7 +403,7 @@ def test_generator_policy_run_passes_rag_routing_eval(monkeypatch) -> None:
 
 def test_generator_hybrid_run_passes_both_sources_eval(monkeypatch) -> None:
     """Part 2 anti-rot: policy+ticket → tool then RAG with facts cited."""
-    monkeypatch.setattr(agent_graph, "lookup_incident", lambda payload, **kw: _incident_ok())
+    monkeypatch.setattr(agent_graph.mcp_client, "lookup_incident_via_mcp", lambda payload, **kw: _incident_ok())
     monkeypatch.setattr(
         rag_pipeline, "retrieve", lambda q, **kw: [_payload("fee 50 USD")]
     )
@@ -420,11 +420,11 @@ def test_generator_hybrid_run_passes_both_sources_eval(monkeypatch) -> None:
 
 
 def test_generator_tool_failure_passes_fallback_eval(monkeypatch) -> None:
-    """Optional Part 2: unavailable API → honest fallback."""
+    """Optional Part 2: unavailable MCP → honest fallback."""
     failed = IncidentToolOutput(
         ok=False, error="timeout", message=INCIDENT_TOOL_FALLBACK
     )
-    monkeypatch.setattr(agent_graph, "lookup_incident", lambda payload, **kw: failed)
+    monkeypatch.setattr(agent_graph.mcp_client, "lookup_incident_via_mcp", lambda payload, **kw: failed)
 
     def _forbidden(*args, **kwargs):
         raise AssertionError("fallback must not call RAG")

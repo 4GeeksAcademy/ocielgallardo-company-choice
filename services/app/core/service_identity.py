@@ -5,6 +5,10 @@ Implements an OAuth2 *client-credentials* style grant for non-human callers
 
 - ``POST /auth/token`` exchanges ``client_id`` + ``client_secret`` for a
   short-lived JWT with ``typ=service`` and read-only scopes.
+- Service tokens are signed **RS256** by :mod:`services.app.core.oauth_keys`
+  and carry ``iss``/``aud``/``kid`` so resource servers (the MCP server via
+  ``mcpauth``) can verify them from ``/.well-known/jwks.json`` — the symmetric
+  ``SECRET_KEY`` only ever signs human sessions.
 - Protected routes verify the signature, the ``service`` type marker, and
   that the client is still registered (immediate revocation).
 - Human user JWTs (``sub`` = integer user id, no ``typ`` claim) are never
@@ -25,10 +29,16 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt
 from tinydb import Query
 
+from services.app.core import oauth_keys
 from services.app.core.database import service_clients_table
-from services.app.core.security import ALGORITHM, SECRET_KEY, pwd_context
+from services.app.core.security import (
+    OAUTH_DEFAULT_AUDIENCE,
+    OAUTH_ISSUER_URL,
+    SERVICE_ALGORITHM,
+    SERVICE_TOKEN_TYPE,
+    pwd_context,
+)
 
-SERVICE_TOKEN_TYPE = "service"
 DEFAULT_SERVICE_SCOPES: tuple[str, ...] = ("incidents:read", "inventory:read")
 SERVICE_TOKEN_EXPIRE_MINUTES = int(os.getenv("SERVICE_TOKEN_EXPIRE_MINUTES", "15"))
 
@@ -92,21 +102,38 @@ def get_service_client(client_id: str) -> dict | None:
     return rows[0] if rows else None
 
 
-def create_service_token(client_id: str, scopes: tuple[str, ...] | list[str]) -> str:
-    """Mint a short-lived service JWT (never handed to humans)."""
+def create_service_token(
+    client_id: str,
+    scopes: tuple[str, ...] | list[str],
+    *,
+    audience: str | None = None,
+) -> str:
+    """Mint a short-lived RS256 service JWT (never handed to humans).
+
+    ``aud`` defaults to ``OAUTH_TOKEN_AUDIENCE`` (else the issuer); callers
+    targeting a specific resource (e.g. the MCP endpoint) pass it explicitly.
+    """
     now = datetime.now(timezone.utc)
     payload = {
         "sub": f"svc:{client_id}",
         "typ": SERVICE_TOKEN_TYPE,
+        "client_id": client_id,
         "scope": " ".join(scopes),
+        "iss": OAUTH_ISSUER_URL,
+        "aud": (audience or OAUTH_DEFAULT_AUDIENCE).rstrip("/"),
         "iat": now,
         "exp": now + timedelta(minutes=SERVICE_TOKEN_EXPIRE_MINUTES),
     }
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(
+        payload,
+        oauth_keys.get_signing_pem(),
+        algorithm=SERVICE_ALGORITHM,
+        headers={"kid": oauth_keys.get_kid()},
+    )
 
 
 def grant_client_credentials(
-    client_id: str, client_secret: str
+    client_id: str, client_secret: str, *, audience: str | None = None
 ) -> ServiceTokenGrant | None:
     """Exchange client credentials for a service token; None = rejected."""
     client = get_service_client(client_id)
@@ -119,7 +146,7 @@ def grant_client_credentials(
         return None
     scopes = tuple(client.get("scopes") or DEFAULT_SERVICE_SCOPES)
     return ServiceTokenGrant(
-        access_token=create_service_token(client_id, scopes),
+        access_token=create_service_token(client_id, scopes, audience=audience),
         expires_in=SERVICE_TOKEN_EXPIRE_MINUTES * 60,
         scope=" ".join(scopes),
     )

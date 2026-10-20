@@ -38,6 +38,17 @@ services:
     volumes:
       - ./:/app
 
+  mcp:
+    # Base compose builds the MCP service; the overlay only adds hot reload.
+    command: >
+      uvicorn incidents_inventory_mcp.app:app
+      --app-dir /app/mcps/incidents-inventory-mcp
+      --host 0.0.0.0
+      --port 8100
+      --reload
+    volumes:
+      - ./:/app
+
   worker:
     build:
       context: ./services
