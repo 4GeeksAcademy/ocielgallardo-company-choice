@@ -374,6 +374,21 @@ existing graph (no new nodes), so spans and eval contracts stay intact:
 5. The proposal is PHI-screened before it is shown; clean proposals are asked
    inside the same answer (`PROPOSAL_QUESTION_ES` / `_EN`), PHI proposals are
    refused explicitly with reason codes only (matched text is never stored).
+6. The response carries `memory_proposal_pending` (boolean) when a proposal
+   was just asked — `run_agent` sets it from the proposal action and
+   `AgentQueryResponse` exposes it. Only the flag crosses the API, never the
+   proposed fact.
+
+### UI surface (backoffice Knowledge panel)
+
+When `memory_proposal_pending` is true, `KnowledgeQueryPanel` shows three
+quick actions under the answer (built on the `ui/Button` primitive,
+`design.md` §11): **Yes, remember it** / **No, don't store it** / **Correct
+it** (inline box for the edited fact). The buttons only send text the agent
+already classifies (`approve` / `reject` / `edit`), so the UI holds no memory
+logic. Labels are EN-only; the classifier understands them in any
+conversation language. Manual pass:
+`docs/memory/evidence/agent-memory-ui-test-battery.md`.
 
 ### Safety and retention
 

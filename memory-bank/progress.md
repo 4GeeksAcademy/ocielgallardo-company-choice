@@ -51,6 +51,15 @@
   unchanged, decision audited) and a PHI refusal; transcripts +
   memorable/non-memorable examples in
   `docs/memory/evidence/agent-memory-evidence.md`.
+- **UI pass (post-PR review)**: `run_agent` now returns
+  `memory_proposal_pending` and `AgentQueryResponse` exposes it (boolean only,
+  never the proposed fact); the backoffice Knowledge panel renders three
+  quick actions under the answer (`Yes, remember it` / `No, don't store it` /
+  `Correct it`) built on the `ui/Button` primitive with brand-token colors
+  (`design.md` §11.3/§11.5); buttons are EN-only (classifier understands
+  them in any language — known UX asymmetry). Manual browser pass:
+  `docs/memory/evidence/agent-memory-ui-test-battery.md` (7 blocks: no-proposal
+  cases, PHI, approve/reject/correct, silence default-rejection, Spanish).
 - **Tests**: new `tests/pipelines/test_agent_memory.py` +
   `test_agent_graph_memory.py`; existing agent suites adapted to the combined
   call (`_combined` adapter); autouse offline fixtures in
