@@ -6,23 +6,27 @@ import { healthcoreRequest } from "@/lib/services/healthcoreClient";
 interface KnowledgeQueryResponse {
   question: string;
   answer: string;
+  memory_proposal_pending?: boolean;
 }
+
+// Quick replies the agent already interprets via its memory-pending
+// classification step. They only send text — the UI holds no memory logic.
+const APPROVE_REPLY = "Yes, save that for next time.";
+const REJECT_REPLY = "No, don't store that.";
+const CORRECT_HINT = "Actually, the correct fact is: ";
 
 export function KnowledgeQueryPanel() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<KnowledgeQueryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [correcting, setCorrecting] = useState(false);
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    const trimmed = question.trim();
-    if (trimmed.length < 3 || loading) {
-      return;
-    }
+  async function ask(rawQuestion: string) {
     setLoading(true);
     setError(null);
     setAnswer(null);
+    setCorrecting(false);
     try {
       // Support agent (Part 2): the compiled LangGraph auto-routes each
       // question to clinic policies (RAG), live tickets, or live stock.
@@ -30,7 +34,7 @@ export function KnowledgeQueryPanel() {
         "/agent/query",
         {
           method: "POST",
-          body: JSON.stringify({ question: trimmed }),
+          body: JSON.stringify({ question: rawQuestion }),
         }
       );
       setAnswer(result);
@@ -40,6 +44,29 @@ export function KnowledgeQueryPanel() {
       setLoading(false);
     }
   }
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    const trimmed = question.trim();
+    if (trimmed.length < 3 || loading) {
+      return;
+    }
+    setQuestion("");
+    await ask(trimmed);
+  }
+
+  async function handleMemoryDecision(reply: string) {
+    if (loading) {
+      return;
+    }
+    await ask(reply);
+  }
+
+  function handleCorrect() {
+    setCorrecting(true);
+  }
+
+  const proposalPending = Boolean(answer?.memory_proposal_pending);
 
   return (
     <div className="space-y-4">
@@ -85,6 +112,79 @@ export function KnowledgeQueryPanel() {
           <p className="text-sm text-slate-900 dark:text-slate-50">
             {answer.answer}
           </p>
+
+          {proposalPending && !loading && !correcting && (
+            <div className="space-y-2 border-t border-slate-200 pt-3 dark:border-slate-700">
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                The agent asked whether to remember something. Quick reply:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleMemoryDecision(APPROVE_REPLY)}
+                  className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  disabled={loading}
+                >
+                  Yes, remember it
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMemoryDecision(REJECT_REPLY)}
+                  className="rounded-md bg-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-300 disabled:opacity-50 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+                  disabled={loading}
+                >
+                  No, don&apos;t store it
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCorrect}
+                  className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
+                  disabled={loading}
+                >
+                  Correct it
+                </button>
+              </div>
+            </div>
+          )}
+
+          {proposalPending && correcting && (
+            <div className="space-y-2 border-t border-slate-200 pt-3 dark:border-slate-700">
+              <label
+                htmlFor="memory-correction"
+                className="block text-xs font-medium text-slate-600 dark:text-slate-300"
+              >
+                Type the correct fact and send — the agent will store your
+                version instead.
+              </label>
+              <textarea
+                id="memory-correction"
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                rows={2}
+                maxLength={1000}
+                placeholder={CORRECT_HINT}
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleMemoryDecision(question.trim())}
+                  disabled={question.trim().length < 3 || loading}
+                  className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
+                >
+                  Send correction
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCorrecting(false)}
+                  className="rounded-md bg-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
