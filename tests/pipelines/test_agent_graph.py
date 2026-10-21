@@ -110,6 +110,8 @@ def test_state_holds_expected_keys() -> None:
         "session_id",
         "memory_context",
         "proposal",
+        "scope_decision",
+        "scope_reasons",
     }
 
 
@@ -207,7 +209,7 @@ def test_honest_node_generates_from_empty_context(monkeypatch) -> None:
 def test_route_question() -> None:
     assert route_question(_state(question="   ")) == "refuse"
     assert route_question(_state(question="")) == "refuse"
-    assert route_question(_state(question="hello?")) == "decide_route"
+    assert route_question(_state(question="hello?")) == "scope_check"
 
 
 def test_route_after_decide() -> None:
@@ -295,6 +297,7 @@ def test_run_agent_produces_queryable_trace(monkeypatch) -> None:
     assert trace["sources_used"] == ["rag"]
     assert [span["node"] for span in trace["spans"]] == [
         "receive",
+        "scope_check",
         "decide_route",
         "retrieve",
         "generate",
@@ -351,6 +354,7 @@ def test_run_agent_empty_context_routes_to_honest(monkeypatch) -> None:
     trace = get_trace(result["trace_id"])
     assert [span["node"] for span in trace["spans"]] == [
         "receive",
+        "scope_check",
         "decide_route",
         "retrieve",
         "honest",
@@ -425,6 +429,7 @@ def test_run_agent_ticket_uses_incident_mcp_tool_not_rag(monkeypatch) -> None:
     assert result["sources_used"] == ["incidents"]
     assert [span["node"] for span in trace["spans"]] == [
         "receive",
+        "scope_check",
         "decide_route",
         "lookup_incident",
         "answer_from_tool",
@@ -448,6 +453,7 @@ def test_run_agent_incident_tool_fallback_on_failure(monkeypatch) -> None:
     assert result["answer"] == INCIDENT_TOOL_FALLBACK
     assert [span["node"] for span in trace["spans"]] == [
         "receive",
+        "scope_check",
         "decide_route",
         "lookup_incident",
         "tool_fallback",
@@ -486,6 +492,7 @@ def test_run_agent_stock_uses_inventory_mcp_tool(monkeypatch) -> None:
     assert result["sources_used"] == ["inventory"]
     assert [span["node"] for span in trace["spans"]] == [
         "receive",
+        "scope_check",
         "decide_route",
         "lookup_inventory",
         "answer_from_tool",
@@ -515,6 +522,7 @@ def test_run_agent_hybrid_cites_tool_facts_deterministically(
     assert result["sources_used"] == ["incidents", "rag"]
     assert [span["node"] for span in trace["spans"]] == [
         "receive",
+        "scope_check",
         "decide_route",
         "lookup_incident",
         "retrieve",

@@ -60,6 +60,16 @@ def _span_nodes(trace: dict) -> list[str]:
     return [span["node"] for span in trace["spans"]]
 
 
+# Scope-guard nodes run before domain routing (hito 26 Part 2). Golden
+# fixtures capture the domain path only, so order evals compare against the
+# filtered sequence; live traces include the extra scope_check span.
+_SCOPE_SPAN_NODES = frozenset({"scope_check", "scope_refusal", "casual_redirect"})
+
+
+def _domain_span_nodes(trace: dict) -> list[str]:
+    return [node for node in _span_nodes(trace) if node not in _SCOPE_SPAN_NODES]
+
+
 # --- Pure eval predicates: trace (and answer) in, violation out (None = pass) ---
 
 
@@ -73,10 +83,11 @@ def _combined(fn):
 
 
 def eval_routing_order(trace: dict) -> str | None:
-    """Happy RAG path: receive → decide_route → retrieve → generate."""
+    """Happy RAG path: receive → scope_check → decide_route → retrieve → generate."""
     expected = ["receive", "decide_route", "retrieve", "generate"]
-    if _span_nodes(trace) != expected:
-        return f"expected {expected}, got {_span_nodes(trace)}"
+    got = _domain_span_nodes(trace)
+    if got != expected:
+        return f"expected {expected}, got {got} (all: {_span_nodes(trace)})"
     return None
 
 
@@ -93,8 +104,9 @@ def eval_blank_short_circuit(trace: dict) -> str | None:
 def eval_empty_context_honesty(trace: dict) -> str | None:
     """Empty retrieval must route to honest instead of forcing generate."""
     expected = ["receive", "decide_route", "retrieve", "honest"]
-    if _span_nodes(trace) != expected:
-        return f"expected {expected}, got {_span_nodes(trace)}"
+    got = _domain_span_nodes(trace)
+    if got != expected:
+        return f"expected {expected}, got {got} (all: {_span_nodes(trace)})"
     if trace["n_chunks"] != 0:
         return f"expected n_chunks 0, got {trace['n_chunks']}"
     return None

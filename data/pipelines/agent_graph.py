@@ -8,8 +8,16 @@ traces, and checkpointing.
 
 Node contract (binding):
 - ``receive_node`` normalizes the question only (no retrieval, no LLM, no tools).
+- ``scope_check_node`` screens the message for agent scope (jailbreak /
+  personal task / casual / domain) via ``agent_scope_guard.evaluate_scope``.
+- ``scope_refusal_node`` returns the fixed bilingual refusal for jailbreak /
+  personal-task messages (no LLM, no tools, no memory proposal).
+- ``casual_redirect_node`` answers casual small talk with one constrained
+  LLM call (canned bilingual fallback) that redirects to HealthCore topics.
 - ``decide_route_node`` classifies RAG vs incidents vs inventory vs hybrid.
-- ``retrieve_node`` calls ONLY ``retrieve(question)``.
+- ``retrieve_node`` calls ONLY ``retrieve(question)``; retrieved chunks pass
+  ``agent_content_guard.sanitize_context_chunk`` (external content is data,
+  never instructions).
 - ``generate_node`` calls ONLY ``generate_answer(question, context)``.
 - ``lookup_incident_node`` / ``lookup_inventory_node`` call ONLY their
   MCP tool (MCP is the single transport — no direct HTTP fallback; never RAG,
@@ -59,7 +67,9 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from data.pipelines import (
+    agent_content_guard,
     agent_memory,
+    agent_scope_guard,
     mcp_client,
     memory_phi_guard,
     memory_proposer,
@@ -115,6 +125,8 @@ class AgentState(TypedDict):
     scopes the pending proposal, ``memory_context`` holds the approved facts
     relevant to this question, ``proposal`` carries the candidate memory
     emitted by the single structured generation call (empty when none).
+    Scope fields are set by ``scope_check_node``
+    (``domain|casual|personal_task|jailbreak`` + reason codes).
     """
 
     question: str
@@ -126,6 +138,8 @@ class AgentState(TypedDict):
     session_id: str
     memory_context: list[dict]
     proposal: dict
+    scope_decision: str
+    scope_reasons: list[str]
 
 
 DEFAULT_MEMORY_SESSION = "default"
@@ -329,6 +343,96 @@ def receive_node(state: AgentState) -> dict:
         )
 
 
+def scope_check_node(state: AgentState) -> dict:
+    """Screen the message for agent scope (SEC-114 harness).
+
+    Deterministic jailbreak/personal-task screens run before any LLM call;
+    the model-assisted intent classifier only runs on the remainder.
+    """
+    started = time.time()
+    decision = "domain"
+    reasons: list[str] = []
+    try:
+        verdict = agent_scope_guard.evaluate_scope(state["question"])
+        decision = verdict.decision
+        reasons = list(verdict.reasons)
+        return {"scope_decision": decision, "scope_reasons": reasons}
+    finally:
+        _record_span(
+            "scope_check",
+            started,
+            time.time(),
+            {
+                "scope_decision": decision,
+                "scope_reasons": reasons,
+                "failure_type": (
+                    agent_scope_guard.scope_failure_type(decision)
+                    if decision != "domain"
+                    else None
+                ),
+            },
+        )
+
+
+def scope_refusal_node(state: AgentState) -> dict:
+    """Fixed bilingual refusal for jailbreak / personal-task messages.
+
+    No LLM, no tools, no memory proposal — the task is never performed and
+    the system prompt is never revealed or changed.
+    """
+    started = time.time()
+    decision = state.get("scope_decision") or "personal_task"
+    failure_type = agent_scope_guard.scope_failure_type(decision)
+    answer = ""
+    try:
+        answer = agent_scope_guard.refusal_message(
+            decision, state["question"]
+        )
+        return {"answer": answer}
+    finally:
+        _record_span(
+            "scope_refusal",
+            started,
+            time.time(),
+            {
+                "scope_decision": decision,
+                "failure_type": failure_type,
+                "answer_chars": len(answer),
+                "route": "scope_refusal",
+            },
+        )
+
+
+def casual_redirect_node(state: AgentState) -> dict:
+    """Answer casual small talk with one constrained LLM call + redirect.
+
+    Canned bilingual fallback when the model is unavailable so a greeting
+    never crashes the run and never becomes a general-purpose answer.
+    """
+    started = time.time()
+    answer = ""
+    used_fallback = False
+    try:
+        answer = agent_scope_guard.generate_casual_redirect(state["question"])
+        used_fallback = answer in (
+            agent_scope_guard.CASUAL_FALLBACK_EN,
+            agent_scope_guard.CASUAL_FALLBACK_ES,
+        )
+        return {"answer": answer}
+    finally:
+        _record_span(
+            "casual_redirect",
+            started,
+            time.time(),
+            {
+                "answer_chars": len(answer),
+                "used_fallback": used_fallback,
+                "failure_type": agent_content_guard.FAILURE_CONTENT,
+                "route": "scope_casual",
+            },
+        )
+
+
 def decide_route_node(state: AgentState) -> dict:
     """Classify which source(s) the question needs: RAG, tool, or both."""
     started = time.time()
@@ -350,11 +454,23 @@ def decide_route_node(state: AgentState) -> dict:
 
 
 def retrieve_node(state: AgentState) -> dict:
-    """Retrieve policy chunks for ``state['question']`` via ``retrieve()``."""
+    """Retrieve policy chunks for ``state['question']`` via ``retrieve()``.
+
+    Every retrieved chunk passes the content-isolation guard: instruction-
+    like text *inside a document* is data, never a system instruction, and
+    is neutralized before it can reach the prompt.
+    """
     started = time.time()
     context: list[dict] = []
+    sanitized_hits = 0
     try:
-        context = rag_pipeline.retrieve(state["question"])
+        context = [
+            agent_content_guard.sanitize_context_chunk(chunk)
+            for chunk in rag_pipeline.retrieve(state["question"])
+        ]
+        sanitized_hits = sum(
+            1 for chunk in context if chunk.get("content_guard")
+        )
         sources = list(state.get("sources_used") or [])
         if "rag" not in sources:
             sources = [*sources, "rag"]
@@ -370,6 +486,7 @@ def retrieve_node(state: AgentState) -> dict:
                     {str(chunk.get("source_document", "")) for chunk in context}
                 ),
                 "source_kind": "rag",
+                "content_sanitized": sanitized_hits,
                 "hybrid": is_hybrid_route(state.get("route")),
             },
         )
@@ -641,6 +758,30 @@ def synthesize_hybrid_node(state: AgentState) -> dict:
 # --- Memory orchestration (explicit interface in ``agent_memory``) ---
 
 
+def _force_reject_pending(session_id: str) -> dict:
+    """Discard any pending proposal without the decision LLM (jailbreak path).
+
+    Injection text must never approve a pending memory. The outcome is
+    audited as ``default_rejected`` with ``decision="jailbreak_precheck"``.
+    """
+    store = agent_memory.get_store()
+    pending = store.get_pending(session_id)
+    if pending is None:
+        return {"action": "none"}
+    store.append_audit(
+        agent_memory.make_audit(
+            agent_memory.ACTION_DEFAULT_REJECTED,
+            session_id=session_id,
+            proposal_id=pending.id,
+            scope=pending.scope,
+            category=pending.category,
+            decision="jailbreak_precheck",
+        )
+    )
+    store.clear_pending(session_id)
+    return {"action": "default_rejected"}
+
+
 def _resolve_pending_memory(session_id: str, question: str) -> dict:
     """Close the pending proposal, if any, before answering this message.
 
@@ -851,6 +992,20 @@ def run_agent(question: str, session_id: str | None = None) -> dict:
     session_id = (session_id or "").strip() or DEFAULT_MEMORY_SESSION
     trace_id = uuid.uuid4().hex
     started = time.time()
+    # Deterministic pre-check (no LLM): a jailbreak must not resolve or
+    # approve memory proposals, and must not receive injected facts.
+    # Counted separately from the scope-check activation — this is the
+    # memory-safety layer firing, not the scope layer.
+    pre_jailbreak = bool(agent_scope_guard.detect_jailbreak(question))
+    if pre_jailbreak:
+        agent_content_guard.record_activation(
+            "memory_precheck_reject", agent_content_guard.FAILURE_SECURITY
+        )
+        logger.warning(
+            "guardrail memory_precheck_reject failure_type=%s session=%s",
+            agent_content_guard.FAILURE_SECURITY,
+            session_id,
+        )
     trace: dict = {
         "trace_id": trace_id,
         "thread_id": trace_id,
@@ -865,6 +1020,7 @@ def run_agent(question: str, session_id: str | None = None) -> dict:
         "sources_used": [],
         "route": None,
         "memory": {},
+        "scope": {"decision": None, "reasons": []},
         "spans": [],
         "error": None,
     }
@@ -872,31 +1028,39 @@ def run_agent(question: str, session_id: str | None = None) -> dict:
     token = _current_trace_id.set(trace_id)
     try:
         # 1) Resolve any pending proposal BEFORE answering this message.
+        # A jailbreak attempt is force-rejected without the decision LLM so
+        # injection text can never approve a pending proposal.
         resolution: dict = {"action": "none"}
         try:
             agent_memory.maybe_sweep()
-            resolution = _resolve_pending_memory(session_id, question)
+            if pre_jailbreak:
+                resolution = _force_reject_pending(session_id)
+            else:
+                resolution = _resolve_pending_memory(session_id, question)
         except Exception:
             logger.exception("memory: pending resolution failed")
             resolution = {"action": "error"}
 
         # 2) Load approved facts relevant to this question (explicit store read).
+        # Skipped for jailbreak attempts: injection text must not receive
+        # memory-injected context.
         memory_context: list[dict] = []
-        try:
-            store = agent_memory.get_store()
-            entries = agent_memory.select_relevant(
-                store.list_entries(), question
-            )
-            memory_context = [
-                {
-                    "scope": entry.scope,
-                    "category": entry.category,
-                    "fact": entry.fact,
-                }
-                for entry in entries
-            ]
-        except Exception:
-            logger.exception("memory: context load failed")
+        if not pre_jailbreak:
+            try:
+                store = agent_memory.get_store()
+                entries = agent_memory.select_relevant(
+                    store.list_entries(), question
+                )
+                memory_context = [
+                    {
+                        "scope": entry.scope,
+                        "category": entry.category,
+                        "fact": entry.fact,
+                    }
+                    for entry in entries
+                ]
+            except Exception:
+                logger.exception("memory: context load failed")
 
         result = graph.invoke(
             {
@@ -909,6 +1073,8 @@ def run_agent(question: str, session_id: str | None = None) -> dict:
                 "session_id": session_id,
                 "memory_context": memory_context,
                 "proposal": {},
+                "scope_decision": "",
+                "scope_reasons": [],
             },
             {"configurable": {"thread_id": trace_id}},
         )
@@ -916,20 +1082,24 @@ def run_agent(question: str, session_id: str | None = None) -> dict:
         context = result.get("context", [])
         sources_used = list(result.get("sources_used") or [])
         answer = result.get("answer") or ""
+        scope_decision = str(result.get("scope_decision") or "domain")
 
         # 3) Self-evaluate the finished answer and act on the outcome.
+        # Scope refusals never propose memory: there is nothing worth
+        # remembering from a jailbreak or an off-domain personal request.
         proposal_summary: dict = {"action": "none"}
-        try:
-            proposal_summary = _propose_memory(
-                session_id,
-                question,
-                answer,
-                result.get("route"),
-                result.get("proposal") or None,
-            )
-        except Exception:
-            logger.exception("memory: proposal step failed")
-            proposal_summary = {"action": "error"}
+        if scope_decision not in ("jailbreak", "personal_task"):
+            try:
+                proposal_summary = _propose_memory(
+                    session_id,
+                    question,
+                    answer,
+                    result.get("route"),
+                    result.get("proposal") or None,
+                )
+            except Exception:
+                logger.exception("memory: proposal step failed")
+                proposal_summary = {"action": "error"}
 
         suffixes = [
             suffix
@@ -943,6 +1113,15 @@ def run_agent(question: str, session_id: str | None = None) -> dict:
             answer = f"{answer}{''.join(suffixes)}"
             result["answer"] = answer
 
+        # 4) Output guard: last gate before the answer reaches the user.
+        # Catches empty answers, leaked internal prompt markers and
+        # PHI-like content; fail-closed with a safe bilingual fallback
+        # (never echoing the rejected text).
+        output_verdict = agent_content_guard.validate_output(answer)
+        if not output_verdict.allowed:
+            answer = output_verdict.safe_answer
+            result["answer"] = answer
+
         trace.update(
             {
                 "finished_at": finished,
@@ -954,6 +1133,15 @@ def run_agent(question: str, session_id: str | None = None) -> dict:
                 ),
                 "sources_used": sources_used,
                 "route": result.get("route") or None,
+                "scope": {
+                    "decision": scope_decision,
+                    "reasons": list(result.get("scope_reasons") or []),
+                },
+                "output_guard": {
+                    "allowed": output_verdict.allowed,
+                    "reasons": list(output_verdict.reasons),
+                    "failure_type": output_verdict.failure_type,
+                },
                 "memory": {
                     "n_memory_facts": len(memory_context),
                     "resolution": resolution.get("action", "none"),
@@ -996,9 +1184,21 @@ def run_agent(question: str, session_id: str | None = None) -> dict:
 # --- Conditional edges: explicit routing, never a hardcoded straight line ---
 
 
-def route_question(state: AgentState) -> Literal["refuse", "decide_route"]:
-    """Blank question short-circuits to ``refuse``; otherwise decide source."""
-    return "refuse" if not state["question"].strip() else "decide_route"
+def route_question(state: AgentState) -> Literal["refuse", "scope_check"]:
+    """Blank question short-circuits to ``refuse``; otherwise screen scope."""
+    return "refuse" if not state["question"].strip() else "scope_check"
+
+
+def route_after_scope(
+    state: AgentState,
+) -> Literal["scope_refusal", "casual_redirect", "decide_route"]:
+    """Refuse jailbreak/personal tasks; redirect casual; domain → tools/RAG."""
+    decision = state.get("scope_decision") or "domain"
+    if decision in ("jailbreak", "personal_task"):
+        return "scope_refusal"
+    if decision == "casual":
+        return "casual_redirect"
+    return "decide_route"
 
 
 def route_after_decide(
@@ -1038,6 +1238,9 @@ _checkpointer = MemorySaver()
 
 _builder = StateGraph(AgentState)
 _builder.add_node("receive", receive_node)
+_builder.add_node("scope_check", scope_check_node)
+_builder.add_node("scope_refusal", scope_refusal_node)
+_builder.add_node("casual_redirect", casual_redirect_node)
 _builder.add_node("decide_route", decide_route_node)
 _builder.add_node("retrieve", retrieve_node)
 _builder.add_node("generate", generate_node)
@@ -1050,11 +1253,14 @@ _builder.add_node("answer_from_tool", answer_from_tool_node)
 _builder.add_node("synthesize_hybrid", synthesize_hybrid_node)
 _builder.add_edge(START, "receive")
 _builder.add_conditional_edges("receive", route_question)
+_builder.add_conditional_edges("scope_check", route_after_scope)
 _builder.add_conditional_edges("decide_route", route_after_decide)
 _builder.add_conditional_edges("retrieve", route_context)
 _builder.add_conditional_edges("lookup_incident", route_after_tool)
 _builder.add_conditional_edges("lookup_inventory", route_after_tool)
 _builder.add_edge("refuse", END)
+_builder.add_edge("scope_refusal", END)
+_builder.add_edge("casual_redirect", END)
 _builder.add_edge("honest", END)
 _builder.add_edge("generate", END)
 _builder.add_edge("tool_fallback", END)
