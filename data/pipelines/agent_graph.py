@@ -21,6 +21,21 @@ Node contract (binding):
 - ``refuse_node`` / ``honest_node`` keep the Part 1 blank/empty-context paths.
 - No node imports or calls the monolithic ``query()``.
 
+Memory (Hito 26, orchestrated by :func:`run_agent` around the graph, so the
+node/span contract above stays stable):
+
+1. any **pending proposal** for the session is resolved first — classified
+   against the incoming message (``approve``/``reject``/``edit``/``unrelated``;
+   silence or ambiguity = rejected by default) and written to the audit trail;
+2. approved facts relevant to the question are injected as ``memory_context``
+   (explicit ``agent:memory`` store, never the RAG collections);
+3. the answer-producing paths return answer + ``propuesta_memoria`` from a
+   **single structured call** (``generate_answer_with_proposal``); tool-only
+   paths self-evaluate with one structured call;
+4. a proposal is shown to the user inside the same answer (question at the
+   end) only after the PHI screen passes — otherwise the user gets an explicit
+   HIPAA/UK GDPR refusal and nothing is stored.
+
 The graph is compiled at import time (with a ``MemorySaver`` checkpointer) so
 structural errors fail fast. Services call :func:`run_agent` and read
 ``result["answer"]`` — HTTP still returns ``{question, answer}`` only.
@@ -43,7 +58,13 @@ from typing import Literal, TypedDict
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
-from data.pipelines import mcp_client, rag as rag_pipeline
+from data.pipelines import (
+    agent_memory,
+    mcp_client,
+    memory_phi_guard,
+    memory_proposer,
+    rag as rag_pipeline,
+)
 from data.pipelines.agent_tools import (
     INCIDENT_TOOL_FALLBACK,
     INVENTORY_TOOL_FALLBACK,
@@ -88,7 +109,13 @@ _POLICY_SIGNAL_RE = re.compile(
 
 
 class AgentState(TypedDict):
-    """State travelling between nodes. Tools add route + tool_result only."""
+    """State travelling between nodes. Tools add route + tool_result only.
+
+    Memory fields are set by ``run_agent`` orchestration: ``session_id``
+    scopes the pending proposal, ``memory_context`` holds the approved facts
+    relevant to this question, ``proposal`` carries the candidate memory
+    emitted by the single structured generation call (empty when none).
+    """
 
     question: str
     context: list[dict]
@@ -96,6 +123,62 @@ class AgentState(TypedDict):
     route: str
     tool_result: dict
     sources_used: list[str]
+    session_id: str
+    memory_context: list[dict]
+    proposal: dict
+
+
+DEFAULT_MEMORY_SESSION = "default"
+
+PROPOSAL_QUESTION_ES = (
+    "\n\n¿Quieres que recuerde esto para la próxima vez? Responde sí, "
+    "no o corrígeme."
+)
+PROPOSAL_QUESTION_EN = (
+    "\n\nDo you want me to remember this for next time? Reply yes, no, "
+    "or correct me."
+)
+
+_SAVENOTE_ES = "\n\nGuardado en mi memoria."
+_SAVENOTE_EN = "\n\nSaved to my memory."
+_REJECTNOTE_ES = "\n\nEntendido, no lo guardaré."
+_REJECTNOTE_EN = "\n\nUnderstood — I won't store it."
+
+_ES_MARKERS = (
+    " el ",
+    " la ",
+    " los ",
+    " las ",
+    " un ",
+    " una ",
+    " de ",
+    " del ",
+    " en ",
+    " que ",
+    " con ",
+    " por ",
+    " para ",
+    " se ",
+    " no ",
+    " sí,",
+    " sí ",
+    "gracias",
+    "por favor",
+    "cómo",
+    "cuándo",
+    "próxima",
+    "clínica",
+    "paciente",
+    "recuerda",
+    "guardar",
+    "guarda",
+)
+
+
+def _is_spanish(text: str) -> bool:
+    """Tiny language heuristic so memory prompts follow the user's language."""
+    probe = f" {(text or '').lower()} "
+    return sum(1 for marker in _ES_MARKERS if marker in probe) >= 2
 
 
 # --- Internal per-run trace store (queryable, bounded, no PHI beyond the question) ---
@@ -293,15 +376,27 @@ def retrieve_node(state: AgentState) -> dict:
 
 
 def generate_node(state: AgentState) -> dict:
-    """Generate the answer from ``question`` + already-retrieved ``context``."""
+    """Generate the answer from ``question`` + already-retrieved ``context``.
+
+    Single structured call: the answer the user sees plus an optional memory
+    proposal field (self-evaluation rides on the same call).
+    """
     started = time.time()
     answer = ""
+    proposal: dict | None = None
     try:
-        answer = rag_pipeline.generate_answer(state["question"], state["context"])
-        return {"answer": answer}
+        answer, proposal = rag_pipeline.generate_answer_with_proposal(
+            state["question"],
+            state["context"],
+            memory=state.get("memory_context") or [],
+        )
+        return {"answer": answer, "proposal": proposal or {}}
     finally:
         _record_span(
-            "generate", started, time.time(), {"answer_chars": len(answer)}
+            "generate",
+            started,
+            time.time(),
+            {"answer_chars": len(answer), "has_proposal": bool(proposal)},
         )
 
 
@@ -315,15 +410,26 @@ def refuse_node(state: AgentState) -> dict:
 
 
 def honest_node(state: AgentState) -> dict:
-    """Answer empty retrieval honestly via the existing empty-context path."""
+    """Answer empty retrieval honestly via the existing empty-context path.
+
+    Same single structured call as ``generate`` — answer plus memory field.
+    """
     started = time.time()
     answer = ""
+    proposal: dict | None = None
     try:
-        answer = rag_pipeline.generate_answer(state["question"], [])
-        return {"answer": answer}
+        answer, proposal = rag_pipeline.generate_answer_with_proposal(
+            state["question"],
+            [],
+            memory=state.get("memory_context") or [],
+        )
+        return {"answer": answer, "proposal": proposal or {}}
     finally:
         _record_span(
-            "honest", started, time.time(), {"answer_chars": len(answer)}
+            "honest",
+            started,
+            time.time(),
+            {"answer_chars": len(answer), "has_proposal": bool(proposal)},
         )
 
 
@@ -478,21 +584,26 @@ def synthesize_hybrid_node(state: AgentState) -> dict:
     started = time.time()
     answer = ""
     tool_ok = False
+    proposal: dict | None = None
     try:
         tool_result = state.get("tool_result") or {}
         sources = list(state.get("sources_used") or [])
         tool_text, tool_ok = _tool_facts_text(tool_result, sources)
         policy = list(state.get("context") or [])
         if tool_ok and policy:
-            policy_text = rag_pipeline.generate_answer(
-                state["question"], policy
+            policy_text, proposal = rag_pipeline.generate_answer_with_proposal(
+                state["question"],
+                policy,
+                memory=state.get("memory_context") or [],
             )
             answer = f"{tool_text}\n\n{policy_text}"
         elif tool_ok:
             answer = tool_text
         elif policy:
-            policy_text = rag_pipeline.generate_answer(
-                state["question"], policy
+            policy_text, proposal = rag_pipeline.generate_answer_with_proposal(
+                state["question"],
+                policy,
+                memory=state.get("memory_context") or [],
             )
             fallback = str(
                 tool_result.get("message")
@@ -512,7 +623,7 @@ def synthesize_hybrid_node(state: AgentState) -> dict:
                     else INCIDENT_TOOL_FALLBACK
                 )
             )
-        return {"answer": answer}
+        return {"answer": answer, "proposal": proposal or {}}
     finally:
         _record_span(
             "synthesize_hybrid",
@@ -522,8 +633,364 @@ def synthesize_hybrid_node(state: AgentState) -> dict:
                 "answer_chars": len(answer),
                 "tool_ok": tool_ok,
                 "n_policy_chunks": len(state.get("context") or []),
+                "has_proposal": bool(proposal),
             },
         )
+
+
+# --- Memory orchestration (explicit interface in ``agent_memory``) ---
+
+
+def _resolve_pending_memory(session_id: str, question: str) -> dict:
+    """Close the pending proposal, if any, before answering this message.
+
+    The user's message is classified against the proposal with an explicit
+    label. Silence, ambiguity or an unrelated message resolve as
+    ``default_rejected`` — approval never happens by omission. Every outcome
+    (approved, rejected, edited, PHI-blocked, default) lands in the audit
+    trail; the pending slot is always cleared so only one proposal can be
+    open per session.
+    """
+    store = agent_memory.get_store()
+    pending = store.get_pending(session_id)
+    if pending is None:
+        return {"action": "none"}
+
+    decision = memory_proposer.classify_decision(pending.model_dump(), question)
+    label = decision.get("label") or "unrelated"
+    edited_fact = decision.get("edited_fact")
+    base = {
+        "session_id": session_id,
+        "proposal_id": pending.id,
+        "scope": pending.scope,
+        "category": pending.category,
+    }
+    note = None
+    action = "default_rejected"
+
+    if label == "approve":
+        verdict = memory_phi_guard.scan(pending.fact)
+        if not verdict.allowed:
+            action = "rejected_phi"
+            store.append_audit(
+                agent_memory.make_audit(
+                    agent_memory.ACTION_REJECTED_PHI,
+                    **base,
+                    phi_reasons=verdict.reasons,
+                )
+            )
+        else:
+            entry = agent_memory.make_entry(
+                scope=pending.scope,
+                category=pending.category,
+                fact=pending.fact,
+                session_id=session_id,
+                source_proposal_id=pending.id,
+            )
+            store.put_entry(entry)
+            action = "approved"
+            store.append_audit(
+                agent_memory.make_audit(
+                    agent_memory.ACTION_APPROVED,
+                    **base,
+                    fact=pending.fact,
+                    decision="approve",
+                )
+            )
+            note = _SAVENOTE_ES if _is_spanish(question) else _SAVENOTE_EN
+    elif label == "edit":
+        verdict = memory_phi_guard.scan(edited_fact or "")
+        if not verdict.allowed or not edited_fact:
+            action = "rejected_phi" if not verdict.allowed else "default_rejected"
+            audit_kwargs = dict(base)
+            if not verdict.allowed:
+                audit_kwargs["phi_reasons"] = verdict.reasons
+            store.append_audit(
+                agent_memory.make_audit(
+                    agent_memory.ACTION_REJECTED_PHI
+                    if not verdict.allowed
+                    else agent_memory.ACTION_DEFAULT_REJECTED,
+                    **audit_kwargs,
+                )
+            )
+        else:
+            entry = agent_memory.make_entry(
+                scope=pending.scope,
+                category=pending.category,
+                fact=edited_fact,
+                session_id=session_id,
+                source_proposal_id=pending.id,
+            )
+            store.put_entry(entry)
+            action = "edited"
+            store.append_audit(
+                agent_memory.make_audit(
+                    agent_memory.ACTION_EDITED,
+                    **base,
+                    decision="edit",
+                    edited_fact=edited_fact,
+                )
+            )
+            note = _SAVENOTE_ES if _is_spanish(question) else _SAVENOTE_EN
+    elif label == "reject":
+        action = "rejected"
+        store.append_audit(
+            agent_memory.make_audit(
+                agent_memory.ACTION_REJECTED,
+                **base,
+                decision="reject",
+            )
+        )
+        note = _REJECTNOTE_ES if _is_spanish(question) else _REJECTNOTE_EN
+    else:  # unrelated / unknown label → discarded by default, audited
+        action = "default_rejected"
+        store.append_audit(
+            agent_memory.make_audit(
+                agent_memory.ACTION_DEFAULT_REJECTED,
+                **base,
+                decision=label,
+            )
+        )
+
+    store.clear_pending(session_id)
+    return {"action": action, "note": note, "proposal_id": pending.id}
+
+
+def _propose_memory(
+    session_id: str,
+    question: str,
+    answer: str,
+    route: str | None,
+    candidate: dict | None,
+) -> dict:
+    """Self-evaluate the finished answer: propose, or record "nothing to keep".
+
+    ``candidate`` comes from the single structured call on LLM answer paths;
+    tool-only paths self-evaluate with one structured call. The PHI screen
+    runs **before** the proposal is shown to the user (HealthCore
+    requirement); a blocked proposal produces an explicit refusal and an
+    audit record with reason codes only (never the PHI text).
+    """
+    store = agent_memory.get_store()
+    proposal = memory_proposer.normalize_proposal(candidate)
+    if proposal is None and route in ("incidents", "inventory"):
+        proposal = memory_proposer.propose_from_interaction(question, answer)
+    if not proposal:
+        return {"action": "none"}
+
+    base = {
+        "session_id": session_id,
+        "scope": proposal.get("scope", ""),
+        "category": proposal.get("category", ""),
+    }
+    verdict = memory_phi_guard.scan_proposal(proposal)
+    if not verdict.allowed:
+        store.append_audit(
+            agent_memory.make_audit(
+                agent_memory.ACTION_REJECTED_PHI,
+                **base,
+                phi_reasons=verdict.reasons,
+            )
+        )
+        return {
+            "action": "rejected_phi",
+            "phi_reasons": verdict.reasons,
+            "suffix": memory_phi_guard.PHI_REFUSAL_ES
+            if _is_spanish(question)
+            else memory_phi_guard.PHI_REFUSAL_EN,
+        }
+
+    pending = agent_memory.make_pending(
+        session_id=session_id,
+        scope=proposal.get("scope", ""),
+        category=proposal.get("category", ""),
+        fact=proposal.get("fact", ""),
+        reason=proposal.get("reason", ""),
+        source_message=question,
+    )
+    if not store.set_pending(pending):
+        # One open proposal per session: never stack a second one.
+        store.append_audit(
+            agent_memory.make_audit(
+                agent_memory.ACTION_SKIPPED_PENDING, **base
+            )
+        )
+        return {"action": "skipped_pending"}
+
+    store.append_audit(
+        agent_memory.make_audit(
+            agent_memory.ACTION_PROPOSED,
+            **base,
+            proposal_id=pending.id,
+            fact=pending.fact,
+            status=agent_memory.STATUS_PENDING,
+            expires_at=pending.expires_at,
+        )
+    )
+    return {
+        "action": "proposed",
+        "proposal_id": pending.id,
+        "suffix": PROPOSAL_QUESTION_ES
+        if _is_spanish(question)
+        else PROPOSAL_QUESTION_EN,
+    }
+
+
+def run_agent(question: str, session_id: str | None = None) -> dict:
+    """Run the compiled graph for ``question`` and return the final state + trace id.
+
+    ``session_id`` scopes the memory conversation (one pending proposal per
+    session). Memory failures never break the answer: every memory step is
+    wrapped and degrades to "nothing happened" with a warning log.
+
+    Returns ``{"question": ..., "context": [...], "answer": ..., "route": ...,
+    "tool_result": ..., "sources_used": [...], "session_id": ...,
+    "memory_context": [...], "proposal": ..., "trace_id": ...,
+    "memory_proposal_pending": bool}``.
+    """
+    session_id = (session_id or "").strip() or DEFAULT_MEMORY_SESSION
+    trace_id = uuid.uuid4().hex
+    started = time.time()
+    trace: dict = {
+        "trace_id": trace_id,
+        "thread_id": trace_id,
+        "question": question,
+        "session_id": session_id,
+        "started_at": started,
+        "finished_at": started,
+        "duration_ms": 0.0,
+        "status": "running",
+        "n_chunks": 0,
+        "sources": [],
+        "sources_used": [],
+        "route": None,
+        "memory": {},
+        "spans": [],
+        "error": None,
+    }
+    _store_trace(trace)
+    token = _current_trace_id.set(trace_id)
+    try:
+        # 1) Resolve any pending proposal BEFORE answering this message.
+        resolution: dict = {"action": "none"}
+        try:
+            agent_memory.maybe_sweep()
+            resolution = _resolve_pending_memory(session_id, question)
+        except Exception:
+            logger.exception("memory: pending resolution failed")
+            resolution = {"action": "error"}
+
+        # 2) Load approved facts relevant to this question (explicit store read).
+        memory_context: list[dict] = []
+        try:
+            store = agent_memory.get_store()
+            entries = agent_memory.select_relevant(
+                store.list_entries(), question
+            )
+            memory_context = [
+                {
+                    "scope": entry.scope,
+                    "category": entry.category,
+                    "fact": entry.fact,
+                }
+                for entry in entries
+            ]
+        except Exception:
+            logger.exception("memory: context load failed")
+
+        result = graph.invoke(
+            {
+                "question": question,
+                "context": [],
+                "answer": "",
+                "route": "",
+                "tool_result": {},
+                "sources_used": [],
+                "session_id": session_id,
+                "memory_context": memory_context,
+                "proposal": {},
+            },
+            {"configurable": {"thread_id": trace_id}},
+        )
+        finished = time.time()
+        context = result.get("context", [])
+        sources_used = list(result.get("sources_used") or [])
+        answer = result.get("answer") or ""
+
+        # 3) Self-evaluate the finished answer and act on the outcome.
+        proposal_summary: dict = {"action": "none"}
+        try:
+            proposal_summary = _propose_memory(
+                session_id,
+                question,
+                answer,
+                result.get("route"),
+                result.get("proposal") or None,
+            )
+        except Exception:
+            logger.exception("memory: proposal step failed")
+            proposal_summary = {"action": "error"}
+
+        suffixes = [
+            suffix
+            for suffix in (
+                resolution.get("note"),
+                proposal_summary.get("suffix"),
+            )
+            if suffix
+        ]
+        if suffixes:
+            answer = f"{answer}{''.join(suffixes)}"
+            result["answer"] = answer
+
+        trace.update(
+            {
+                "finished_at": finished,
+                "duration_ms": round((finished - started) * 1000, 2),
+                "status": "success",
+                "n_chunks": len(context),
+                "sources": sorted(
+                    {str(chunk.get("source_document", "")) for chunk in context}
+                ),
+                "sources_used": sources_used,
+                "route": result.get("route") or None,
+                "memory": {
+                    "n_memory_facts": len(memory_context),
+                    "resolution": resolution.get("action", "none"),
+                    "proposal": proposal_summary.get("action", "none"),
+                },
+            }
+        )
+        logger.info(
+            "agent_graph run %s via %s sources=%s memory=%s in %.1fms",
+            trace_id,
+            [span["node"] for span in trace["spans"]],
+            sources_used,
+            f"{trace['memory']['resolution']}/{trace['memory']['proposal']}",
+            trace["duration_ms"],
+        )
+        return {
+            **result,
+            "trace_id": trace_id,
+            # UI hint: the agent just asked whether to remember something, so a
+            # client can offer quick confirm/correct actions. Only the action
+            # label is exposed, never the proposed fact (PHI/PII rule).
+            "memory_proposal_pending": proposal_summary.get("action") == "proposed",
+        }
+    except Exception as exc:
+        finished = time.time()
+        trace.update(
+            {
+                "finished_at": finished,
+                "duration_ms": round((finished - started) * 1000, 2),
+                "status": "error",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+        )
+        logger.exception("agent_graph run %s failed", trace_id)
+        raise
+    finally:
+        _current_trace_id.reset(token)
 
 
 # --- Conditional edges: explicit routing, never a hardcoded straight line ---
@@ -598,81 +1065,6 @@ _builder.add_edge("synthesize_hybrid", END)
 graph = _builder.compile(checkpointer=_checkpointer)
 
 
-def run_agent(question: str) -> dict:
-    """Run the compiled graph for ``question`` and return the final state + trace id.
-
-    Returns ``{"question": ..., "context": [...], "answer": ..., "route": ...,
-    "tool_result": ..., "sources_used": [...], "trace_id": ...}``.
-    """
-    trace_id = uuid.uuid4().hex
-    started = time.time()
-    trace: dict = {
-        "trace_id": trace_id,
-        "thread_id": trace_id,
-        "question": question,
-        "started_at": started,
-        "finished_at": started,
-        "duration_ms": 0.0,
-        "status": "running",
-        "n_chunks": 0,
-        "sources": [],
-        "sources_used": [],
-        "route": None,
-        "spans": [],
-        "error": None,
-    }
-    _store_trace(trace)
-    token = _current_trace_id.set(trace_id)
-    try:
-        result = graph.invoke(
-            {
-                "question": question,
-                "context": [],
-                "answer": "",
-                "route": "",
-                "tool_result": {},
-                "sources_used": [],
-            },
-            {"configurable": {"thread_id": trace_id}},
-        )
-        finished = time.time()
-        context = result.get("context", [])
-        sources_used = list(result.get("sources_used") or [])
-        trace.update(
-            {
-                "finished_at": finished,
-                "duration_ms": round((finished - started) * 1000, 2),
-                "status": "success",
-                "n_chunks": len(context),
-                "sources": sorted(
-                    {str(chunk.get("source_document", "")) for chunk in context}
-                ),
-                "sources_used": sources_used,
-                "route": result.get("route") or None,
-            }
-        )
-        logger.info(
-            "agent_graph run %s via %s sources=%s in %.1fms",
-            trace_id,
-            [span["node"] for span in trace["spans"]],
-            sources_used,
-            trace["duration_ms"],
-        )
-        return {**result, "trace_id": trace_id}
-    except Exception as exc:
-        finished = time.time()
-        trace.update(
-            {
-                "finished_at": finished,
-                "duration_ms": round((finished - started) * 1000, 2),
-                "status": "error",
-                "error": f"{type(exc).__name__}: {exc}",
-            }
-        )
-        logger.exception("agent_graph run %s failed", trace_id)
-        raise
-    finally:
-        _current_trace_id.reset(token)
 
 
 if __name__ == "__main__":

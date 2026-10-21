@@ -20,6 +20,7 @@ python-dotenv>=1.2.2
 python-jose[cryptography]>=3.5.0
 python-multipart>=0.0.32
 qdrant-client>=1.19.1
+redis>=5
 sqlmodel>=0.0.39
 tinydb>=4.8.2
 uvicorn>=0.52.1
