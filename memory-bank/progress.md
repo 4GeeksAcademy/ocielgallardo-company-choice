@@ -1,5 +1,20 @@
 # Progress
 
+## Latest Update (2026-10-22) — HealthCore agent briefings restored and Part 2 added
+
+- **main**: `docs/memory/healthcore-BRIEFING.md` + `.es.md` (Hito 8 Part 1 —
+  agent memory, EN + ES) restored from `feature/agent-memory` (`15e2fca`) in
+  commit `8a05c60`; they had never landed on main, which is why `docs/memory/`
+  was absent from the working tree.
+- **branch `docs/guardrails-briefing`**: new `docs/memory/healthcore-BRIEFING-part2.md`
+  + `.es.md` (Hito 8 Part 2 — Securing Agents: Harness and Guardrails, EN +
+  ES). The Part 2 briefing existed only in the course platform; it was never
+  committed. Content covers the compliance-assistant identity (same agent as
+  Part 1), in-domain / redirect / forbidden scope, the mandatory
+  output-side PHI detection guardrail, the four required test cases, and
+  README-checklist alignment. Not pushed; PR pending.
+- No code or non-documentation folders touched.
+
 ## Latest Update (2026-10-18) — hito 25 OAuth resource server (supersedes the snapshot below)
 
 - The MCP server now delegates OAuth to **MCP Auth (`mcpauth==0.2.0b1`)**; the
