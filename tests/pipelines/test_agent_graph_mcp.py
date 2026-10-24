@@ -123,6 +123,7 @@ def test_mcp_failure_answers_honestly_without_any_other_transport(
     assert _span(trace, "lookup_incident")["output"]["transport"] == "mcp"
     assert [span["node"] for span in trace["spans"]] == [
         "receive",
+        "scope_check",
         "decide_route",
         "lookup_incident",
         "tool_fallback",
@@ -155,6 +156,7 @@ def test_mcp_disabled_still_answers_honestly(monkeypatch) -> None:
     assert _span(trace, "lookup_incident")["output"]["transport"] == "mcp"
     assert [span["node"] for span in trace["spans"]] == [
         "receive",
+        "scope_check",
         "decide_route",
         "lookup_incident",
         "tool_fallback",
