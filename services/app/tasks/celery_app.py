@@ -16,6 +16,7 @@ celery_app = Celery(
     include=[
         "services.app.tasks.reporting",
         "services.app.tasks.rfp_intake",
+        "services.app.tasks.rfp_drafting",
     ],
 )
 celery_app.conf.update(
