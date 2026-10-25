@@ -4,6 +4,7 @@ import {
   BarChart3,
   BookOpen,
   Boxes,
+  FileText,
   LayoutDashboard,
   Siren,
   Truck,
@@ -78,6 +79,13 @@ export const WORK_NAV_GROUPS: NavGroup[] = [
     label: "Knowledge",
     href: "/knowledge",
     icon: BookOpen,
+    items: [],
+  },
+  {
+    id: "rfp-intake",
+    label: "RFP Intake",
+    href: "/rfp",
+    icon: FileText,
     items: [],
   },
   {
