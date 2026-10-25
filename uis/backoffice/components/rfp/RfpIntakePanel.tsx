@@ -7,7 +7,10 @@ import {
   friendlyRfpError,
   getRfpTicket,
   listRfpTickets,
+  retryRfpDraft,
   retryRfpTicket,
+  startRfpDraft,
+  type DepartmentSection,
   type RfpTicketDetail,
   type RfpTicketSummary,
   uploadRfpPdf,
@@ -17,7 +20,13 @@ const PIPELINE_STEPS = [
   { id: "converting", label: "Convert PDF" },
   { id: "agents", label: "Classify & workers" },
   { id: "synthesizing", label: "Synthesize" },
-  { id: "complete", label: "Done" },
+  { id: "complete", label: "Intake done" },
+] as const;
+
+const DRAFT_STEPS = [
+  { id: "drafting", label: "Generate drafts" },
+  { id: "under_evaluation", label: "Evaluate" },
+  { id: "draft_ready", label: "Ready Part 3" },
 ] as const;
 
 function statusLabel(status: string): string {
@@ -28,6 +37,12 @@ function statusLabel(status: string): string {
       return "Discarded";
     case "intake_complete":
       return "Intake complete";
+    case "drafting":
+      return "Drafting";
+    case "under_evaluation":
+      return "Under evaluation";
+    case "needs_human_review":
+      return "Needs human review";
     default:
       return status;
   }
@@ -36,23 +51,43 @@ function statusLabel(status: string): string {
 function statusClass(status: string): string {
   switch (status) {
     case "analyzing":
+    case "drafting":
+    case "under_evaluation":
       return "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200";
     case "discarded":
       return "bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-200";
     case "intake_complete":
+    case "draft_ready":
       return "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200";
+    case "needs_human_review":
+      return "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200";
     default:
       return "bg-slate-100 text-slate-800";
   }
 }
 
+function isPart2Running(status: string, lastError?: string | null): boolean {
+  return (
+    (status === "drafting" || status === "under_evaluation") && !lastError
+  );
+}
+
 function stepIndex(stage: string): number {
   if (stage === "failed") return 0;
   if (stage === "discarded") return -1;
-  if (stage === "complete") return 3;
+  if (stage === "complete" || stage === "drafting" || stage === "under_evaluation" || stage === "draft_ready" || stage === "needs_human_review")
+    return 3;
   if (stage === "synthesizing") return 2;
   if (stage === "agents") return 1;
-  return 0; // converting / queued
+  return 0;
+}
+
+function draftStepIndex(stage: string, status: string): number {
+  if (status === "needs_human_review") return 2;
+  if (stage === "draft_ready") return 2;
+  if (stage === "under_evaluation" || status === "under_evaluation") return 1;
+  if (stage === "drafting" || status === "drafting") return 0;
+  return -1;
 }
 
 function PipelineProgress({
@@ -71,31 +106,123 @@ function PipelineProgress({
   }
   const active = stepIndex(stage);
   const failed = stage === "failed";
+  const showDraft =
+    status === "drafting" ||
+    status === "under_evaluation" ||
+    status === "needs_human_review" ||
+    stage === "draft_ready";
+  const draftActive = draftStepIndex(stage, status);
+
   return (
-    <ol className="flex flex-wrap gap-2 text-xs">
-      {PIPELINE_STEPS.map((step, idx) => {
-        const done = !failed && active > idx;
-        const current = !failed && active === idx;
-        const isFail = failed && idx === 0;
-        return (
-          <li
-            key={step.id}
-            className={`rounded px-2 py-1 font-medium ${
-              isFail
-                ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200"
-                : done
-                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
-                  : current
-                    ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200"
-                    : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-            }`}
-          >
-            {idx + 1}. {step.label}
-            {current && status === "analyzing" && !failed ? "…" : ""}
-          </li>
-        );
-      })}
-    </ol>
+    <div className="space-y-2">
+      <ol className="flex flex-wrap gap-2 text-xs">
+        {PIPELINE_STEPS.map((step, idx) => {
+          const done = !failed && active > idx;
+          const current = !failed && active === idx && !showDraft;
+          const isFail = failed && idx === 0;
+          return (
+            <li
+              key={step.id}
+              className={`rounded px-2 py-1 font-medium ${
+                isFail
+                  ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200"
+                  : done
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+                    : current
+                      ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200"
+                      : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+              }`}
+            >
+              {idx + 1}. {step.label}
+              {current && status === "analyzing" && !failed ? "…" : ""}
+            </li>
+          );
+        })}
+      </ol>
+      {showDraft ? (
+        <ol className="flex flex-wrap gap-2 text-xs">
+          {DRAFT_STEPS.map((step, idx) => {
+            const done = draftActive > idx;
+            const current = draftActive === idx;
+            const nhr = status === "needs_human_review" && idx === 2;
+            return (
+              <li
+                key={step.id}
+                className={`rounded px-2 py-1 font-medium ${
+                  nhr
+                    ? "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200"
+                    : done
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+                      : current
+                        ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200"
+                        : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                }`}
+              >
+                D{idx + 1}. {nhr ? "Provisional → Part 3" : step.label}
+                {current && isPart2Running(status) ? "…" : ""}
+              </li>
+            );
+          })}
+        </ol>
+      ) : null}
+    </div>
+  );
+}
+
+function EvalChips({ section }: { section: DepartmentSection }) {
+  const evals = (section.evaluation_results || {}) as {
+    overall_pass?: boolean;
+    readability?: { pass?: boolean; details?: string };
+    relevance?: { pass?: boolean; missing_aspects?: string[] };
+    compliance?: { pass?: boolean; violations?: string[] };
+    feedback_for_generator?: string;
+  };
+  if (!section.draft_content && !evals.overall_pass && !evals.feedback_for_generator) {
+    return null;
+  }
+  const chip = (label: string, ok: boolean | undefined) => (
+    <span
+      className={`rounded px-1.5 py-0.5 text-xs font-medium ${
+        ok
+          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+          : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200"
+      }`}
+    >
+      {label}: {ok ? "pass" : "fail"}
+    </span>
+  );
+  return (
+    <div className="mt-3 space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+      <div className="flex flex-wrap gap-2">
+        {chip("Readability", evals.readability?.pass)}
+        {chip("Relevance", evals.relevance?.pass)}
+        {chip("Compliance", evals.compliance?.pass)}
+        {chip("Overall", evals.overall_pass)}
+        <span className="text-xs text-slate-500">
+          iters: {section.iteration_count ?? 0}
+        </span>
+      </div>
+      {evals.compliance?.violations && evals.compliance.violations.length > 0 ? (
+        <p className="text-xs text-red-700 dark:text-red-300">
+          Violations: {evals.compliance.violations.join(", ")}
+        </p>
+      ) : null}
+      {evals.feedback_for_generator ? (
+        <p className="text-xs text-slate-600 dark:text-slate-300">
+          Feedback: {evals.feedback_for_generator}
+        </p>
+      ) : null}
+      {section.draft_content ? (
+        <details className="text-sm">
+          <summary className="cursor-pointer font-medium text-slate-800 dark:text-slate-200">
+            Draft preview
+          </summary>
+          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs text-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
+            {section.draft_content}
+          </pre>
+        </details>
+      ) : null}
+    </div>
   );
 }
 
@@ -106,6 +233,7 @@ export function RfpIntakePanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [pollSlow, setPollSlow] = useState(false);
 
   const refreshList = useCallback(async () => {
     const rows = await listRfpTickets();
@@ -127,18 +255,28 @@ export function RfpIntakePanel() {
   useEffect(() => {
     if (!selectedId) {
       setDetail(null);
+      setPollSlow(false);
       return;
     }
     let cancelled = false;
+    const startedAt = Date.now();
+    setPollSlow(false);
     const tick = async () => {
       try {
         const row = await loadDetail(selectedId);
         if (cancelled) return;
-        if (row.status === "analyzing" && !row.last_error) {
+        const running =
+          (row.status === "analyzing" && !row.last_error) ||
+          isPart2Running(row.status, row.last_error);
+        if (running) {
+          if (Date.now() - startedAt > 90_000) {
+            setPollSlow(true);
+          }
           window.setTimeout(() => {
             if (!cancelled) void tick();
           }, 2500);
         } else {
+          setPollSlow(false);
           void refreshList();
         }
       } catch (err) {
@@ -186,6 +324,40 @@ export function RfpIntakePanel() {
     }
   }
 
+  async function onStartDraft() {
+    if (!selectedId) return;
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const created = await startRfpDraft(selectedId);
+      setInfo(`Drafting enqueued (${created.status}).`);
+      await loadDetail(selectedId);
+      await refreshList();
+    } catch (err) {
+      setError(friendlyRfpError(err, "No se pudo iniciar el borrador."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onRetryDraft() {
+    if (!selectedId) return;
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const created = await retryRfpDraft(selectedId);
+      setInfo(`Draft retry enqueued (${created.status}).`);
+      await loadDetail(selectedId);
+      await refreshList();
+    } catch (err) {
+      setError(friendlyRfpError(err, "No se pudo reintentar el borrador."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const salesSummary = detail?.handoff_payload?.sales_summary as
     | {
         headline?: string;
@@ -202,6 +374,12 @@ export function RfpIntakePanel() {
   const globalQuestions = (detail?.handoff_payload?.open_questions as
     | unknown[]
     | undefined) || [];
+
+  const canRetryDraft =
+    !!detail &&
+    (detail.status === "needs_human_review" ||
+      ((detail.status === "drafting" || detail.status === "under_evaluation") &&
+        (!!detail.last_error || pollSlow)));
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
@@ -271,7 +449,7 @@ export function RfpIntakePanel() {
       <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
         {!detail ? (
           <p className="text-sm text-slate-500">
-            Select a ticket to view intake results for Sales / Revenue Cycle.
+            Select a ticket to view intake / draft results for Sales / Revenue Cycle.
           </p>
         ) : (
           <>
@@ -285,21 +463,55 @@ export function RfpIntakePanel() {
                 >
                   {statusLabel(detail.status)}
                 </span>
+                {detail.ready_for_part3 ? (
+                  <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
+                    ready_for_part3
+                  </span>
+                ) : null}
               </div>
               <p className="font-mono text-xs text-slate-500">{detail.ticket_id}</p>
               <PipelineProgress
                 stage={detail.pipeline_stage}
                 status={detail.status}
               />
-              {detail.status === "analyzing" && !detail.last_error ? (
-                <p className="text-sm text-amber-700 dark:text-amber-300">
-                  Pipeline running… refreshing every few seconds.
-                </p>
+              {detail.can_start_draft ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void onStartDraft()}
+                  className="rounded bg-blue-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-800 disabled:opacity-60"
+                >
+                  Generate draft
+                </button>
               ) : null}
-              {detail.last_error ? (
+              {canRetryDraft ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void onRetryDraft()}
+                  className="ml-2 rounded bg-orange-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-800 disabled:opacity-60"
+                >
+                  Retry drafting
+                </button>
+              ) : null}
+              {(detail.status === "analyzing" ||
+                isPart2Running(detail.status, detail.last_error)) &&
+              !detail.last_error ? (
+                <div className="space-y-1 text-sm text-amber-700 dark:text-amber-300">
+                  <p>Pipeline running… refreshing every few seconds.</p>
+                  {pollSlow ? (
+                    <p>
+                      This is taking longer than usual. Check the Celery worker
+                      or use <strong>Retry drafting</strong> if the status stays
+                      stuck.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+              {detail.last_error && detail.status === "analyzing" ? (
                 <div className="space-y-2 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
                   <p>
-                    Pipeline error (status remains analyzing until retry
+                    Intake error (status remains analyzing until retry
                     succeeds): {detail.last_error}
                   </p>
                   {detail.can_retry ? (
@@ -309,10 +521,24 @@ export function RfpIntakePanel() {
                       onClick={() => void onRetry()}
                       className="rounded bg-red-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-800 disabled:opacity-60"
                     >
-                      Retry pipeline
+                      Retry intake
                     </button>
                   ) : null}
                 </div>
+              ) : null}
+              {detail.last_error &&
+              (detail.status === "drafting" ||
+                detail.status === "under_evaluation") ? (
+                <div className="space-y-2 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                  <p>Drafting error: {detail.last_error}</p>
+                </div>
+              ) : null}
+              {detail.status === "needs_human_review" ? (
+                <p className="rounded border border-orange-200 bg-orange-50 p-2 text-sm text-orange-900 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-200">
+                  One or more sections are <strong>provisional</strong> (iteration
+                  limit exhausted). Last drafts + EvaluationResults are kept for
+                  Part 3 — the ticket was not discarded.
+                </p>
               ) : null}
               {detail.discard_reason ? (
                 <p className="rounded border border-slate-200 bg-slate-50 p-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
@@ -353,7 +579,7 @@ export function RfpIntakePanel() {
             {detail.departments.length > 0 ? (
               <div className="space-y-3">
                 <h3 className="font-semibold text-slate-900 dark:text-slate-50">
-                  Key aspects by department
+                  Departments (aspects + drafts)
                 </h3>
                 {detail.departments.map((dept) => (
                   <article
@@ -368,6 +594,11 @@ export function RfpIntakePanel() {
                       {dept.contains_phi ? (
                         <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-xs text-red-800 dark:bg-red-950 dark:text-red-200">
                           PHI flagged
+                        </span>
+                      ) : null}
+                      {dept.needs_human_review ? (
+                        <span className="ml-2 rounded bg-orange-100 px-1.5 py-0.5 text-xs font-semibold text-orange-900 dark:bg-orange-950 dark:text-orange-200">
+                          Provisional / needs human review
                         </span>
                       ) : null}
                     </h4>
@@ -386,6 +617,7 @@ export function RfpIntakePanel() {
                         </ul>
                       </div>
                     ) : null}
+                    <EvalChips section={dept} />
                   </article>
                 ))}
               </div>
@@ -407,7 +639,7 @@ export function RfpIntakePanel() {
             {salesSummary ? (
               <div className="space-y-2 border-t border-slate-200 pt-4 dark:border-slate-700">
                 <h3 className="font-semibold text-slate-900 dark:text-slate-50">
-                  Sales handoff (Part 2 ready)
+                  Sales handoff
                 </h3>
                 <p className="text-sm text-slate-700 dark:text-slate-300">
                   {salesSummary.headline}
@@ -424,8 +656,8 @@ export function RfpIntakePanel() {
                 </ul>
                 {detail.ready_for_part2 ? (
                   <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                    ready_for_part2=true — handoff_payload stored on ticket (no
-                    re-parse of PDF).
+                    ready_for_part2=true — generators use handoff_payload (no
+                    PDF re-parse).
                   </p>
                 ) : null}
               </div>
