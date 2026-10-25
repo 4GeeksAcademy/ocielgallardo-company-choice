@@ -73,10 +73,11 @@ def get_engine():
 
 
 def init_inventory_db() -> None:
-    """Create inventory and telemetry tables in Supabase if they do not exist."""
+    """Create inventory, telemetry, and RFP intake tables if they do not exist."""
     from services.app.models import inventory as _inventory  # noqa: F401
     from services.app.models import telemetry as _telemetry  # noqa: F401
     from services.app.models import task as _task  # noqa: F401
+    from services.app.models import rfp as _rfp  # noqa: F401
 
     SQLModel.metadata.create_all(get_engine())
 

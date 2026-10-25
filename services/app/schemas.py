@@ -3,8 +3,10 @@
 Kept separate from SQLModel ORM tables in ``models.inventory``.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -165,3 +167,66 @@ class RagQueryResponse(BaseModel):
 
     question: str
     answer: str
+
+
+# --- RFP intake (Milestone 9 Part 1) ---
+
+
+class DepartmentSectionOut(BaseModel):
+    department_id: str
+    owner: str
+    key_aspects: list[Any] = Field(default_factory=list)
+    open_questions: list[Any] = Field(default_factory=list)
+    contains_phi: bool = False
+
+
+class RfpMetadataOut(BaseModel):
+    client_name: Optional[str] = None
+    client_country: Optional[str] = None
+    program_type: Optional[str] = None
+    covered_population: Optional[str] = None
+    deadline: Optional[str] = None
+    budget_range: Optional[str] = None
+    departments_needed: list[Any] = Field(default_factory=list)
+    flesch_kincaid_grade: Optional[float] = None
+    gunning_fog: Optional[float] = None
+    flesch_reading_ease: Optional[float] = None
+    readability_metrics: dict[str, Any] = Field(default_factory=dict)
+    contains_phi: bool = False
+    original_filename: Optional[str] = None
+
+
+class RfpTicketSummary(BaseModel):
+    ticket_id: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    original_filename: Optional[str] = None
+    client_name: Optional[str] = None
+    ready_for_part2: bool = False
+
+
+class RfpTicketDetail(BaseModel):
+    ticket_id: str
+    rfp_id: Optional[str] = None
+    status: str
+    raw_pdf_path: str
+    markdown_path: Optional[str] = None
+    last_error: Optional[str] = None
+    discard_reason: Optional[str] = None
+    ready_for_part2: bool = False
+    handoff_payload: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+    metadata: Optional[RfpMetadataOut] = None
+    departments: list[DepartmentSectionOut] = Field(default_factory=list)
+    # Derived progress for UI (no extra DB column required).
+    pipeline_stage: str = "queued"
+    can_retry: bool = False
+
+
+class RfpTicketCreated(BaseModel):
+    ticket_id: str
+    status: str
+    celery_task_id: Optional[str] = None
+

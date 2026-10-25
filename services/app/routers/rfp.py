@@ -1,0 +1,135 @@
+"""RFP intake HTTP routes — thin trigger/status layer over data/pipelines/rfp_intake."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import JSONResponse
+from sqlmodel import Session
+
+from services.app.core.database import get_db, is_inventory_db_configured
+from services.app.core.deps import get_current_user
+from services.app.domain import rfp_service
+from services.app.models.user import UserPublic
+from services.app.schemas import RfpTicketCreated, RfpTicketDetail, RfpTicketSummary
+
+router = APIRouter(prefix="/rfp", tags=["rfp-intake"])
+
+
+def _require_db() -> None:
+    if not is_inventory_db_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="RFP intake requires DATABASE_URL or SUPABASE_DB_* in .env",
+        )
+
+
+@router.post("/tickets", response_model=RfpTicketCreated, status_code=202)
+async def upload_rfp_ticket(
+    file: UploadFile = File(...),
+    current_user: UserPublic = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> JSONResponse:
+    """Accept a PDF, create analyzing ticket, enqueue Celery pipeline (async)."""
+    _ = current_user
+    _require_db()
+
+    filename = file.filename or "upload.pdf"
+    if not filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF uploads are accepted")
+    content_type = (file.content_type or "").lower()
+    if content_type and content_type not in {
+        "application/pdf",
+        "application/x-pdf",
+        "binary/octet-stream",
+        "application/octet-stream",
+    }:
+        raise HTTPException(status_code=400, detail="Content-Type must be application/pdf")
+
+    pdf_bytes = await file.read()
+    if not pdf_bytes:
+        raise HTTPException(status_code=400, detail="Empty PDF upload")
+    if len(pdf_bytes) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="PDF exceeds 25 MB limit")
+
+    ticket = rfp_service.create_ticket_from_upload(
+        session,
+        pdf_bytes=pdf_bytes,
+        original_filename=filename,
+    )
+
+    celery_task_id: str | None = None
+    try:
+        from services.app.tasks.rfp_intake import run_rfp_intake_task
+
+        async_result = run_rfp_intake_task.apply_async(
+            kwargs={"ticket_id": ticket.ticket_id}
+        )
+        celery_task_id = async_result.id
+    except Exception as exc:  # noqa: BLE001 - still return ticket; surface error on row
+        rfp_service.set_ticket_error(
+            session,
+            ticket.ticket_id,
+            f"Failed to enqueue intake pipeline: {exc}",
+        )
+
+    body = RfpTicketCreated(
+        ticket_id=ticket.ticket_id,
+        status=ticket.status,
+        celery_task_id=celery_task_id,
+    )
+    return JSONResponse(status_code=202, content=body.model_dump())
+
+
+@router.get("/tickets", response_model=list[RfpTicketSummary])
+def list_rfp_tickets(
+    current_user: UserPublic = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> list[RfpTicketSummary]:
+    _ = current_user
+    _require_db()
+    return rfp_service.list_tickets(session)
+
+
+@router.get("/tickets/{ticket_id}", response_model=RfpTicketDetail)
+def get_rfp_ticket(
+    ticket_id: str,
+    current_user: UserPublic = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> RfpTicketDetail:
+    _ = current_user
+    _require_db()
+    return rfp_service.ticket_detail(session, ticket_id)
+
+
+@router.post("/tickets/{ticket_id}/retry", response_model=RfpTicketCreated, status_code=202)
+def retry_rfp_ticket(
+    ticket_id: str,
+    current_user: UserPublic = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> JSONResponse:
+    """Re-enqueue intake after a mid-pipeline failure (status analyzing + last_error)."""
+    _ = current_user
+    _require_db()
+    ticket = rfp_service.prepare_ticket_retry(session, ticket_id)
+
+    celery_task_id: str | None = None
+    try:
+        from services.app.tasks.rfp_intake import run_rfp_intake_task
+
+        async_result = run_rfp_intake_task.apply_async(
+            kwargs={"ticket_id": ticket.ticket_id}
+        )
+        celery_task_id = async_result.id
+    except Exception as exc:  # noqa: BLE001
+        rfp_service.set_ticket_error(
+            session,
+            ticket.ticket_id,
+            f"Failed to enqueue retry: {exc}",
+        )
+
+    body = RfpTicketCreated(
+        ticket_id=ticket.ticket_id,
+        status=ticket.status,
+        celery_task_id=celery_task_id,
+    )
+    return JSONResponse(status_code=202, content=body.model_dump())
