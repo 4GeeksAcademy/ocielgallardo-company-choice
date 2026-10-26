@@ -1,4 +1,4 @@
-"""RFP intake pipeline — Part 1 reception & routing (dedicated graph)."""
+"""RFP intake + drafting pipelines — Parts 1–2 (dedicated graphs)."""
 
 from __future__ import annotations
 
@@ -103,4 +103,125 @@ def run_rfp_intake(ticket_id: str) -> dict[str, Any]:
     }
 
 
-__all__ = ["run_rfp_intake"]
+def _persist_department_draft(ticket_id: str, dept: dict[str, Any]) -> None:
+    """Persist one department draft as soon as its gen/eval loop finishes."""
+    from sqlmodel import Session
+
+    from services.app.core.database import get_engine
+    from services.app.domain import rfp_service
+
+    dept_id = str(dept.get("department_id") or "")
+    with Session(get_engine()) as session:
+        prior = rfp_service.get_department_section(session, ticket_id, dept_id)
+        rfp_service.upsert_department_section(
+            session,
+            ticket_id,
+            dept_id,
+            key_aspects=list(
+                dept.get("key_aspects")
+                or (prior.key_aspects if prior else [])
+                or []
+            ),
+            open_questions=list(
+                dept.get("open_questions")
+                or (prior.open_questions if prior else [])
+                or []
+            ),
+            evaluation_results={
+                **(dept.get("evaluation_results") or {}),
+                "contains_phi": bool(dept.get("contains_phi")),
+                "eval_history": dept.get("eval_history") or [],
+            },
+            draft_content=dept.get("draft_content"),
+            iteration_count=int(dept.get("iteration_count") or 0),
+            needs_human_review=bool(dept.get("needs_human_review")),
+        )
+        # Move into under_evaluation once the first section has a draft.
+        ticket = rfp_service.get_ticket(session, ticket_id)
+        if ticket.status == "drafting":
+            rfp_service.update_ticket_fields(
+                session, ticket_id, status="under_evaluation"
+            )
+
+
+def run_rfp_drafting(ticket_id: str) -> dict[str, Any]:
+    """Generate + evaluate proposal sections from intake handoff (no PDF)."""
+    from sqlmodel import Session
+
+    from data.pipelines.rfp_intake.draft_graph import run_drafting_graph
+    from services.app.core.database import get_engine
+    from services.app.domain import rfp_service
+
+    with Session(get_engine()) as session:
+        ticket = rfp_service.get_ticket(session, ticket_id)
+        if ticket.status not in {
+            "intake_complete",
+            "drafting",
+            "under_evaluation",
+            "needs_human_review",
+        }:
+            raise ValueError(
+                f"Ticket {ticket_id} status={ticket.status} is not eligible for drafting"
+            )
+        if not ticket.ready_for_part2 and ticket.status == "intake_complete":
+            raise ValueError(f"Ticket {ticket_id} is not ready_for_part2")
+
+        detail = rfp_service.ticket_detail(session, ticket_id)
+        metadata: dict[str, Any] = {}
+        if detail.metadata:
+            metadata = detail.metadata.model_dump()
+        handoff = dict(ticket.handoff_payload or {})
+        sections_by_dept = {
+            s.department_id: {
+                "key_aspects": list(s.key_aspects or []),
+                "open_questions": list(s.open_questions or []),
+            }
+            for s in detail.departments
+        }
+        rfp_service.update_ticket_fields(
+            session,
+            ticket_id,
+            status="drafting",
+            last_error=None,
+            ready_for_part3=False,
+        )
+
+    try:
+        result = run_drafting_graph(
+            ticket_id=ticket_id,
+            metadata=metadata,
+            handoff_payload=handoff,
+            sections_by_dept=sections_by_dept,
+            on_department_done=lambda dept: _persist_department_draft(
+                ticket_id, dept
+            ),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("rfp_drafting failed ticket_id=%s", ticket_id)
+        with Session(get_engine()) as session:
+            rfp_service.set_ticket_error(session, ticket_id, str(exc))
+        raise
+
+    with Session(get_engine()) as session:
+        for dept_id, dept in (result.get("department_results") or {}).items():
+            _persist_department_draft(ticket_id, dept)
+
+        terminal = result.get("status") or "under_evaluation"
+        rfp_service.update_ticket_fields(
+            session,
+            ticket_id,
+            status=terminal,
+            last_error=None,
+            ready_for_part3=bool(result.get("ready_for_part3")),
+            part2_handoff_payload=result.get("part2_handoff_payload") or {},
+        )
+
+    return {
+        "ticket_id": ticket_id,
+        "status": result.get("status"),
+        "ready_for_part3": result.get("ready_for_part3"),
+        "part2_handoff_payload": result.get("part2_handoff_payload"),
+    }
+
+
+__all__ = ["run_rfp_intake", "run_rfp_drafting"]

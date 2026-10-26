@@ -1,5 +1,19 @@
 # Progress
 
+## Latest Update (2026-10-25) — Hito 27 Part 2: RFP drafting & evaluation
+
+- **Branch `feature/rfp-drafting`** (from `feature/rfp-intake`).
+- Part 2 pipeline: per-dept generators (`revenue`/`clinical`/`compliance`) +
+  parallel evaluators (readability / relevance / compliance BRIEFING §5) +
+  gen–eval loop (max 3) → `needs_human_review` keeps last draft+EvaluationResult.
+- Optional RAG grounding in generators (soft-fail if Qdrant down).
+- Celery `rfp.draft_run`; `POST /rfp/tickets/{id}/draft` (+ draft retry).
+- Postgres: `draft_content`, `evaluation_results`, `iteration_count`,
+  `needs_human_review`, ticket `ready_for_part3` + `part2_handoff_payload`.
+- UI `/rfp`: Generate draft, provisional badge, eval chips, draft preview.
+- Tests: `test_rfp_generator_revenue`, `test_rfp_evaluator`,
+  `test_rfp_compliance_guidelines` (BRIEFING-anchored no-phi / BAA fail).
+
 ## Latest Update (2026-10-25) — RFP intake UX + evidence hardening
 
 - Backoffice `/rfp`: drag-and-drop PDF zone, pipeline stage strip, Retry

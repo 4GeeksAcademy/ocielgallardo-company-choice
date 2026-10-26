@@ -40,7 +40,12 @@ class RfpTicket(SQLModel, table=True):
     last_error: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     discard_reason: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     ready_for_part2: bool = Field(default=False)
+    ready_for_part3: bool = Field(default=False)
     handoff_payload: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSONB, nullable=False, server_default=text("'{}'::jsonb")),
+    )
+    part2_handoff_payload: dict[str, Any] = Field(
         default_factory=dict,
         sa_column=Column(JSONB, nullable=False, server_default=text("'{}'::jsonb")),
     )
@@ -103,6 +108,8 @@ class DepartmentSection(SQLModel, table=True):
         default_factory=dict,
         sa_column=Column(JSONB, nullable=False, server_default=text("'{}'::jsonb")),
     )
+    iteration_count: int = Field(default=0)
+    needs_human_review: bool = Field(default=False)
     approval_status: Optional[str] = Field(default=None, max_length=64)
     approver: Optional[str] = Field(default=None, max_length=128)
     approved_at: Optional[datetime] = Field(

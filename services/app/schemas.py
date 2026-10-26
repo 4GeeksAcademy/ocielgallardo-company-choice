@@ -169,7 +169,43 @@ class RagQueryResponse(BaseModel):
     answer: str
 
 
-# --- RFP intake (Milestone 9 Part 1) ---
+# --- RFP intake / drafting (Milestone 9 Parts 1–2) ---
+
+
+class ReadabilityEvalOut(BaseModel):
+    pass_: bool = Field(default=False, alias="pass")
+    score: Optional[float] = None
+    details: str = ""
+
+    model_config = {"populate_by_name": True}
+
+
+class RelevanceEvalOut(BaseModel):
+    pass_: bool = Field(default=False, alias="pass")
+    missing_aspects: list[str] = Field(default_factory=list)
+
+    model_config = {"populate_by_name": True}
+
+
+class ComplianceEvalOut(BaseModel):
+    pass_: bool = Field(default=False, alias="pass")
+    rule_ids: list[str] = Field(default_factory=list)
+    violations: list[str] = Field(default_factory=list)
+
+    model_config = {"populate_by_name": True}
+
+
+class EvaluationResultOut(BaseModel):
+    """Structured Part 2 evaluation (BRIEFING / ticket schema)."""
+
+    section_id: str = ""
+    department_id: str = ""
+    readability: dict[str, Any] = Field(default_factory=dict)
+    relevance: dict[str, Any] = Field(default_factory=dict)
+    compliance: dict[str, Any] = Field(default_factory=dict)
+    overall_pass: bool = False
+    feedback_for_generator: str = ""
+    contains_phi: bool = False
 
 
 class DepartmentSectionOut(BaseModel):
@@ -178,6 +214,10 @@ class DepartmentSectionOut(BaseModel):
     key_aspects: list[Any] = Field(default_factory=list)
     open_questions: list[Any] = Field(default_factory=list)
     contains_phi: bool = False
+    draft_content: Optional[str] = None
+    evaluation_results: dict[str, Any] = Field(default_factory=dict)
+    iteration_count: int = 0
+    needs_human_review: bool = False
 
 
 class RfpMetadataOut(BaseModel):
@@ -204,6 +244,7 @@ class RfpTicketSummary(BaseModel):
     original_filename: Optional[str] = None
     client_name: Optional[str] = None
     ready_for_part2: bool = False
+    ready_for_part3: bool = False
 
 
 class RfpTicketDetail(BaseModel):
@@ -215,7 +256,9 @@ class RfpTicketDetail(BaseModel):
     last_error: Optional[str] = None
     discard_reason: Optional[str] = None
     ready_for_part2: bool = False
+    ready_for_part3: bool = False
     handoff_payload: dict[str, Any] = Field(default_factory=dict)
+    part2_handoff_payload: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
     metadata: Optional[RfpMetadataOut] = None
@@ -223,6 +266,7 @@ class RfpTicketDetail(BaseModel):
     # Derived progress for UI (no extra DB column required).
     pipeline_stage: str = "queued"
     can_retry: bool = False
+    can_start_draft: bool = False
 
 
 class RfpTicketCreated(BaseModel):

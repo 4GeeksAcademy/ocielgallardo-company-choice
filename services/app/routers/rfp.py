@@ -133,3 +133,78 @@ def retry_rfp_ticket(
         celery_task_id=celery_task_id,
     )
     return JSONResponse(status_code=202, content=body.model_dump())
+
+
+@router.post("/tickets/{ticket_id}/draft", response_model=RfpTicketCreated, status_code=202)
+def start_rfp_drafting(
+    ticket_id: str,
+    current_user: UserPublic = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> JSONResponse:
+    """Start Part 2 drafting from Part 1 handoff (no PDF re-ingest)."""
+    _ = current_user
+    _require_db()
+    ticket = rfp_service.prepare_ticket_draft(session, ticket_id)
+
+    celery_task_id: str | None = None
+    try:
+        from services.app.tasks.rfp_drafting import run_rfp_drafting_task
+
+        async_result = run_rfp_drafting_task.apply_async(
+            kwargs={"ticket_id": ticket.ticket_id}
+        )
+        celery_task_id = async_result.id
+    except Exception as exc:  # noqa: BLE001
+        # Keep drafting status but surface error so UI offers Retry (no infinite spinner).
+        rfp_service.set_ticket_error(
+            session,
+            ticket.ticket_id,
+            f"Failed to enqueue drafting pipeline: {exc}",
+        )
+        ticket = rfp_service.get_ticket(session, ticket.ticket_id)
+
+    body = RfpTicketCreated(
+        ticket_id=ticket.ticket_id,
+        status=ticket.status,
+        celery_task_id=celery_task_id,
+    )
+    return JSONResponse(status_code=202, content=body.model_dump())
+
+
+@router.post(
+    "/tickets/{ticket_id}/draft/retry",
+    response_model=RfpTicketCreated,
+    status_code=202,
+)
+def retry_rfp_drafting(
+    ticket_id: str,
+    current_user: UserPublic = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> JSONResponse:
+    """Re-enqueue drafting after failure or re-run provisional sections."""
+    _ = current_user
+    _require_db()
+    ticket = rfp_service.prepare_draft_retry(session, ticket_id)
+
+    celery_task_id: str | None = None
+    try:
+        from services.app.tasks.rfp_drafting import run_rfp_drafting_task
+
+        async_result = run_rfp_drafting_task.apply_async(
+            kwargs={"ticket_id": ticket.ticket_id}
+        )
+        celery_task_id = async_result.id
+    except Exception as exc:  # noqa: BLE001
+        rfp_service.set_ticket_error(
+            session,
+            ticket.ticket_id,
+            f"Failed to enqueue drafting retry: {exc}",
+        )
+        ticket = rfp_service.get_ticket(session, ticket.ticket_id)
+
+    body = RfpTicketCreated(
+        ticket_id=ticket.ticket_id,
+        status=ticket.status,
+        celery_task_id=celery_task_id,
+    )
+    return JSONResponse(status_code=202, content=body.model_dump())
