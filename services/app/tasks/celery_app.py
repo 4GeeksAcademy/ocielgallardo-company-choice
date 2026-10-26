@@ -13,7 +13,10 @@ celery_app = Celery(
     "healthcore",
     broker=redis_url,
     backend=redis_url,
-    include=["services.app.tasks.reporting"],
+    include=[
+        "services.app.tasks.reporting",
+        "services.app.tasks.rfp_intake",
+    ],
 )
 celery_app.conf.update(
     task_track_started=True,

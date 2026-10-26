@@ -1,5 +1,34 @@
 # Progress
 
+## Latest Update (2026-10-25) — RFP intake UX + evidence hardening
+
+- Backoffice `/rfp`: drag-and-drop PDF zone, pipeline stage strip, Retry
+  button (`POST /rfp/tickets/{id}/retry`), clearer readability N/A labels,
+  consolidated open questions + PHI badge.
+- Pipeline: open-question dedupe; stronger PHI heuristics; unit tests
+  `test_rfp_phi` / `test_rfp_dedupe`.
+- Sample PDFs under `docs/rpf-request/rfp-requests/healthcore/` (formal,
+  informal, invalid vendor, PHI case) + design Q&A in README.
+- Dep: `markitdown[pdf]` (pdfminer/pdfplumber/pypdfium2) in requirements.
+
+## Latest Update (2026-10-24) — Hito 27 Part 1: RFP intake reception & routing
+
+- **Branch `feature/rfp-intake`**: async RFP intake for Revenue Cycle (Tom Callahan).
+- **HTTP**: `POST/GET /rfp/tickets` on existing FastAPI app; PDF stored under
+  `data/raw/rfp/`; 202 + Celery task `rfp.intake_run`.
+- **Persistence** (Postgres/SQLModel): `rfp_tickets`, `rfp_documents`,
+  `rfp_department_sections`; statuses `analyzing` | `discarded` |
+  `intake_complete`; Part 2 handoff via `ready_for_part2` + `handoff_payload`.
+- **Pipeline**: dedicated LangGraph in `data/pipelines/rfp_intake/` —
+  MarkItDown convert → readability → classifier → orchestrator → parallel
+  department workers (`revenue`/`clinical`/`compliance`) → synthesizer.
+- **UI**: backoffice `/rfp` ticket upload + poll.
+- **Tests**: `tests/pipelines/test_rfp_classifier.py`,
+  `test_rfp_worker_revenue.py` + Markdown fixtures.
+- **BRIEFING**: `docs/rpf-request/healthcore-BRIEFING.md`; drop sample PDFs in
+  `docs/rpf-request/rfp-requests/healthcore/`.
+- Deps: `markitdown`, `py-readability-metrics`; local Python pin 3.12.
+
 ## Latest Update (2026-10-22) — HealthCore agent briefings restored and Part 2 added
 
 - **main**: `docs/memory/healthcore-BRIEFING.md` + `.es.md` (Hito 8 Part 1 —
