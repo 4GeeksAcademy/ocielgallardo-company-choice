@@ -1,5 +1,23 @@
 # Progress
 
+## Latest Update (2026-10-28) — Hito 27 Part 3: RFP approval & completion
+
+- **Branch `feature/rfp-approval-completion`** (from `main` + Part 2 via
+  `feature/rfp-intake` / PR #50 — Part 2 was not yet on `main`).
+- HITL graph: guardrails → BRIEFING arbitration → **parallel** per-dept
+  interrupt branches (`hitl_revenue`/`clinical`/`compliance`) → join/synth.
+- Resume is an explicit entrypoint: validates decision, resumes **only** that
+  interrupt id (`Command(resume={interrupt_id: payload})`); `thread_id=rfp-{ticket_id}`.
+- Traceability: each node logs `agent` + `input` + `output` + `ts`.
+- Reject/`request_changes` stay on the same HITL branch (max 3 rounds) then
+  Sales flag `requires_part2_redraft` — no auto Part 2 re-run.
+- Durable SqliteSaver + Postgres business truth; statuses
+  `waiting_for_approval` → `done`.
+- UI: Start approvals + Approve / Request changes / Reject; final doc; trace.
+- Tests: interrupt/resume, **approve B while A interrupted**, iteration limit,
+  arbitration; E2E script `scripts/run_rfp_approval_e2e.py`.
+- Local Temas MD (outside repo, next to Parts 1–2 notes) has rubric + design Q&A.
+
 ## Latest Update (2026-10-25) — Hito 27 Part 2: RFP drafting & evaluation
 
 - **Branch `feature/rfp-drafting`** (from `feature/rfp-intake`).
