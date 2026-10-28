@@ -10,7 +10,13 @@ from services.app.core.database import get_db, is_inventory_db_configured
 from services.app.core.deps import get_current_user
 from services.app.domain import rfp_service
 from services.app.models.user import UserPublic
-from services.app.schemas import RfpTicketCreated, RfpTicketDetail, RfpTicketSummary
+from data.pipelines.rfp_intake.departments import KNOWN_DEPARTMENTS
+from services.app.schemas import (
+    RfpApprovalDecisionIn,
+    RfpTicketCreated,
+    RfpTicketDetail,
+    RfpTicketSummary,
+)
 
 router = APIRouter(prefix="/rfp", tags=["rfp-intake"])
 
@@ -208,3 +214,99 @@ def retry_rfp_drafting(
         celery_task_id=celery_task_id,
     )
     return JSONResponse(status_code=202, content=body.model_dump())
+
+
+@router.post(
+    "/tickets/{ticket_id}/approval/start",
+    response_model=RfpTicketCreated,
+    status_code=202,
+)
+def start_rfp_approval(
+    ticket_id: str,
+    current_user: UserPublic = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> JSONResponse:
+    """Start Part 3 HITL approval (guardrails + arbitration → first interrupt).
+
+    Prefer Celery ``rfp.approval_run``; fall back to sync start until the first
+    interrupt so the UI always gets approval rows without a worker.
+    """
+    _ = current_user
+    _require_db()
+    ticket = rfp_service.prepare_ticket_approval(session, ticket_id)
+
+    celery_task_id: str | None = None
+    try:
+        from services.app.tasks.rfp_approval import run_rfp_approval_task
+
+        async_result = run_rfp_approval_task.apply_async(
+            kwargs={"ticket_id": ticket.ticket_id}
+        )
+        celery_task_id = async_result.id
+    except Exception:
+        celery_task_id = None
+
+    if celery_task_id is None:
+        try:
+            from data.pipelines.rfp_intake import run_rfp_approval
+
+            run_rfp_approval(ticket.ticket_id)
+            ticket = rfp_service.get_ticket(session, ticket.ticket_id)
+        except Exception as exc:  # noqa: BLE001
+            rfp_service.set_ticket_error(
+                session,
+                ticket.ticket_id,
+                f"Failed to start approval graph: {exc}",
+            )
+            ticket = rfp_service.get_ticket(session, ticket.ticket_id)
+
+    body = RfpTicketCreated(
+        ticket_id=ticket.ticket_id,
+        status=ticket.status,
+        celery_task_id=celery_task_id,
+    )
+    return JSONResponse(status_code=202, content=body.model_dump())
+
+
+@router.post(
+    "/tickets/{ticket_id}/approval/{department_id}",
+    response_model=RfpTicketDetail,
+)
+def decide_rfp_approval(
+    ticket_id: str,
+    department_id: str,
+    body: RfpApprovalDecisionIn,
+    current_user: UserPublic = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> RfpTicketDetail:
+    """Resume checkpointer with one department decision (any order)."""
+    _require_db()
+    if department_id not in KNOWN_DEPARTMENTS:
+        raise HTTPException(
+            status_code=400, detail=f"Unknown department_id={department_id}"
+        )
+
+    ticket = rfp_service.get_ticket(session, ticket_id)
+    if ticket.status != "waiting_for_approval":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot record approval from status={ticket.status}",
+        )
+
+    actor = getattr(current_user, "email", None) or getattr(
+        current_user, "username", None
+    )
+    try:
+        from data.pipelines.rfp_intake import resume_rfp_approval
+
+        resume_rfp_approval(
+            ticket_id,
+            department_id=department_id,
+            decision=body.decision,
+            actor=str(actor) if actor else None,
+            note=body.note,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return rfp_service.ticket_detail(session, ticket_id)
