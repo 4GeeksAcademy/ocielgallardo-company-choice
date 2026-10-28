@@ -11,9 +11,15 @@ from fastapi import HTTPException
 from sqlmodel import Session, col, select
 
 from data.pipelines.rfp_intake.departments import DEPARTMENT_OWNERS, KNOWN_DEPARTMENTS
-from services.app.models.rfp import DepartmentSection, RfpDocument, RfpTicket
+from services.app.models.rfp import (
+    DepartmentSection,
+    RfpDocument,
+    RfpFinalDocument,
+    RfpTicket,
+)
 from services.app.schemas import (
     DepartmentSectionOut,
+    RfpFinalDocumentOut,
     RfpMetadataOut,
     RfpTicketDetail,
     RfpTicketSummary,
@@ -144,6 +150,10 @@ def ticket_detail(session: Session, ticket_id: str) -> RfpTicketDetail:
                 evaluation_results=eval_results,
                 iteration_count=int(getattr(section, "iteration_count", 0) or 0),
                 needs_human_review=bool(getattr(section, "needs_human_review", False)),
+                approval_status=getattr(section, "approval_status", None),
+                approver=getattr(section, "approver", None),
+                approved_at=getattr(section, "approved_at", None),
+                approval_round=int(getattr(section, "approval_round", 0) or 0),
             )
         )
     # Stable order matching BRIEFING
@@ -158,6 +168,34 @@ def ticket_detail(session: Session, ticket_id: str) -> RfpTicketDetail:
         ready_for_part3=bool(getattr(ticket, "ready_for_part3", False)),
     )
     can_start_draft = ticket.status == "intake_complete" and bool(ticket.ready_for_part2)
+    ready_for_part3 = bool(getattr(ticket, "ready_for_part3", False))
+    can_start_approval = ready_for_part3 and ticket.status in {
+        "under_evaluation",
+        "needs_human_review",
+    }
+
+    final_out = None
+    final_id = getattr(ticket, "final_document_id", None)
+    final_row = session.exec(
+        select(RfpFinalDocument).where(RfpFinalDocument.ticket_id == ticket_id)
+    ).first()
+    if final_row:
+        final_out = RfpFinalDocumentOut(
+            id=final_row.id,
+            ticket_id=final_row.ticket_id,
+            sections=dict(final_row.sections or {}),
+            currency=final_row.currency,
+            generated_at=final_row.generated_at,
+            content_markdown=final_row.content_markdown or "",
+        )
+        final_id = final_row.id
+
+    part2 = dict(getattr(ticket, "part2_handoff_payload", None) or {})
+    conflicts = list(part2.get("conflicts") or [])
+    # Prefer live Part 3 conflicts stored on handoff after approval start.
+    approval_handoff = dict(ticket.handoff_payload or {})
+    if isinstance(approval_handoff.get("part3_conflicts"), list):
+        conflicts = list(approval_handoff.get("part3_conflicts") or [])
 
     return RfpTicketDetail(
         ticket_id=ticket.ticket_id,
@@ -168,9 +206,13 @@ def ticket_detail(session: Session, ticket_id: str) -> RfpTicketDetail:
         last_error=ticket.last_error,
         discard_reason=ticket.discard_reason,
         ready_for_part2=ticket.ready_for_part2,
-        ready_for_part3=bool(getattr(ticket, "ready_for_part3", False)),
+        ready_for_part3=ready_for_part3,
         handoff_payload=dict(ticket.handoff_payload or {}),
-        part2_handoff_payload=dict(getattr(ticket, "part2_handoff_payload", None) or {}),
+        part2_handoff_payload=part2,
+        trace_events=list(getattr(ticket, "trace_events", None) or []),
+        final_document_id=final_id,
+        final_document=final_out,
+        conflicts=conflicts,
         created_at=ticket.created_at,
         updated_at=ticket.updated_at,
         metadata=metadata,
@@ -178,6 +220,7 @@ def ticket_detail(session: Session, ticket_id: str) -> RfpTicketDetail:
         pipeline_stage=stage,
         can_retry=can_retry,
         can_start_draft=can_start_draft,
+        can_start_approval=can_start_approval,
     )
 
 
@@ -190,6 +233,10 @@ def derive_pipeline_stage(
     ready_for_part3: bool = False,
 ) -> tuple[str, bool]:
     """Return (pipeline_stage, can_retry) for the ticket UI progress strip."""
+    if status == "done":
+        return "done", False
+    if status == "waiting_for_approval":
+        return "waiting_for_approval", bool(last_error)
     if status == "needs_human_review":
         return "needs_human_review", bool(last_error)
     if status == "under_evaluation":
@@ -209,6 +256,129 @@ def derive_pipeline_stage(
     if markdown_path:
         return "agents", False
     return "converting", False
+
+
+def prepare_ticket_approval(session: Session, ticket_id: str) -> RfpTicket:
+    """Validate Part 2 handoff and move ticket into waiting_for_approval."""
+    ticket = get_ticket(session, ticket_id)
+    if ticket.status == "waiting_for_approval" and not ticket.last_error:
+        raise HTTPException(
+            status_code=409,
+            detail="Approval flow already in progress for this ticket",
+        )
+    if ticket.status == "done":
+        raise HTTPException(status_code=400, detail="Ticket already completed")
+    if ticket.status not in {"under_evaluation", "needs_human_review"}:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot start approval from status={ticket.status}",
+        )
+    if not ticket.ready_for_part3:
+        raise HTTPException(status_code=400, detail="Ticket is not ready_for_part3")
+    ticket.status = "waiting_for_approval"
+    ticket.last_error = None
+    ticket.updated_at = _utc_now()
+    session.add(ticket)
+    session.commit()
+    session.refresh(ticket)
+    return ticket
+
+
+def persist_approval_snapshot(
+    session: Session,
+    ticket_id: str,
+    *,
+    status: str,
+    approvals: dict[str, dict[str, Any]],
+    conflicts: list[Any],
+    trace_events: list[Any],
+    final_document: dict[str, Any] | None = None,
+    sales_flags: list[Any] | None = None,
+) -> RfpTicket:
+    """Write Part 3 graph outcomes into Postgres (UI source of truth)."""
+    ticket = get_ticket(session, ticket_id)
+    for dept_id, approval in (approvals or {}).items():
+        section = get_department_section(session, ticket_id, dept_id)
+        if not section:
+            section = DepartmentSection(ticket_id=ticket_id, department_id=dept_id)
+        section.approval_status = approval.get("approval_status")
+        section.approver = approval.get("approver")
+        approved_at = approval.get("approved_at")
+        if isinstance(approved_at, str) and approved_at:
+            try:
+                section.approved_at = datetime.fromisoformat(
+                    approved_at.replace("Z", "+00:00")
+                )
+            except ValueError:
+                section.approved_at = _utc_now() if approval.get("approval_status") == "approved" else None
+        elif approval.get("approval_status") == "approved" and section.approved_at is None:
+            section.approved_at = _utc_now()
+        elif approval.get("approval_status") != "approved":
+            section.approved_at = None
+        section.approval_round = int(approval.get("approval_round") or 0)
+        session.add(section)
+
+    ticket.status = status
+    ticket.trace_events = list(trace_events or [])
+    handoff = dict(ticket.handoff_payload or {})
+    handoff["part3_conflicts"] = list(conflicts or [])
+    if sales_flags:
+        handoff["part3_sales_flags"] = list(sales_flags)
+    ticket.handoff_payload = handoff
+    ticket.updated_at = _utc_now()
+
+    if final_document and status == "done":
+        generated_at = final_document.get("generated_at")
+        if isinstance(generated_at, str):
+            try:
+                generated_dt = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+            except ValueError:
+                generated_dt = _utc_now()
+        elif isinstance(generated_at, datetime):
+            generated_dt = generated_at
+        else:
+            generated_dt = _utc_now()
+
+        row = session.exec(
+            select(RfpFinalDocument).where(RfpFinalDocument.ticket_id == ticket_id)
+        ).first()
+        if not row:
+            row = RfpFinalDocument(ticket_id=ticket_id)
+        row.sections = dict(final_document.get("sections") or {})
+        row.currency = str(final_document.get("currency") or "USD")
+        row.generated_at = generated_dt
+        row.content_markdown = str(final_document.get("content_markdown") or "")
+        session.add(row)
+        session.flush()
+        ticket.final_document_id = row.id
+
+    session.add(ticket)
+    session.commit()
+    session.refresh(ticket)
+    return ticket
+
+
+def upsert_department_approval(
+    session: Session,
+    ticket_id: str,
+    department_id: str,
+    *,
+    approval_status: str,
+    approver: str | None,
+    approved_at: datetime | None,
+    approval_round: int = 0,
+) -> DepartmentSection:
+    section = get_department_section(session, ticket_id, department_id)
+    if not section:
+        section = DepartmentSection(ticket_id=ticket_id, department_id=department_id)
+    section.approval_status = approval_status
+    section.approver = approver
+    section.approved_at = approved_at
+    section.approval_round = approval_round
+    session.add(section)
+    session.commit()
+    session.refresh(section)
+    return section
 
 
 def prepare_ticket_draft(session: Session, ticket_id: str) -> RfpTicket:
@@ -358,6 +528,10 @@ def upsert_department_section(
     draft_content: str | None = None,
     iteration_count: int | None = None,
     needs_human_review: bool | None = None,
+    approval_status: str | None = None,
+    approver: str | None = None,
+    approved_at: datetime | None = None,
+    approval_round: int | None = None,
 ) -> DepartmentSection:
     section = session.exec(
         select(DepartmentSection).where(
@@ -379,6 +553,14 @@ def upsert_department_section(
         section.iteration_count = iteration_count
     if needs_human_review is not None:
         section.needs_human_review = needs_human_review
+    if approval_status is not None:
+        section.approval_status = approval_status
+    if approver is not None:
+        section.approver = approver
+    if approved_at is not None:
+        section.approved_at = approved_at
+    if approval_round is not None:
+        section.approval_round = approval_round
     session.add(section)
     session.commit()
     session.refresh(section)

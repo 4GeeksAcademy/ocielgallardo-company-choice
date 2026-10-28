@@ -86,12 +86,15 @@ def init_inventory_db() -> None:
 
 
 def _ensure_rfp_part2_columns(engine) -> None:
-    """Idempotent ADD COLUMN for Part 2 drafting fields on existing DBs."""
+    """Idempotent ADD COLUMN for Part 2/3 fields on existing DBs."""
     statements = (
         "ALTER TABLE rfp_tickets ADD COLUMN IF NOT EXISTS ready_for_part3 BOOLEAN NOT NULL DEFAULT FALSE",
         "ALTER TABLE rfp_tickets ADD COLUMN IF NOT EXISTS part2_handoff_payload JSONB NOT NULL DEFAULT '{}'::jsonb",
+        "ALTER TABLE rfp_tickets ADD COLUMN IF NOT EXISTS trace_events JSONB NOT NULL DEFAULT '[]'::jsonb",
+        "ALTER TABLE rfp_tickets ADD COLUMN IF NOT EXISTS final_document_id INTEGER",
         "ALTER TABLE rfp_department_sections ADD COLUMN IF NOT EXISTS iteration_count INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE rfp_department_sections ADD COLUMN IF NOT EXISTS needs_human_review BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE rfp_department_sections ADD COLUMN IF NOT EXISTS approval_round INTEGER NOT NULL DEFAULT 0",
     )
     try:
         with engine.begin() as conn:

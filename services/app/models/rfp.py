@@ -49,6 +49,13 @@ class RfpTicket(SQLModel, table=True):
         default_factory=dict,
         sa_column=Column(JSONB, nullable=False, server_default=text("'{}'::jsonb")),
     )
+    # Part 3: append-only audit of agent/HITL actions for the ticket timeline.
+    trace_events: list[Any] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, server_default=text("'[]'::jsonb")),
+    )
+    # Soft pointer to RfpFinalDocument.id once synthesizer succeeds.
+    final_document_id: Optional[int] = Field(default=None)
     created_at: datetime = Field(
         default_factory=_utc_now,
         sa_column=Column(DateTime(timezone=True), nullable=False),
@@ -110,9 +117,31 @@ class DepartmentSection(SQLModel, table=True):
     )
     iteration_count: int = Field(default=0)
     needs_human_review: bool = Field(default=False)
+    # pending | approved | rejected | request_changes
     approval_status: Optional[str] = Field(default=None, max_length=64)
     approver: Optional[str] = Field(default=None, max_length=128)
     approved_at: Optional[datetime] = Field(
         default=None,
         sa_column=Column(DateTime(timezone=True), nullable=True),
     )
+    # Reject / request_changes rounds in Part 3 (cap before flagging for Sales).
+    approval_round: int = Field(default=0)
+
+
+class RfpFinalDocument(SQLModel, table=True):
+    """Synthesized proposal after all required approvals (BRIEFING FinalDocument)."""
+
+    __tablename__ = "rfp_final_documents"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ticket_id: str = Field(index=True, unique=True, max_length=64)
+    sections: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSONB, nullable=False, server_default=text("'{}'::jsonb")),
+    )
+    currency: str = Field(default="USD", max_length=8)
+    generated_at: datetime = Field(
+        default_factory=_utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+    content_markdown: str = Field(default="", sa_column=Column(Text, nullable=False))

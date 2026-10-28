@@ -218,6 +218,24 @@ class DepartmentSectionOut(BaseModel):
     evaluation_results: dict[str, Any] = Field(default_factory=dict)
     iteration_count: int = 0
     needs_human_review: bool = False
+    approval_status: Optional[str] = None
+    approver: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    approval_round: int = 0
+
+
+class RfpFinalDocumentOut(BaseModel):
+    id: Optional[int] = None
+    ticket_id: str
+    sections: dict[str, Any] = Field(default_factory=dict)
+    currency: str = "USD"
+    generated_at: datetime
+    content_markdown: str = ""
+
+
+class RfpApprovalDecisionIn(BaseModel):
+    decision: Literal["approved", "rejected", "request_changes"]
+    note: Optional[str] = None
 
 
 class RfpMetadataOut(BaseModel):
@@ -259,6 +277,10 @@ class RfpTicketDetail(BaseModel):
     ready_for_part3: bool = False
     handoff_payload: dict[str, Any] = Field(default_factory=dict)
     part2_handoff_payload: dict[str, Any] = Field(default_factory=dict)
+    trace_events: list[Any] = Field(default_factory=list)
+    final_document_id: Optional[int] = None
+    final_document: Optional[RfpFinalDocumentOut] = None
+    conflicts: list[Any] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
     metadata: Optional[RfpMetadataOut] = None
@@ -267,6 +289,7 @@ class RfpTicketDetail(BaseModel):
     pipeline_stage: str = "queued"
     can_retry: bool = False
     can_start_draft: bool = False
+    can_start_approval: bool = False
 
 
 class RfpTicketCreated(BaseModel):
