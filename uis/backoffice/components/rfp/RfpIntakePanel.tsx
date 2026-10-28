@@ -3,14 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { RfpPdfDropzone } from "@/components/rfp/RfpPdfDropzone";
 import {
+  decideRfpApproval,
   formatReadability,
   friendlyRfpError,
   getRfpTicket,
   listRfpTickets,
   retryRfpDraft,
   retryRfpTicket,
+  startRfpApproval,
   startRfpDraft,
   type DepartmentSection,
+  type RfpApprovalDecision,
   type RfpTicketDetail,
   type RfpTicketSummary,
   uploadRfpPdf,
@@ -26,7 +29,12 @@ const PIPELINE_STEPS = [
 const DRAFT_STEPS = [
   { id: "drafting", label: "Generate drafts" },
   { id: "under_evaluation", label: "Evaluate" },
-  { id: "draft_ready", label: "Ready Part 3" },
+  { id: "draft_ready", label: "Ready for approval" },
+] as const;
+
+const APPROVAL_STEPS = [
+  { id: "waiting_for_approval", label: "Department approvals" },
+  { id: "done", label: "Final document" },
 ] as const;
 
 function statusLabel(status: string): string {
@@ -43,6 +51,10 @@ function statusLabel(status: string): string {
       return "Under evaluation";
     case "needs_human_review":
       return "Needs human review";
+    case "waiting_for_approval":
+      return "Waiting for approval";
+    case "done":
+      return "Done";
     default:
       return status;
   }
@@ -53,11 +65,13 @@ function statusClass(status: string): string {
     case "analyzing":
     case "drafting":
     case "under_evaluation":
+    case "waiting_for_approval":
       return "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200";
     case "discarded":
       return "bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-200";
     case "intake_complete":
     case "draft_ready":
+    case "done":
       return "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200";
     case "needs_human_review":
       return "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200";
@@ -83,11 +97,33 @@ function stepIndex(stage: string): number {
 }
 
 function draftStepIndex(stage: string, status: string): number {
+  if (status === "waiting_for_approval" || status === "done") return 2;
   if (status === "needs_human_review") return 2;
   if (stage === "draft_ready") return 2;
   if (stage === "under_evaluation" || status === "under_evaluation") return 1;
   if (stage === "drafting" || status === "drafting") return 0;
   return -1;
+}
+
+function approvalStepIndex(status: string): number {
+  if (status === "done") return 1;
+  if (status === "waiting_for_approval") return 0;
+  return -1;
+}
+
+function approvalBadgeClass(status: string | null | undefined): string {
+  switch (status) {
+    case "approved":
+      return "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200";
+    case "rejected":
+      return "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200";
+    case "request_changes":
+      return "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200";
+    case "pending":
+      return "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200";
+    default:
+      return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+  }
 }
 
 function PipelineProgress({
@@ -110,8 +146,13 @@ function PipelineProgress({
     status === "drafting" ||
     status === "under_evaluation" ||
     status === "needs_human_review" ||
+    status === "waiting_for_approval" ||
+    status === "done" ||
     stage === "draft_ready";
   const draftActive = draftStepIndex(stage, status);
+  const approvalActive = approvalStepIndex(status);
+  const showApproval =
+    status === "waiting_for_approval" || status === "done";
 
   return (
     <div className="space-y-2">
@@ -143,7 +184,7 @@ function PipelineProgress({
         <ol className="flex flex-wrap gap-2 text-xs">
           {DRAFT_STEPS.map((step, idx) => {
             const done = draftActive > idx;
-            const current = draftActive === idx;
+            const current = draftActive === idx && !showApproval;
             const nhr = status === "needs_human_review" && idx === 2;
             return (
               <li
@@ -158,8 +199,31 @@ function PipelineProgress({
                         : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                 }`}
               >
-                D{idx + 1}. {nhr ? "Provisional → Part 3" : step.label}
+                D{idx + 1}. {nhr ? "Provisional → approvals" : step.label}
                 {current && isPart2Running(status) ? "…" : ""}
+              </li>
+            );
+          })}
+        </ol>
+      ) : null}
+      {showApproval ? (
+        <ol className="flex flex-wrap gap-2 text-xs">
+          {APPROVAL_STEPS.map((step, idx) => {
+            const done = approvalActive > idx;
+            const current = approvalActive === idx;
+            return (
+              <li
+                key={step.id}
+                className={`rounded px-2 py-1 font-medium ${
+                  done
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+                    : current
+                      ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200"
+                      : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                }`}
+              >
+                A{idx + 1}. {step.label}
+                {current && status === "waiting_for_approval" ? "…" : ""}
               </li>
             );
           })}
@@ -265,9 +329,14 @@ export function RfpIntakePanel() {
       try {
         const row = await loadDetail(selectedId);
         if (cancelled) return;
+        const approvalBootstrapping =
+          row.status === "waiting_for_approval" &&
+          !row.last_error &&
+          row.departments.every((d) => !d.approval_status);
         const running =
           (row.status === "analyzing" && !row.last_error) ||
-          isPart2Running(row.status, row.last_error);
+          isPart2Running(row.status, row.last_error) ||
+          approvalBootstrapping;
         if (running) {
           if (Date.now() - startedAt > 90_000) {
             setPollSlow(true);
@@ -353,6 +422,43 @@ export function RfpIntakePanel() {
       await refreshList();
     } catch (err) {
       setError(friendlyRfpError(err, "No se pudo reintentar el borrador."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onStartApproval() {
+    if (!selectedId) return;
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const created = await startRfpApproval(selectedId);
+      setInfo(`Approvals started (${created.status}).`);
+      await loadDetail(selectedId);
+      await refreshList();
+    } catch (err) {
+      setError(friendlyRfpError(err, "No se pudo iniciar las aprobaciones."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onDecide(
+    departmentId: string,
+    decision: RfpApprovalDecision,
+  ) {
+    if (!selectedId) return;
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const row = await decideRfpApproval(selectedId, departmentId, decision);
+      setDetail(row);
+      setInfo(`${departmentId}: ${decision}`);
+      await refreshList();
+    } catch (err) {
+      setError(friendlyRfpError(err, "No se pudo registrar la decisión."));
     } finally {
       setBusy(false);
     }
@@ -494,6 +600,16 @@ export function RfpIntakePanel() {
                   Retry drafting
                 </button>
               ) : null}
+              {detail.can_start_approval ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void onStartApproval()}
+                  className="ml-2 rounded bg-teal-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-800 disabled:opacity-60"
+                >
+                  Start approvals
+                </button>
+              ) : null}
               {(detail.status === "analyzing" ||
                 isPart2Running(detail.status, detail.last_error)) &&
               !detail.last_error ? (
@@ -601,6 +717,14 @@ export function RfpIntakePanel() {
                           Provisional / needs human review
                         </span>
                       ) : null}
+                      {dept.approval_status ? (
+                        <span
+                          className={`ml-2 rounded px-1.5 py-0.5 text-xs font-semibold ${approvalBadgeClass(dept.approval_status)}`}
+                        >
+                          {dept.approval_status}
+                          {dept.approver ? ` · ${dept.approver}` : ""}
+                        </span>
+                      ) : null}
                     </h4>
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700 dark:text-slate-300">
                       {dept.key_aspects.map((aspect, idx) => (
@@ -618,9 +742,133 @@ export function RfpIntakePanel() {
                       </div>
                     ) : null}
                     <EvalChips section={dept} />
+                    {detail.status === "waiting_for_approval" &&
+                    dept.approval_status !== "approved" ? (
+                      <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void onDecide(dept.department_id, "approved")}
+                          className="rounded bg-emerald-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            void onDecide(dept.department_id, "request_changes")
+                          }
+                          className="rounded bg-orange-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-orange-700 disabled:opacity-60"
+                        >
+                          Request changes
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void onDecide(dept.department_id, "rejected")}
+                          className="rounded bg-red-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-800 disabled:opacity-60"
+                        >
+                          Reject
+                        </button>
+                        {(dept.approval_round ?? 0) > 0 ? (
+                          <span className="self-center text-xs text-slate-500">
+                            rounds: {dept.approval_round}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </article>
                 ))}
               </div>
+            ) : null}
+
+            {detail.conflicts && detail.conflicts.length > 0 ? (
+              <div className="space-y-2 text-sm">
+                <h3 className="font-semibold text-slate-900 dark:text-slate-50">
+                  Arbitration conflicts
+                </h3>
+                <ul className="space-y-2">
+                  {detail.conflicts.map((c, idx) => {
+                    const row = c as {
+                      trigger_id?: string;
+                      arbiter?: string;
+                      detail?: string;
+                    };
+                    return (
+                      <li
+                        key={idx}
+                        className="rounded border border-orange-200 bg-orange-50 p-2 text-orange-950 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-100"
+                      >
+                        <strong>{row.trigger_id || "conflict"}</strong>
+                        {row.arbiter ? ` → ${row.arbiter}` : ""}
+                        {row.detail ? (
+                          <p className="mt-1 text-xs opacity-90">{row.detail}</p>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
+
+            {detail.final_document ? (
+              <div className="space-y-2 border-t border-slate-200 pt-4 dark:border-slate-700">
+                <h3 className="font-semibold text-slate-900 dark:text-slate-50">
+                  Final document ({detail.final_document.currency})
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Generated {detail.final_document.generated_at}
+                </p>
+                <details open={detail.status === "done"}>
+                  <summary className="cursor-pointer text-sm font-medium text-slate-800 dark:text-slate-200">
+                    View markdown
+                  </summary>
+                  <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-3 text-xs text-slate-800 dark:bg-slate-800/60 dark:text-slate-100">
+                    {detail.final_document.content_markdown}
+                  </pre>
+                </details>
+                <a
+                  className="inline-block text-xs font-medium text-blue-700 underline dark:text-blue-300"
+                  href={`data:text/markdown;charset=utf-8,${encodeURIComponent(detail.final_document.content_markdown)}`}
+                  download={`rfp-${detail.ticket_id.slice(0, 8)}-final.md`}
+                >
+                  Download markdown
+                </a>
+              </div>
+            ) : null}
+
+            {detail.trace_events && detail.trace_events.length > 0 ? (
+              <details className="border-t border-slate-200 pt-4 dark:border-slate-700">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-900 dark:text-slate-50">
+                  Trace timeline ({detail.trace_events.length})
+                </summary>
+                <ol className="mt-2 space-y-2 border-l border-slate-200 pl-3 dark:border-slate-700">
+                  {detail.trace_events.map((ev, idx) => (
+                    <li key={idx} className="text-xs text-slate-700 dark:text-slate-300">
+                      <span className="font-mono text-slate-400">
+                        {ev.ts ? String(ev.ts).slice(11, 19) : "—"}
+                      </span>{" "}
+                      <strong>{ev.agent}</strong> · {ev.action}
+                      {ev.department_id ? ` · ${ev.department_id}` : ""}
+                      {ev.input != null || ev.output != null ? (
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-slate-500">
+                            input / output
+                          </summary>
+                          <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-1 dark:bg-slate-800/60">
+                            {JSON.stringify(
+                              { input: ev.input, output: ev.output },
+                              null,
+                              2,
+                            )}
+                          </pre>
+                        </details>
+                      ) : null}
+                    </li>
+                  ))}
+                </ol>
+              </details>
             ) : null}
 
             {globalQuestions.length > 0 ? (

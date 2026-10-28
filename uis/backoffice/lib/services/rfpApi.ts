@@ -12,6 +12,8 @@ export type RfpTicketStatus =
   | "drafting"
   | "under_evaluation"
   | "needs_human_review"
+  | "waiting_for_approval"
+  | "done"
   | string;
 
 export type RfpPipelineStage =
@@ -25,7 +27,14 @@ export type RfpPipelineStage =
   | "under_evaluation"
   | "draft_ready"
   | "needs_human_review"
+  | "waiting_for_approval"
+  | "done"
   | string;
+
+export type RfpApprovalDecision =
+  | "approved"
+  | "rejected"
+  | "request_changes";
 
 export interface RfpTicketSummary {
   ticket_id: string;
@@ -48,6 +57,29 @@ export interface DepartmentSection {
   evaluation_results?: Record<string, unknown>;
   iteration_count?: number;
   needs_human_review?: boolean;
+  approval_status?: string | null;
+  approver?: string | null;
+  approved_at?: string | null;
+  approval_round?: number;
+}
+
+export interface RfpFinalDocument {
+  id?: number | null;
+  ticket_id: string;
+  sections: Record<string, unknown>;
+  currency: string;
+  generated_at: string;
+  content_markdown: string;
+}
+
+export interface RfpTraceEvent {
+  ts?: string;
+  agent?: string;
+  action?: string;
+  department_id?: string | null;
+  detail?: unknown;
+  input?: unknown;
+  output?: unknown;
 }
 
 export interface RfpMetadata {
@@ -78,6 +110,10 @@ export interface RfpTicketDetail {
   ready_for_part3?: boolean;
   handoff_payload: Record<string, unknown>;
   part2_handoff_payload?: Record<string, unknown>;
+  trace_events?: RfpTraceEvent[];
+  final_document_id?: number | null;
+  final_document?: RfpFinalDocument | null;
+  conflicts?: unknown[];
   created_at: string;
   updated_at: string;
   metadata?: RfpMetadata | null;
@@ -85,6 +121,7 @@ export interface RfpTicketDetail {
   pipeline_stage: RfpPipelineStage;
   can_retry: boolean;
   can_start_draft?: boolean;
+  can_start_approval?: boolean;
 }
 
 export interface RfpTicketCreated {
@@ -128,6 +165,28 @@ export function retryRfpDraft(ticketId: string): Promise<RfpTicketCreated> {
   return healthcoreRequest<RfpTicketCreated>(
     `/rfp/tickets/${ticketId}/draft/retry`,
     { method: "POST" },
+  );
+}
+
+export function startRfpApproval(ticketId: string): Promise<RfpTicketCreated> {
+  return healthcoreRequest<RfpTicketCreated>(
+    `/rfp/tickets/${ticketId}/approval/start`,
+    { method: "POST" },
+  );
+}
+
+export function decideRfpApproval(
+  ticketId: string,
+  departmentId: string,
+  decision: RfpApprovalDecision,
+  note?: string,
+): Promise<RfpTicketDetail> {
+  return healthcoreRequest<RfpTicketDetail>(
+    `/rfp/tickets/${ticketId}/approval/${departmentId}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ decision, note: note || null }),
+    },
   );
 }
 
