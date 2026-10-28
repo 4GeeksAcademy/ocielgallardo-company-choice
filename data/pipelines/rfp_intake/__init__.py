@@ -1,8 +1,9 @@
-"""RFP intake + drafting pipelines — Parts 1–2 (dedicated graphs)."""
+"""RFP intake + drafting + approval pipelines — Parts 1–3 (dedicated graphs)."""
 
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -224,4 +225,148 @@ def run_rfp_drafting(ticket_id: str) -> dict[str, Any]:
     }
 
 
-__all__ = ["run_rfp_intake", "run_rfp_drafting"]
+def _sections_snapshot_for_approval(ticket_id: str) -> tuple[dict[str, Any], dict[str, Any], list[Any]]:
+    from sqlmodel import Session
+
+    from services.app.core.database import get_engine
+    from services.app.domain import rfp_service
+
+    with Session(get_engine()) as session:
+        ticket = rfp_service.get_ticket(session, ticket_id)
+        detail = rfp_service.ticket_detail(session, ticket_id)
+        metadata: dict[str, Any] = {}
+        if detail.metadata:
+            metadata = detail.metadata.model_dump()
+        sections: dict[str, dict[str, Any]] = {}
+        for section in detail.departments:
+            sections[section.department_id] = {
+                "department_id": section.department_id,
+                "draft_content": section.draft_content,
+                "contains_phi": section.contains_phi,
+                "evaluation_results": dict(section.evaluation_results or {}),
+                "key_aspects": list(section.key_aspects or []),
+                "open_questions": list(section.open_questions or []),
+                "approval_status": section.approval_status,
+                "approver": section.approver,
+                "approved_at": section.approved_at.isoformat()
+                if section.approved_at
+                else None,
+                "approval_round": section.approval_round,
+            }
+        prior_trace = list(getattr(ticket, "trace_events", None) or [])
+        return metadata, sections, prior_trace
+
+
+def run_rfp_approval(ticket_id: str) -> dict[str, Any]:
+    """Start Part 3 approval graph until first department interrupt."""
+    from sqlmodel import Session
+
+    from data.pipelines.rfp_intake.approval_graph import start_approval_graph
+    from services.app.core.database import get_engine
+    from services.app.domain import rfp_service
+
+    metadata, sections, prior_trace = _sections_snapshot_for_approval(ticket_id)
+
+    try:
+        result = start_approval_graph(
+            ticket_id=ticket_id,
+            metadata=metadata,
+            sections=sections,
+            prior_trace=prior_trace,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("rfp_approval start failed ticket_id=%s", ticket_id)
+        with Session(get_engine()) as session:
+            rfp_service.set_ticket_error(session, ticket_id, str(exc))
+        raise
+
+    with Session(get_engine()) as session:
+        rfp_service.persist_approval_snapshot(
+            session,
+            ticket_id,
+            status=result.get("status") or "waiting_for_approval",
+            approvals=result.get("approvals") or {},
+            conflicts=result.get("conflicts") or [],
+            trace_events=result.get("trace_events") or [],
+            final_document=result.get("final_document"),
+            sales_flags=result.get("sales_flags") or [],
+        )
+
+    return {
+        "ticket_id": ticket_id,
+        "status": result.get("status"),
+        "interrupted": result.get("interrupted"),
+        "approvals": result.get("approvals"),
+        "conflicts": result.get("conflicts"),
+    }
+
+
+def resume_rfp_approval(
+    ticket_id: str,
+    *,
+    department_id: str,
+    decision: str,
+    actor: str | None = None,
+    note: str | None = None,
+) -> dict[str, Any]:
+    """Resume HITL interrupt with one department decision and persist state."""
+    from sqlmodel import Session
+
+    from data.pipelines.rfp_intake.approval_graph import resume_approval_graph
+    from data.pipelines.rfp_intake.departments import DEPARTMENT_OWNERS, KNOWN_DEPARTMENTS
+    from services.app.core.database import get_engine
+    from services.app.domain import rfp_service
+
+    if department_id not in KNOWN_DEPARTMENTS:
+        raise ValueError(f"Unknown department_id={department_id}")
+
+    approved_at = (
+        datetime.now(timezone.utc).isoformat() if decision == "approved" else None
+    )
+    # Prefer BRIEFING owner name on the section; keep actor email in trace/detail.
+    _ = DEPARTMENT_OWNERS.get(department_id)
+
+    try:
+        result = resume_approval_graph(
+            ticket_id=ticket_id,
+            department_id=department_id,
+            decision=decision,
+            actor=actor,
+            note=note,
+            approved_at=approved_at,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "rfp_approval resume failed ticket_id=%s dept=%s", ticket_id, department_id
+        )
+        with Session(get_engine()) as session:
+            rfp_service.set_ticket_error(session, ticket_id, str(exc))
+        raise
+
+    with Session(get_engine()) as session:
+        rfp_service.persist_approval_snapshot(
+            session,
+            ticket_id,
+            status=result.get("status") or "waiting_for_approval",
+            approvals=result.get("approvals") or {},
+            conflicts=result.get("conflicts") or [],
+            trace_events=result.get("trace_events") or [],
+            final_document=result.get("final_document"),
+            sales_flags=result.get("sales_flags") or [],
+        )
+
+    return {
+        "ticket_id": ticket_id,
+        "status": result.get("status"),
+        "interrupted": result.get("interrupted"),
+        "approvals": result.get("approvals"),
+        "final_document": result.get("final_document"),
+    }
+
+
+__all__ = [
+    "run_rfp_intake",
+    "run_rfp_drafting",
+    "run_rfp_approval",
+    "resume_rfp_approval",
+]
