@@ -9,6 +9,9 @@ export type RfpTicketStatus =
   | "analyzing"
   | "discarded"
   | "intake_complete"
+  | "drafting"
+  | "under_evaluation"
+  | "needs_human_review"
   | string;
 
 export type RfpPipelineStage =
@@ -18,6 +21,10 @@ export type RfpPipelineStage =
   | "failed"
   | "discarded"
   | "complete"
+  | "drafting"
+  | "under_evaluation"
+  | "draft_ready"
+  | "needs_human_review"
   | string;
 
 export interface RfpTicketSummary {
@@ -28,6 +35,7 @@ export interface RfpTicketSummary {
   original_filename?: string | null;
   client_name?: string | null;
   ready_for_part2: boolean;
+  ready_for_part3?: boolean;
 }
 
 export interface DepartmentSection {
@@ -36,6 +44,10 @@ export interface DepartmentSection {
   key_aspects: unknown[];
   open_questions: unknown[];
   contains_phi: boolean;
+  draft_content?: string | null;
+  evaluation_results?: Record<string, unknown>;
+  iteration_count?: number;
+  needs_human_review?: boolean;
 }
 
 export interface RfpMetadata {
@@ -63,13 +75,16 @@ export interface RfpTicketDetail {
   last_error?: string | null;
   discard_reason?: string | null;
   ready_for_part2: boolean;
+  ready_for_part3?: boolean;
   handoff_payload: Record<string, unknown>;
+  part2_handoff_payload?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
   metadata?: RfpMetadata | null;
   departments: DepartmentSection[];
   pipeline_stage: RfpPipelineStage;
   can_retry: boolean;
+  can_start_draft?: boolean;
 }
 
 export interface RfpTicketCreated {
@@ -100,6 +115,20 @@ export function retryRfpTicket(ticketId: string): Promise<RfpTicketCreated> {
   return healthcoreRequest<RfpTicketCreated>(`/rfp/tickets/${ticketId}/retry`, {
     method: "POST",
   });
+}
+
+export function startRfpDraft(ticketId: string): Promise<RfpTicketCreated> {
+  return healthcoreRequest<RfpTicketCreated>(
+    `/rfp/tickets/${ticketId}/draft`,
+    { method: "POST" },
+  );
+}
+
+export function retryRfpDraft(ticketId: string): Promise<RfpTicketCreated> {
+  return healthcoreRequest<RfpTicketCreated>(
+    `/rfp/tickets/${ticketId}/draft/retry`,
+    { method: "POST" },
+  );
 }
 
 export function friendlyRfpError(err: unknown, fallback: string): string {

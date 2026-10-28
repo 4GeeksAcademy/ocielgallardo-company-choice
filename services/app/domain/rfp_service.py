@@ -51,7 +51,9 @@ def create_ticket_from_upload(
         status="analyzing",
         raw_pdf_path=rel_pdf.replace("\\", "/"),
         ready_for_part2=False,
+        ready_for_part3=False,
         handoff_payload={},
+        part2_handoff_payload={},
         created_at=_utc_now(),
         updated_at=_utc_now(),
     )
@@ -95,6 +97,7 @@ def list_tickets(session: Session) -> list[RfpTicketSummary]:
                 original_filename=doc.original_filename if doc else None,
                 client_name=doc.client_name if doc else None,
                 ready_for_part2=ticket.ready_for_part2,
+                ready_for_part3=bool(getattr(ticket, "ready_for_part3", False)),
             )
         )
     return out
@@ -137,6 +140,10 @@ def ticket_detail(session: Session, ticket_id: str) -> RfpTicketDetail:
                 key_aspects=list(section.key_aspects or []),
                 open_questions=list(section.open_questions or []),
                 contains_phi=bool(eval_results.get("contains_phi", False)),
+                draft_content=section.draft_content,
+                evaluation_results=eval_results,
+                iteration_count=int(getattr(section, "iteration_count", 0) or 0),
+                needs_human_review=bool(getattr(section, "needs_human_review", False)),
             )
         )
     # Stable order matching BRIEFING
@@ -148,7 +155,9 @@ def ticket_detail(session: Session, ticket_id: str) -> RfpTicketDetail:
         last_error=ticket.last_error,
         markdown_path=ticket.markdown_path,
         department_count=len(departments),
+        ready_for_part3=bool(getattr(ticket, "ready_for_part3", False)),
     )
+    can_start_draft = ticket.status == "intake_complete" and bool(ticket.ready_for_part2)
 
     return RfpTicketDetail(
         ticket_id=ticket.ticket_id,
@@ -159,13 +168,16 @@ def ticket_detail(session: Session, ticket_id: str) -> RfpTicketDetail:
         last_error=ticket.last_error,
         discard_reason=ticket.discard_reason,
         ready_for_part2=ticket.ready_for_part2,
+        ready_for_part3=bool(getattr(ticket, "ready_for_part3", False)),
         handoff_payload=dict(ticket.handoff_payload or {}),
+        part2_handoff_payload=dict(getattr(ticket, "part2_handoff_payload", None) or {}),
         created_at=ticket.created_at,
         updated_at=ticket.updated_at,
         metadata=metadata,
         departments=departments,
         pipeline_stage=stage,
         can_retry=can_retry,
+        can_start_draft=can_start_draft,
     )
 
 
@@ -175,8 +187,17 @@ def derive_pipeline_stage(
     last_error: str | None,
     markdown_path: str | None,
     department_count: int,
+    ready_for_part3: bool = False,
 ) -> tuple[str, bool]:
     """Return (pipeline_stage, can_retry) for the ticket UI progress strip."""
+    if status == "needs_human_review":
+        return "needs_human_review", bool(last_error)
+    if status == "under_evaluation":
+        if ready_for_part3 and not last_error:
+            return "draft_ready", False
+        return "under_evaluation", bool(last_error)
+    if status == "drafting":
+        return "drafting", bool(last_error)
     if status == "intake_complete":
         return "complete", False
     if status == "discarded":
@@ -188,6 +209,62 @@ def derive_pipeline_stage(
     if markdown_path:
         return "agents", False
     return "converting", False
+
+
+def prepare_ticket_draft(session: Session, ticket_id: str) -> RfpTicket:
+    """Validate ticket can start Part 2 drafting and clear prior draft errors."""
+    ticket = get_ticket(session, ticket_id)
+    if ticket.status == "discarded":
+        raise HTTPException(status_code=400, detail="Discarded tickets cannot be drafted")
+    if ticket.status in {"drafting", "under_evaluation"} and not ticket.last_error:
+        raise HTTPException(
+            status_code=409,
+            detail="Drafting already in progress for this ticket",
+        )
+    if ticket.status == "needs_human_review" and ticket.ready_for_part3 and not ticket.last_error:
+        # Allow re-run from provisional terminal only via explicit retry path
+        pass
+    elif ticket.status not in {
+        "intake_complete",
+        "needs_human_review",
+        "drafting",
+        "under_evaluation",
+    }:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot start drafting from status={ticket.status}",
+        )
+    if ticket.status == "intake_complete" and not ticket.ready_for_part2:
+        raise HTTPException(status_code=400, detail="Ticket is not ready_for_part2")
+    if ticket.status in {"drafting", "under_evaluation"} and ticket.last_error:
+        ticket.last_error = None
+    ticket.status = "drafting"
+    ticket.ready_for_part3 = False
+    ticket.updated_at = _utc_now()
+    session.add(ticket)
+    session.commit()
+    session.refresh(ticket)
+    return ticket
+
+
+def prepare_draft_retry(session: Session, ticket_id: str) -> RfpTicket:
+    """Retry drafting after mid-pipeline failure or a stuck drafting status."""
+    ticket = get_ticket(session, ticket_id)
+    if ticket.status not in {"drafting", "under_evaluation", "needs_human_review"}:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot retry drafting from status={ticket.status}",
+        )
+    # Allow forced retry when stuck in drafting/under_evaluation without error
+    # (e.g. worker died) — UI surfaces this after a slow-poll warning.
+    ticket.last_error = None
+    ticket.status = "drafting"
+    ticket.ready_for_part3 = False
+    ticket.updated_at = _utc_now()
+    session.add(ticket)
+    session.commit()
+    session.refresh(ticket)
+    return ticket
 
 
 def prepare_ticket_retry(session: Session, ticket_id: str) -> RfpTicket:
@@ -259,6 +336,17 @@ def upsert_document(session: Session, ticket_id: str, **fields: Any) -> RfpDocum
     return doc
 
 
+def get_department_section(
+    session: Session, ticket_id: str, department_id: str
+) -> DepartmentSection | None:
+    return session.exec(
+        select(DepartmentSection).where(
+            DepartmentSection.ticket_id == ticket_id,
+            DepartmentSection.department_id == department_id,
+        )
+    ).first()
+
+
 def upsert_department_section(
     session: Session,
     ticket_id: str,
@@ -267,6 +355,9 @@ def upsert_department_section(
     key_aspects: list[Any],
     open_questions: list[Any],
     evaluation_results: dict[str, Any] | None = None,
+    draft_content: str | None = None,
+    iteration_count: int | None = None,
+    needs_human_review: bool | None = None,
 ) -> DepartmentSection:
     section = session.exec(
         select(DepartmentSection).where(
@@ -282,6 +373,12 @@ def upsert_department_section(
     section.key_aspects = key_aspects
     section.open_questions = open_questions
     section.evaluation_results = evaluation_results or {}
+    if draft_content is not None:
+        section.draft_content = draft_content
+    if iteration_count is not None:
+        section.iteration_count = iteration_count
+    if needs_human_review is not None:
+        section.needs_human_review = needs_human_review
     session.add(section)
     session.commit()
     session.refresh(section)
