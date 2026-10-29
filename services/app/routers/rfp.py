@@ -29,6 +29,26 @@ def _require_db() -> None:
         )
 
 
+def _friendly_approval_detail(exc: BaseException) -> str:
+    """Map HITL/graph exceptions to short UI-facing messages (tech detail stays in logs)."""
+    msg = str(exc)
+    lower = msg.lower()
+    if "no open interrupt" in lower:
+        return (
+            "This department is not ready for a decision yet. "
+            "Use Retry approvals to restart the review flow, then try again."
+        )
+    if "already in progress" in lower:
+        return "Approvals are already running for this ticket."
+    if "cannot record approval from status" in lower:
+        return "This ticket is not waiting for department approval right now."
+    if "unknown department" in lower:
+        return "Unknown department for this approval decision."
+    if "failed to start approval" in lower or "approval graph" in lower:
+        return "Could not start the approval review. Try again in a moment."
+    return msg or "Could not complete this approval action."
+
+
 @router.post("/tickets", response_model=RfpTicketCreated, status_code=202)
 async def upload_rfp_ticket(
     file: UploadFile = File(...),
@@ -228,8 +248,10 @@ def start_rfp_approval(
 ) -> JSONResponse:
     """Start Part 3 HITL approval (guardrails + arbitration → first interrupt).
 
-    Prefer Celery ``rfp.approval_run``; fall back to sync start until the first
-    interrupt so the UI always gets approval rows without a worker.
+    Always runs the graph synchronously in the API until the first HITL
+    interrupts so Approve/Reject resume in the same process (and shared
+    compose volume). Optionally enqueues Celery ``rfp.approval_run`` only when
+    sync start fails (worker + shared volume can recover).
     """
     _ = current_user
     _require_db()
@@ -237,26 +259,24 @@ def start_rfp_approval(
 
     celery_task_id: str | None = None
     try:
-        from services.app.tasks.rfp_approval import run_rfp_approval_task
+        from data.pipelines.rfp_intake import run_rfp_approval
 
-        async_result = run_rfp_approval_task.apply_async(
-            kwargs={"ticket_id": ticket.ticket_id}
-        )
-        celery_task_id = async_result.id
-    except Exception:
-        celery_task_id = None
-
-    if celery_task_id is None:
+        run_rfp_approval(ticket.ticket_id)
+        ticket = rfp_service.get_ticket(session, ticket.ticket_id)
+    except Exception as sync_exc:  # noqa: BLE001
         try:
-            from data.pipelines.rfp_intake import run_rfp_approval
+            from services.app.tasks.rfp_approval import run_rfp_approval_task
 
-            run_rfp_approval(ticket.ticket_id)
-            ticket = rfp_service.get_ticket(session, ticket.ticket_id)
-        except Exception as exc:  # noqa: BLE001
+            async_result = run_rfp_approval_task.apply_async(
+                kwargs={"ticket_id": ticket.ticket_id}
+            )
+            celery_task_id = async_result.id
+        except Exception:
+            celery_task_id = None
             rfp_service.set_ticket_error(
                 session,
                 ticket.ticket_id,
-                f"Failed to start approval graph: {exc}",
+                _friendly_approval_detail(sync_exc),
             )
             ticket = rfp_service.get_ticket(session, ticket.ticket_id)
 
@@ -283,14 +303,15 @@ def decide_rfp_approval(
     _require_db()
     if department_id not in KNOWN_DEPARTMENTS:
         raise HTTPException(
-            status_code=400, detail=f"Unknown department_id={department_id}"
+            status_code=400,
+            detail="Unknown department for this approval decision.",
         )
 
     ticket = rfp_service.get_ticket(session, ticket_id)
     if ticket.status != "waiting_for_approval":
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot record approval from status={ticket.status}",
+            detail="This ticket is not waiting for department approval right now.",
         )
 
     actor = getattr(current_user, "email", None) or getattr(
@@ -307,6 +328,9 @@ def decide_rfp_approval(
             note=body.note,
         )
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        detail = _friendly_approval_detail(exc)
+        # Pipeline already logged + stored the raw exception; overwrite for UI.
+        rfp_service.set_ticket_error(session, ticket_id, detail)
+        raise HTTPException(status_code=400, detail=detail) from exc
 
     return rfp_service.ticket_detail(session, ticket_id)

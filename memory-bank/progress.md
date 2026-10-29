@@ -1,5 +1,23 @@
 # Progress
 
+## Latest Update (2026-10-29) — Part 3 HITL verified (Compose + recovery)
+
+- **Verified:** shared checkpoints volume, sync approval start, friendly errors,
+  Retry approvals, metadata-PHI gate clear after Compliance when drafts clean.
+- Recovered Contoso ticket `e9c033ea-…` → **`done`** + final document id `2`.
+- Docs aligned: `memory-bank/techContext.md`, sample README Parts 2–3 UI path.
+- Tests: interrupt + final_document suites → 11 passed (incl. metadata-PHI case).
+
+## Latest Update (2026-10-28) — RFP HITL compose + sync start + friendly errors
+
+- Compose: shared volume `rfp_langgraph_checkpoints` on backend + worker
+  (`/app/data/process/rfp`) so SqliteSaver interrupts are visible to Approve.
+- `POST …/approval/start` always runs the graph **sync in the API** (Celery
+  only if sync fails); bump `approval_graph_generation` per Start/Retry for a
+  fresh `thread_id` (`rfp-{id}-gN`).
+- Stuck tickets: `can_start_approval` + Retry when `waiting_for_approval` +
+  `last_error`; human-friendly API/UI messages (no `pending=[] next=[]` dump).
+
 ## Latest Update (2026-10-28) — Hito 27 Part 3: RFP approval & completion
 
 - **Branch `feature/rfp-approval-completion`** (from `main` + Part 2 via
@@ -7,7 +25,8 @@
 - HITL graph: guardrails → BRIEFING arbitration → **parallel** per-dept
   interrupt branches (`hitl_revenue`/`clinical`/`compliance`) → join/synth.
 - Resume is an explicit entrypoint: validates decision, resumes **only** that
-  interrupt id (`Command(resume={interrupt_id: payload})`); `thread_id=rfp-{ticket_id}`.
+  interrupt id (`Command(resume={interrupt_id: payload})`);
+  `thread_id=rfp-{ticket_id}-gN` (generation bump on Start/Retry).
 - Traceability: each node logs `agent` + `input` + `output` + `ts`.
 - Reject/`request_changes` stay on the same HITL branch (max 3 rounds) then
   Sales flag `requires_part2_redraft` — no auto Part 2 re-run.

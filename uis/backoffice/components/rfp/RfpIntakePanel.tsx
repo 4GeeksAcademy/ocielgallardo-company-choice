@@ -6,6 +6,7 @@ import {
   decideRfpApproval,
   formatReadability,
   friendlyRfpError,
+  friendlyRfpLastError,
   getRfpTicket,
   listRfpTickets,
   retryRfpDraft,
@@ -607,7 +608,9 @@ export function RfpIntakePanel() {
                   onClick={() => void onStartApproval()}
                   className="ml-2 rounded bg-teal-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-800 disabled:opacity-60"
                 >
-                  Start approvals
+                  {detail.status === "waiting_for_approval"
+                    ? "Retry approvals"
+                    : "Start approvals"}
                 </button>
               ) : null}
               {(detail.status === "analyzing" ||
@@ -646,7 +649,20 @@ export function RfpIntakePanel() {
               (detail.status === "drafting" ||
                 detail.status === "under_evaluation") ? (
                 <div className="space-y-2 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-                  <p>Drafting error: {detail.last_error}</p>
+                  <p>Drafting error: {friendlyRfpLastError(detail.last_error)}</p>
+                </div>
+              ) : null}
+              {detail.last_error && detail.status === "waiting_for_approval" ? (
+                <div className="space-y-2 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                  <p>
+                    Approval error: {friendlyRfpLastError(detail.last_error)}
+                  </p>
+                  {detail.can_start_approval ? (
+                    <p className="text-xs opacity-90">
+                      Use <strong>Retry approvals</strong> above to restart the
+                      review flow, then decide again on each department.
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
               {detail.status === "needs_human_review" ? (

@@ -23,6 +23,7 @@ from data.pipelines.rfp_intake.arbitration import apply_arbitration
 from data.pipelines.rfp_intake.departments import DEPARTMENT_OWNERS, KNOWN_DEPARTMENTS
 from data.pipelines.rfp_intake.final_document import (
     FinalDocumentError,
+    section_has_phi,
     synthesize_final_document,
 )
 from data.pipelines.rfp_intake.guidelines import currency_for_country
@@ -69,12 +70,21 @@ class ApprovalGraphState(TypedDict, total=False):
     sales_flags: Annotated[list[dict[str, Any]], merge_lists]
 
 
-def thread_id_for(ticket_id: str, department_id: str | None = None) -> str:
-    """Namespace checkpoints by ticket (and optionally department).
+def thread_id_for(
+    ticket_id: str,
+    department_id: str | None = None,
+    *,
+    generation: int = 0,
+) -> str:
+    """Namespace checkpoints by ticket (and optionally department / retry gen).
 
-    Concurrent tickets must never share a checkpoint thread.
+    Concurrent tickets must never share a checkpoint thread. ``generation``
+    bumps on each Start/Retry approvals so a stuck empty checkpoint cannot
+    block a fresh HITL run.
     """
     base = f"rfp-{ticket_id}"
+    if generation and int(generation) > 0:
+        base = f"{base}-g{int(generation)}"
     if department_id:
         return f"{base}:{department_id}"
     return base
@@ -479,16 +489,30 @@ def _pending_departments(approvals: dict[str, dict[str, Any]]) -> list[str]:
 
 
 def _join_and_synthesize(state: ApprovalGraphState) -> dict[str, Any]:
+    approvals = dict(state.get("approvals") or {})
+    sections = {k: dict(v) for k, v in (state.get("sections") or {}).items()}
+    pending = _pending_departments(approvals)
+    compliance_ok = (approvals.get("compliance") or {}).get("approval_status") == "approved"
+    sections_have_phi = any(section_has_phi(s) for s in sections.values())
     node_input = {
         "approvals": {
-            d: (state.get("approvals") or {}).get(d, {}).get("approval_status")
-            for d in KNOWN_DEPARTMENTS
+            d: (approvals.get(d) or {}).get("approval_status") for d in KNOWN_DEPARTMENTS
         },
         "blocking_phi": bool(state.get("blocking_phi")),
+        "sections_have_phi": sections_have_phi,
+        "compliance_approved": compliance_ok,
     }
     traces: list[dict[str, Any]] = []
 
-    if state.get("blocking_phi") or state.get("synthesizer_blocked"):
+    # Arbitration may set blocking_phi from metadata.contains_phi even when
+    # department drafts are already clean. Claire's compliance approval clears
+    # that gate when no section still flags PHI (BRIEFING: synthesizer only
+    # after required approvals and no section PHI).
+    phi_gate_open = (
+        bool(state.get("blocking_phi") or state.get("synthesizer_blocked"))
+        and (sections_have_phi or not compliance_ok or bool(pending))
+    )
+    if phi_gate_open:
         out = {
             "final_document": None,
             "status": "waiting_for_approval",
@@ -505,8 +529,6 @@ def _join_and_synthesize(state: ApprovalGraphState) -> dict[str, Any]:
         )
         return {**out, "trace_events": traces}
 
-    approvals = dict(state.get("approvals") or {})
-    pending = _pending_departments(approvals)
     if pending:
         out = {
             "final_document": None,
@@ -523,7 +545,6 @@ def _join_and_synthesize(state: ApprovalGraphState) -> dict[str, Any]:
         return {**out, "trace_events": traces}
 
     # Mirror approval fields onto sections for the synthesizer.
-    sections = {k: dict(v) for k, v in (state.get("sections") or {}).items()}
     for dept_id, approval in approvals.items():
         section = dict(sections.get(dept_id) or {"department_id": dept_id})
         section["approval_status"] = approval.get("approval_status")
@@ -563,6 +584,7 @@ def _join_and_synthesize(state: ApprovalGraphState) -> dict[str, Any]:
         "final_document": serializable,
         "sections": sections,
         "status": "done",
+        "blocking_phi": False,
         "synthesizer_blocked": False,
     }
     traces.append(
@@ -593,8 +615,12 @@ def build_approval_graph(checkpointer: SqliteSaver):
     return graph.compile(checkpointer=checkpointer)
 
 
-def _config(ticket_id: str) -> dict[str, Any]:
-    return {"configurable": {"thread_id": thread_id_for(ticket_id)}}
+def _config(ticket_id: str, *, generation: int = 0) -> dict[str, Any]:
+    return {
+        "configurable": {
+            "thread_id": thread_id_for(ticket_id, generation=generation),
+        }
+    }
 
 
 def start_approval_graph(
@@ -603,6 +629,7 @@ def start_approval_graph(
     metadata: dict[str, Any],
     sections: dict[str, dict[str, Any]],
     prior_trace: list[dict[str, Any]] | None = None,
+    generation: int = 0,
 ) -> dict[str, Any]:
     """Run until department HITL interrupts (parallel). Explicit start entrypoint."""
     checkpointer, conn = open_checkpointer()
@@ -622,9 +649,10 @@ def start_approval_graph(
             "status": "waiting_for_approval",
             "sales_flags": [],
         }
-        result = app.invoke(initial, config=_config(ticket_id))
-        snap = app.get_state(_config(ticket_id))
-        return _pack_result(result, snap)
+        cfg = _config(ticket_id, generation=generation)
+        result = app.invoke(initial, config=cfg)
+        snap = app.get_state(cfg)
+        return _pack_result(result, snap, generation=generation)
     finally:
         conn.close()
 
@@ -648,6 +676,7 @@ def resume_approval_graph(
     actor: str | None = None,
     note: str | None = None,
     approved_at: str | None = None,
+    generation: int = 0,
 ) -> dict[str, Any]:
     """Explicit resume entrypoint — does not restart the whole flow.
 
@@ -666,7 +695,7 @@ def resume_approval_graph(
     checkpointer, conn = open_checkpointer()
     try:
         app = build_approval_graph(checkpointer)
-        cfg = _config(ticket_id)
+        cfg = _config(ticket_id, generation=generation)
         snap = app.get_state(cfg)
         resume_map = _interrupt_resume_map(snap, department_id, payload)
         if not resume_map:
@@ -681,7 +710,7 @@ def resume_approval_graph(
             )
         result = app.invoke(Command(resume=resume_map), config=cfg)
         snap2 = app.get_state(cfg)
-        return _pack_result(result, snap2)
+        return _pack_result(result, snap2, generation=generation)
     finally:
         conn.close()
 
@@ -705,7 +734,12 @@ def _approvals_from_interrupts(snap: Any) -> dict[str, dict[str, Any]]:
     return committed
 
 
-def _pack_result(result: dict[str, Any] | Any, snap: Any) -> dict[str, Any]:
+def _pack_result(
+    result: dict[str, Any] | Any,
+    snap: Any,
+    *,
+    generation: int = 0,
+) -> dict[str, Any]:
     values = dict(result or {}) if isinstance(result, dict) else {}
     if snap is not None and getattr(snap, "values", None):
         merged = dict(snap.values)
@@ -726,6 +760,7 @@ def _pack_result(result: dict[str, Any] | Any, snap: Any) -> dict[str, Any]:
         for t in (getattr(snap, "tasks", None) or [])
         for i in (getattr(t, "interrupts", None) or [])
     ]
+    ticket_id = str(values.get("ticket_id") or "")
 
     return {
         "status": values.get("status")
@@ -741,7 +776,8 @@ def _pack_result(result: dict[str, Any] | Any, snap: Any) -> dict[str, Any]:
         "interrupted": interrupted,
         "next": list(getattr(snap, "next", None) or []),
         "pending_interrupt_departments": [d for d in pending_depts if d],
-        "thread_id": thread_id_for(str(values.get("ticket_id") or "")),
+        "thread_id": thread_id_for(ticket_id, generation=generation),
+        "generation": int(generation or 0),
     }
 
 

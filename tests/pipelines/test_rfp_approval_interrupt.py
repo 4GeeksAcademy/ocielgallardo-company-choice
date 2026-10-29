@@ -77,6 +77,8 @@ def test_thread_id_namespaced_by_ticket():
     assert thread_id_for("abc-123") == "rfp-abc-123"
     assert thread_id_for("abc-123", "clinical") == "rfp-abc-123:clinical"
     assert thread_id_for("t1") != thread_id_for("t2")
+    assert thread_id_for("abc-123", generation=2) == "rfp-abc-123-g2"
+    assert thread_id_for("abc-123", generation=1) != thread_id_for("abc-123")
 
 
 def test_validate_approval_decision_rejects_garbage():
@@ -142,6 +144,32 @@ def test_successful_interrupt_and_resume(isolated_checkpoints):
     assert done["status"] == "done"
     assert done["final_document"] is not None
     assert "Meridian" in done["final_document"]["content_markdown"]
+
+
+def test_metadata_phi_clears_after_compliance_approve_when_sections_clean(
+    isolated_checkpoints,
+):
+    """metadata.contains_phi must not permanently block synth after Claire approves."""
+    ticket_id = f"test-phi-meta-{uuid.uuid4()}"
+    meta = _meta()
+    meta["contains_phi"] = True
+    start_approval_graph(
+        ticket_id=ticket_id,
+        metadata=meta,
+        sections=_clean_sections(),
+    )
+    for dept in ("revenue", "clinical", "compliance"):
+        done = resume_approval_graph(
+            ticket_id=ticket_id,
+            department_id=dept,
+            decision="approved",
+            actor="tester@healthcore.test",
+            approved_at="2026-10-29T12:00:00+00:00",
+        )
+    assert done["interrupted"] is False
+    assert done["status"] == "done"
+    assert done["final_document"] is not None
+    assert done.get("synthesizer_blocked") is False
 
 
 def test_approve_b_while_a_still_interrupted_proves_parallel(isolated_checkpoints):

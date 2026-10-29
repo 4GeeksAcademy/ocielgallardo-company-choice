@@ -267,12 +267,18 @@ def run_rfp_approval(ticket_id: str) -> dict[str, Any]:
 
     metadata, sections, prior_trace = _sections_snapshot_for_approval(ticket_id)
 
+    with Session(get_engine()) as session:
+        ticket = rfp_service.get_ticket(session, ticket_id)
+        handoff = dict(ticket.handoff_payload or {})
+        generation = int(handoff.get("approval_graph_generation") or 0)
+
     try:
         result = start_approval_graph(
             ticket_id=ticket_id,
             metadata=metadata,
             sections=sections,
             prior_trace=prior_trace,
+            generation=generation,
         )
     except Exception as exc:  # noqa: BLE001
         logger.exception("rfp_approval start failed ticket_id=%s", ticket_id)
@@ -326,6 +332,11 @@ def resume_rfp_approval(
     # Prefer BRIEFING owner name on the section; keep actor email in trace/detail.
     _ = DEPARTMENT_OWNERS.get(department_id)
 
+    with Session(get_engine()) as session:
+        ticket = rfp_service.get_ticket(session, ticket_id)
+        handoff = dict(ticket.handoff_payload or {})
+        generation = int(handoff.get("approval_graph_generation") or 0)
+
     try:
         result = resume_approval_graph(
             ticket_id=ticket_id,
@@ -334,6 +345,7 @@ def resume_rfp_approval(
             actor=actor,
             note=note,
             approved_at=approved_at,
+            generation=generation,
         )
     except Exception as exc:  # noqa: BLE001
         logger.exception(

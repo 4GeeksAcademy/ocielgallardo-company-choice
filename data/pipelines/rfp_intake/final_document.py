@@ -13,7 +13,8 @@ class FinalDocumentError(ValueError):
     """Raised when synthesis preconditions fail."""
 
 
-def _section_has_phi(section: dict[str, Any]) -> bool:
+def section_has_phi(section: dict[str, Any]) -> bool:
+    """True when the department section (or its eval) still flags PHI."""
     if bool(section.get("contains_phi")):
         return True
     evals = section.get("evaluation_results") or {}
@@ -30,10 +31,12 @@ def synthesize_final_document(
     """Concatenate approved drafts + metadata header.
 
     Refuses if any section has PHI or compliance is not approved.
+    Metadata-level ``contains_phi`` alone does not block once section drafts
+    are clean and Compliance has approved (Claire cleared the gate).
     """
     approvals = approvals or {}
     for dept_id, section in sections.items():
-        if _section_has_phi(section):
+        if section_has_phi(section):
             raise FinalDocumentError(
                 f"Cannot synthesize: department '{dept_id}' still has contains_phi=true"
             )
@@ -114,4 +117,4 @@ def synthesize_final_document(
     }
 
 
-__all__ = ["FinalDocumentError", "synthesize_final_document"]
+__all__ = ["FinalDocumentError", "synthesize_final_document", "section_has_phi"]
