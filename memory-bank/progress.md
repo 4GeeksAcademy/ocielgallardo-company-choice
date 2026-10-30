@@ -1,5 +1,56 @@
 # Progress
 
+## Latest Update (2026-10-29) — Part 3 HITL verified (Compose + recovery)
+
+- **Verified:** shared checkpoints volume, sync approval start, friendly errors,
+  Retry approvals, metadata-PHI gate clear after Compliance when drafts clean.
+- Recovered Contoso ticket `e9c033ea-…` → **`done`** + final document id `2`.
+- Docs aligned: `memory-bank/techContext.md`, sample README Parts 2–3 UI path.
+- Tests: interrupt + final_document suites → 11 passed (incl. metadata-PHI case).
+
+## Latest Update (2026-10-28) — RFP HITL compose + sync start + friendly errors
+
+- Compose: shared volume `rfp_langgraph_checkpoints` on backend + worker
+  (`/app/data/process/rfp`) so SqliteSaver interrupts are visible to Approve.
+- `POST …/approval/start` always runs the graph **sync in the API** (Celery
+  only if sync fails); bump `approval_graph_generation` per Start/Retry for a
+  fresh `thread_id` (`rfp-{id}-gN`).
+- Stuck tickets: `can_start_approval` + Retry when `waiting_for_approval` +
+  `last_error`; human-friendly API/UI messages (no `pending=[] next=[]` dump).
+
+## Latest Update (2026-10-28) — Hito 27 Part 3: RFP approval & completion
+
+- **Branch `feature/rfp-approval-completion`** (from `main` + Part 2 via
+  `feature/rfp-intake` / PR #50 — Part 2 was not yet on `main`).
+- HITL graph: guardrails → BRIEFING arbitration → **parallel** per-dept
+  interrupt branches (`hitl_revenue`/`clinical`/`compliance`) → join/synth.
+- Resume is an explicit entrypoint: validates decision, resumes **only** that
+  interrupt id (`Command(resume={interrupt_id: payload})`);
+  `thread_id=rfp-{ticket_id}-gN` (generation bump on Start/Retry).
+- Traceability: each node logs `agent` + `input` + `output` + `ts`.
+- Reject/`request_changes` stay on the same HITL branch (max 3 rounds) then
+  Sales flag `requires_part2_redraft` — no auto Part 2 re-run.
+- Durable SqliteSaver + Postgres business truth; statuses
+  `waiting_for_approval` → `done`.
+- UI: Start approvals + Approve / Request changes / Reject; final doc; trace.
+- Tests: interrupt/resume, **approve B while A interrupted**, iteration limit,
+  arbitration; E2E script `scripts/run_rfp_approval_e2e.py`.
+- Local Temas MD (outside repo, next to Parts 1–2 notes) has rubric + design Q&A.
+
+## Latest Update (2026-10-25) — Hito 27 Part 2: RFP drafting & evaluation
+
+- **Branch `feature/rfp-drafting`** (from `feature/rfp-intake`).
+- Part 2 pipeline: per-dept generators (`revenue`/`clinical`/`compliance`) +
+  parallel evaluators (readability / relevance / compliance BRIEFING §5) +
+  gen–eval loop (max 3) → `needs_human_review` keeps last draft+EvaluationResult.
+- Optional RAG grounding in generators (soft-fail if Qdrant down).
+- Celery `rfp.draft_run`; `POST /rfp/tickets/{id}/draft` (+ draft retry).
+- Postgres: `draft_content`, `evaluation_results`, `iteration_count`,
+  `needs_human_review`, ticket `ready_for_part3` + `part2_handoff_payload`.
+- UI `/rfp`: Generate draft, provisional badge, eval chips, draft preview.
+- Tests: `test_rfp_generator_revenue`, `test_rfp_evaluator`,
+  `test_rfp_compliance_guidelines` (BRIEFING-anchored no-phi / BAA fail).
+
 ## Latest Update (2026-10-25) — RFP intake UX + evidence hardening
 
 - Backoffice `/rfp`: drag-and-drop PDF zone, pipeline stage strip, Retry

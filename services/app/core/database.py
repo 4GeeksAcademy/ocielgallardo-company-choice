@@ -79,7 +79,30 @@ def init_inventory_db() -> None:
     from services.app.models import task as _task  # noqa: F401
     from services.app.models import rfp as _rfp  # noqa: F401
 
-    SQLModel.metadata.create_all(get_engine())
+    engine = get_engine()
+    SQLModel.metadata.create_all(engine)
+    # Part 2 columns (create_all does not ALTER existing tables).
+    _ensure_rfp_part2_columns(engine)
+
+
+def _ensure_rfp_part2_columns(engine) -> None:
+    """Idempotent ADD COLUMN for Part 2/3 fields on existing DBs."""
+    statements = (
+        "ALTER TABLE rfp_tickets ADD COLUMN IF NOT EXISTS ready_for_part3 BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE rfp_tickets ADD COLUMN IF NOT EXISTS part2_handoff_payload JSONB NOT NULL DEFAULT '{}'::jsonb",
+        "ALTER TABLE rfp_tickets ADD COLUMN IF NOT EXISTS trace_events JSONB NOT NULL DEFAULT '[]'::jsonb",
+        "ALTER TABLE rfp_tickets ADD COLUMN IF NOT EXISTS final_document_id INTEGER",
+        "ALTER TABLE rfp_department_sections ADD COLUMN IF NOT EXISTS iteration_count INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE rfp_department_sections ADD COLUMN IF NOT EXISTS needs_human_review BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE rfp_department_sections ADD COLUMN IF NOT EXISTS approval_round INTEGER NOT NULL DEFAULT 0",
+    )
+    try:
+        with engine.begin() as conn:
+            for stmt in statements:
+                conn.exec_driver_sql(stmt)
+    except Exception:
+        # Non-Postgres or permissions — create_all path for fresh DBs is enough.
+        pass
 
 
 def get_db() -> Generator[Session, None, None]:

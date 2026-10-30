@@ -15,16 +15,27 @@ def llm_available() -> bool:
     return bool(os.getenv("LLM_API_KEY", "").strip() and os.getenv("LLM_MODEL", "").strip())
 
 
-def chat_json(system: str, user: str, *, temperature: float = 0.1) -> dict[str, Any] | None:
+def chat_json(
+    system: str,
+    user: str,
+    *,
+    temperature: float = 0.1,
+    timeout_sec: float | None = None,
+) -> dict[str, Any] | None:
     """Ask the configured LLM for a JSON object. Returns None if unavailable/fails."""
     if not llm_available():
         return None
+    # Default short timeout so drafting never hangs on a slow provider.
+    timeout = timeout_sec
+    if timeout is None:
+        timeout = float(os.getenv("RFP_LLM_TIMEOUT_SEC", "12"))
     try:
         from openai import OpenAI
 
         client = OpenAI(
             api_key=os.getenv("LLM_API_KEY", ""),
             base_url=os.getenv("LLM_API_URL", "https://api.groq.com/openai/v1"),
+            timeout=timeout,
         )
         completion = client.chat.completions.create(
             model=os.getenv("LLM_MODEL", ""),
@@ -41,6 +52,15 @@ def chat_json(system: str, user: str, *, temperature: float = 0.1) -> dict[str, 
     except Exception:  # noqa: BLE001
         logger.exception("RFP intake LLM call failed; falling back to heuristics")
         return None
+
+
+def draft_llm_enabled() -> bool:
+    """Opt-in LLM polish for drafting (heuristic drafts are the default path)."""
+    return os.getenv("RFP_DRAFT_USE_LLM", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
 
 def extract_json_object(text: str) -> dict[str, Any] | None:

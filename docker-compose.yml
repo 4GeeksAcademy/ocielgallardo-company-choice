@@ -103,6 +103,10 @@ services:
       MCP_TOOL_TIMEOUT_SECONDS: ${MCP_TOOL_TIMEOUT_SECONDS:-10}
     ports:
       - "8000:8000"
+    # LangGraph SqliteSaver for RFP HITL — must match worker mount so resume
+    # on the API sees interrupts created by rfp.approval_run (or sync start).
+    volumes:
+      - rfp_langgraph_checkpoints:/app/data/process/rfp
     healthcheck:
       test:
         [
@@ -206,6 +210,8 @@ services:
       LLM_MODEL: ${LLM_MODEL:-}
       RAG_COLLECTION: ${RAG_COLLECTION:-healthcore_knowledge}
     command: ["celery", "-A", "services.app.tasks.celery_app:celery_app", "worker", "--loglevel=info"]
+    volumes:
+      - rfp_langgraph_checkpoints:/app/data/process/rfp
     depends_on:
       - redis
     networks:
@@ -230,6 +236,7 @@ services:
 
 volumes:
   qdrant_storage:
+  rfp_langgraph_checkpoints:
 
 networks:
   healthcore_net:
