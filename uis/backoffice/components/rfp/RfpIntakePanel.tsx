@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { RfpPdfDropzone } from "@/components/rfp/RfpPdfDropzone";
 import {
   decideRfpApproval,
@@ -19,6 +19,13 @@ import {
   type RfpTicketSummary,
   uploadRfpPdf,
 } from "@/lib/services/rfpApi";
+import {
+  dedupeTicketsById,
+  subscribeRfpEvents,
+  upsertTicketFromSseEvent,
+  type RfpSseConnectionStatus,
+  type RfpTicketCreatedEvent,
+} from "@/lib/services/rfpSse";
 
 const PIPELINE_STEPS = [
   { id: "converting", label: "Convert PDF" },
@@ -291,6 +298,21 @@ function EvalChips({ section }: { section: DepartmentSection }) {
   );
 }
 
+function sseStatusLabel(status: RfpSseConnectionStatus): string {
+  switch (status) {
+    case "connected":
+      return "Live updates connected";
+    case "connecting":
+      return "Connecting live updates…";
+    case "reconnecting":
+      return "Live updates reconnecting…";
+    case "disconnected":
+      return "Live updates disconnected";
+    default:
+      return status;
+  }
+}
+
 export function RfpIntakePanel() {
   const [tickets, setTickets] = useState<RfpTicketSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -299,10 +321,15 @@ export function RfpIntakePanel() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [pollSlow, setPollSlow] = useState(false);
+  const [sseStatus, setSseStatus] =
+    useState<RfpSseConnectionStatus>("connecting");
+  const [liveNotice, setLiveNotice] = useState<string | null>(null);
+  /** Banner dedupe: same ticket_id shown at most once until remount. */
+  const noticedTicketIds = useRef(new Set<string>());
 
   const refreshList = useCallback(async () => {
     const rows = await listRfpTickets();
-    setTickets(rows);
+    setTickets(dedupeTicketsById(rows));
   }, []);
 
   const loadDetail = useCallback(async (ticketId: string) => {
@@ -315,6 +342,37 @@ export function RfpIntakePanel() {
     void refreshList().catch((err) => {
       setError(friendlyRfpError(err, "No se pudo cargar la lista de tickets."));
     });
+  }, [refreshList]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeRfpEvents({
+      onStatus: setSseStatus,
+      // Recovery: after backoff reconnect, refetch list (refetch-then-SSE).
+      onRecovered: () => {
+        void refreshList().catch(() => {
+          /* best-effort catch-up after disconnect */
+        });
+      },
+      onEvent: (event) => {
+        if (event.type !== "rfp_ticket_created") {
+          return;
+        }
+        const data = event.data as RfpTicketCreatedEvent;
+        // Live path: upsert from payload — do not refetch the full list per event.
+        setTickets((prev) => upsertTicketFromSseEvent(prev, data));
+        if (!noticedTicketIds.current.has(data.ticket_id)) {
+          noticedTicketIds.current.add(data.ticket_id);
+          const label =
+            data.client_name?.trim() ||
+            data.rfp_id ||
+            data.ticket_id.slice(0, 8);
+          setLiveNotice(
+            `New RFP ticket requires processing: ${label} (${data.ticket_id.slice(0, 8)}…) — status ${data.status}`
+          );
+        }
+      },
+    });
+    return unsubscribe;
   }, [refreshList]);
 
   useEffect(() => {
@@ -510,6 +568,25 @@ export function RfpIntakePanel() {
           ) : null}
           {error ? (
             <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+          ) : null}
+          <p
+            className={`text-xs ${
+              sseStatus === "connected"
+                ? "text-emerald-700 dark:text-emerald-300"
+                : sseStatus === "reconnecting" || sseStatus === "connecting"
+                  ? "text-amber-700 dark:text-amber-300"
+                  : "text-slate-500"
+            }`}
+          >
+            {sseStatusLabel(sseStatus)}
+          </p>
+          {liveNotice ? (
+            <p
+              className="rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950 dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-100"
+              role="status"
+            >
+              {liveNotice}
+            </p>
           ) : null}
         </div>
 

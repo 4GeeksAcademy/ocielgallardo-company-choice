@@ -1,5 +1,29 @@
 # Progress
 
+## Latest Update (2026-10-30) — Hito 28 Part 1: recovery + dedupe
+
+- Recovery **refetch-then-SSE**: `onRecovered` refetches `GET /rfp/tickets`
+  after backoff reconnect; live events **upsert** by `ticket_id` (no full
+  refetch per event); banner + list dedupe by `ticket_id`.
+- Helpers: `upsertTicketFromSseEvent`, `dedupeTicketsById` in `rfpSse.ts`.
+- Design Q&A + manual reconnect checklist:
+  `docs/real-time-notification/sse-part1-design.md`.
+
+## Latest Update (2026-10-29) — Hito 28 Part 1: RFP SSE notifications
+
+- **Branch `feature/sse-notifications`** (from `feature/rfp-approval-completion`).
+- Redis pub/sub fan-out: `services/app/domain/rfp_sse.py` channel
+  `healthcore:rfp:events`; event `rfp_ticket_created` (PHI-safe flat payload).
+- Emit after valid RFP classification in `orchestrate_node` while
+  `status=analyzing` (soft-fail if Redis down).
+- API: authenticated `GET /rfp/events/stream` (SSE + heartbeats).
+- Backoffice `/rfp`: `fetch`+Bearer SSE client with reconnect status + live
+  banner; keeps detail polling for pipeline progress.
+- Dep: `redis>=6.4.0` via `uv add` (`pyproject.toml` + `services/requirements.txt`).
+- Tests: `tests/pipelines/test_rfp_sse.py`, `tests/test_rfp_sse_stream.py`.
+- BRIEFING: `docs/real-time-notification/heathcore-BRIFING.es.md`.
+- Optional `kpi_threshold_alert` left out of Part 1.
+
 ## Latest Update (2026-10-29) — Part 3 HITL verified (Compose + recovery)
 
 - **Verified:** shared checkpoints volume, sync approval start, friendly errors,
