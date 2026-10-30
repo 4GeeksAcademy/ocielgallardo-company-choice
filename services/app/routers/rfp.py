@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlmodel import Session
 
 from services.app.core.database import get_db, is_inventory_db_configured
 from services.app.core.deps import get_current_user
 from services.app.domain import rfp_service
+from services.app.domain.rfp_sse import iter_rfp_sse_events
 from services.app.models.user import UserPublic
 from data.pipelines.rfp_intake.departments import KNOWN_DEPARTMENTS
 from services.app.schemas import (
@@ -104,6 +105,24 @@ async def upload_rfp_ticket(
         celery_task_id=celery_task_id,
     )
     return JSONResponse(status_code=202, content=body.model_dump())
+
+
+@router.get("/events/stream")
+async def stream_rfp_events(
+    current_user: UserPublic = Depends(get_current_user),
+) -> StreamingResponse:
+    """SSE stream of RFP operational events (e.g. rfp_ticket_created)."""
+    _ = current_user
+
+    return StreamingResponse(
+        iter_rfp_sse_events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/tickets", response_model=list[RfpTicketSummary])
