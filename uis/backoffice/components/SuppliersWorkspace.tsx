@@ -165,7 +165,7 @@ export function SuppliersWorkspace() {
               label="Filter by category"
               value={categoryFilter}
               options={[
-                { value: "", label: "Todas las categorias" },
+                { value: "", label: "All categories" },
                 ...SUPPLIER_CATEGORY_OPTIONS.map((option) => ({
                   value: option.value,
                   label: option.label,

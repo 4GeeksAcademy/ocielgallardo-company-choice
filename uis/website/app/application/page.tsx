@@ -20,7 +20,7 @@ export default function ApplicationPage() {
   return (
     <div>
       <SiteHeader />
-      <main className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <main id="main-content" tabIndex={-1} className="mx-auto focus:outline-none w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6">
           <Link href="/" className="text-sm font-medium text-(--brand-fg) hover:underline">
             ← Back to website

@@ -12,7 +12,7 @@ const IncidentListPanel = dynamic(
     })),
   {
     loading: () => (
-      <PanelPlaceholder minHeight={400} label="Cargando listado de incidentes…" />
+      <PanelPlaceholder minHeight={400} label="Loading incident list…" />
     ),
   },
 );
@@ -52,7 +52,7 @@ export default function IncidentsPage() {
 
       <LazyWhenVisible
         fallback={
-          <PanelPlaceholder minHeight={400} label="Cargando listado de incidentes…" />
+          <PanelPlaceholder minHeight={400} label="Loading incident list…" />
         }
         minHeight={400}
       >

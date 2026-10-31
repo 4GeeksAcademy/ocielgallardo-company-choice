@@ -41,34 +41,34 @@ const emptyForm: FormState = {
 
 const CLINIC_OPTIONS = Array.from({ length: 12 }, (_, index) => {
   const id = index + 1;
-  return { value: String(id), label: `Clínica ${id}` };
+  return { value: String(id), label: `Clinic ${id}` };
 });
 
 function validate(values: FormState): FormErrors {
   const errors: FormErrors = {};
   if (!values.supply_id) {
-    errors.supply_id = "Selecciona un suministro.";
+    errors.supply_id = "Select a supply.";
   }
   const quantity = Number(values.quantity);
   if (!values.quantity.trim()) {
-    errors.quantity = "La cantidad es obligatoria.";
+    errors.quantity = "Quantity is required.";
   } else if (!Number.isInteger(quantity) || quantity <= 0) {
-    errors.quantity = "Introduce un entero mayor que 0.";
+    errors.quantity = "Enter a whole number greater than 0.";
   }
   if (!values.vendor_name.trim()) {
-    errors.vendor_name = "El nombre del proveedor es obligatorio.";
+    errors.vendor_name = "Supplier name is required.";
   }
   const unitCost = Number(values.unit_cost);
   if (!values.unit_cost.trim()) {
-    errors.unit_cost = "El costo unitario es obligatorio.";
+    errors.unit_cost = "Unit cost is required.";
   } else if (!Number.isFinite(unitCost) || unitCost < 0) {
-    errors.unit_cost = "Introduce un costo unitario mayor o igual a 0.";
+    errors.unit_cost = "Enter a unit cost of 0 or more.";
   }
   const clinicId = Number(values.clinic_id);
   if (!values.clinic_id) {
-    errors.clinic_id = "Selecciona una clínica.";
+    errors.clinic_id = "Select a clinic.";
   } else if (!Number.isInteger(clinicId) || clinicId < 1 || clinicId > 12) {
-    errors.clinic_id = "La clínica debe estar entre 1 y 12.";
+    errors.clinic_id = "Clinic must be between 1 and 12.";
   }
   return errors;
 }
@@ -117,7 +117,7 @@ export function InboundOrderForm() {
       setLoadError(
         friendlyInventoryError(
           err,
-          "No se pudieron cargar los suministros. Comprueba que la API esté en marcha."
+          "Could not load supplies. Check that the API is running."
         )
       );
     } finally {
@@ -140,7 +140,7 @@ export function InboundOrderForm() {
 
   const supplyOptions = useMemo(
     () => [
-      { value: "", label: "Selecciona un suministro" },
+      { value: "", label: "Select a supply" },
       ...supplies.map((supply) => ({
         value: String(supply.id),
         label: `${supply.name} (${supply.sku})`,
@@ -189,7 +189,7 @@ export function InboundOrderForm() {
 
       setValues(emptyForm);
       setErrors({});
-      setSuccessMessage("Entrega registrada correctamente.");
+      setSuccessMessage("Delivery logged.");
     } catch (err) {
       track("inbound_order_rejected", {
         http_status: err instanceof InventoryApiError ? err.status : 0,
@@ -198,7 +198,7 @@ export function InboundOrderForm() {
       setSubmitError(
         friendlyInventoryError(
           err,
-          "No se pudo registrar la entrega. Revisa los datos e inténtalo de nuevo."
+          "Could not log the delivery. Check the details and try again."
         )
       );
     } finally {
@@ -209,7 +209,7 @@ export function InboundOrderForm() {
   return (
     <div className="space-y-4">
       {isLoadingSupplies && (
-        <p className="text-sm text-slate-600 dark:text-slate-300">Cargando suministros…</p>
+        <p className="text-sm text-slate-600 dark:text-slate-300">Loading supplies…</p>
       )}
 
       {loadError && (
@@ -224,7 +224,7 @@ export function InboundOrderForm() {
             className="mt-3 text-xs"
             onClick={() => void loadSupplies()}
           >
-            Reintentar
+            Retry
           </Button>
         </div>
       )}
@@ -250,7 +250,7 @@ export function InboundOrderForm() {
       <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
         <div className="space-y-1.5">
           <Select
-            label="Suministro"
+            label="Supply"
             name="supply_id"
             options={supplyOptions}
             value={values.supply_id}
@@ -266,7 +266,7 @@ export function InboundOrderForm() {
         </div>
 
         <Input
-          label="Cantidad"
+          label="Quantity"
           name="quantity"
           type="number"
           min={1}
@@ -278,17 +278,17 @@ export function InboundOrderForm() {
         />
 
         <Input
-          label="Proveedor"
+          label="Supplier"
           name="vendor_name"
           value={values.vendor_name}
           onChange={(event) => updateField("vendor_name", event.target.value)}
           error={errors.vendor_name}
-          placeholder="Ej. MedLine Industries"
+          placeholder="e.g. MedLine Industries"
           required
         />
 
         <Input
-          label="Costo unitario"
+          label="Unit cost"
           name="unit_cost"
           type="number"
           min={0}
@@ -296,16 +296,16 @@ export function InboundOrderForm() {
           value={values.unit_cost}
           onChange={(event) => updateField("unit_cost", event.target.value)}
           error={errors.unit_cost}
-          placeholder="Ej. 12.50 (USD o GBP según clínica)"
+          placeholder="e.g. 12.50 (USD or GBP depending on clinic)"
           required
         />
 
         <div className="space-y-1.5">
           <Select
-            label="Clínica"
+            label="Clinic"
             name="clinic_id"
             options={[
-              { value: "", label: "Selecciona una clínica (1–12)" },
+              { value: "", label: "Select a clinic (1–12)" },
               ...CLINIC_OPTIONS,
             ]}
             value={values.clinic_id}
@@ -321,13 +321,13 @@ export function InboundOrderForm() {
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <Button type="submit" disabled={isSubmitting || isLoadingSupplies || Boolean(loadError)}>
-            {isSubmitting ? "Registrando…" : "Registrar entrega"}
+            {isSubmitting ? "Logging…" : "Log delivery"}
           </Button>
           <Link
             href="/inventory/products"
             className="text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline"
           >
-            Volver a suministros
+            Back to supplies
           </Link>
         </div>
       </form>

@@ -9,7 +9,7 @@ export const ApplicationsWorkspacePanel = createLazyViewportPanel(
     })),
   {
     minHeight: "60vh",
-    label: "Cargando pipeline de candidaturas…",
+    label: "Loading application pipeline…",
   },
 );
 
@@ -20,7 +20,7 @@ export const SuppliersWorkspacePanel = createLazyViewportPanel(
     })),
   {
     minHeight: "60vh",
-    label: "Cargando directorio de proveedores…",
+    label: "Loading supplier directory…",
   },
 );
 
@@ -31,7 +31,7 @@ export const MedicalSuppliesListPanel = createLazyViewportPanel(
     })),
   {
     minHeight: "50vh",
-    label: "Cargando suministros médicos…",
+    label: "Loading medical supplies…",
   },
 );
 
@@ -42,7 +42,7 @@ export const InventoryOrdersListPanel = createLazyViewportPanel(
     })),
   {
     minHeight: 400,
-    label: "Cargando historial de órdenes…",
+    label: "Loading order history…",
   },
 );
 
@@ -53,7 +53,7 @@ export const InboundOrderFormPanel = createLazyViewportPanel(
     })),
   {
     minHeight: 360,
-    label: "Cargando formulario de entrega…",
+    label: "Loading delivery form…",
   },
 );
 
@@ -64,7 +64,7 @@ export const OutboundOrderFormPanel = createLazyViewportPanel(
     })),
   {
     minHeight: 360,
-    label: "Cargando formulario de consumo…",
+    label: "Loading usage form…",
   },
 );
 
@@ -76,6 +76,6 @@ export const CandidateDetailWorkspacePanel = createLazyViewportPanel(
     })),
   {
     minHeight: "60vh",
-    label: "Cargando candidatura…",
+    label: "Loading application…",
   },
 );

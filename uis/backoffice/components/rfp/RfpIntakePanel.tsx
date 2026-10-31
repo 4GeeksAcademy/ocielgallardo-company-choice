@@ -313,7 +313,7 @@ export function RfpIntakePanel() {
 
   useEffect(() => {
     void refreshList().catch((err) => {
-      setError(friendlyRfpError(err, "No se pudo cargar la lista de tickets."));
+      setError(friendlyRfpError(err, "Could not load the ticket list."));
     });
   }, [refreshList]);
 
@@ -351,7 +351,7 @@ export function RfpIntakePanel() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(friendlyRfpError(err, "No se pudo consultar el ticket."));
+          setError(friendlyRfpError(err, "Could not fetch the ticket."));
         }
       }
     };
@@ -367,11 +367,11 @@ export function RfpIntakePanel() {
     setInfo(null);
     try {
       const created = await uploadRfpPdf(file);
-      setInfo(`Ticket ${created.ticket_id} creado (${created.status}).`);
+      setInfo(`Ticket ${created.ticket_id} created (${created.status}).`);
       await refreshList();
       setSelectedId(created.ticket_id);
     } catch (err) {
-      setError(friendlyRfpError(err, "La subida del PDF falló."));
+      setError(friendlyRfpError(err, "The PDF upload failed."));
     } finally {
       setBusy(false);
     }
@@ -388,7 +388,7 @@ export function RfpIntakePanel() {
       await loadDetail(selectedId);
       await refreshList();
     } catch (err) {
-      setError(friendlyRfpError(err, "No se pudo reintentar el pipeline."));
+      setError(friendlyRfpError(err, "Could not retry the pipeline."));
     } finally {
       setBusy(false);
     }
@@ -405,7 +405,7 @@ export function RfpIntakePanel() {
       await loadDetail(selectedId);
       await refreshList();
     } catch (err) {
-      setError(friendlyRfpError(err, "No se pudo iniciar el borrador."));
+      setError(friendlyRfpError(err, "Could not start the draft."));
     } finally {
       setBusy(false);
     }
@@ -422,7 +422,7 @@ export function RfpIntakePanel() {
       await loadDetail(selectedId);
       await refreshList();
     } catch (err) {
-      setError(friendlyRfpError(err, "No se pudo reintentar el borrador."));
+      setError(friendlyRfpError(err, "Could not retry the draft."));
     } finally {
       setBusy(false);
     }
@@ -439,7 +439,7 @@ export function RfpIntakePanel() {
       await loadDetail(selectedId);
       await refreshList();
     } catch (err) {
-      setError(friendlyRfpError(err, "No se pudo iniciar las aprobaciones."));
+      setError(friendlyRfpError(err, "Could not start the approvals."));
     } finally {
       setBusy(false);
     }
@@ -459,7 +459,7 @@ export function RfpIntakePanel() {
       setInfo(`${departmentId}: ${decision}`);
       await refreshList();
     } catch (err) {
-      setError(friendlyRfpError(err, "No se pudo registrar la decisión."));
+      setError(friendlyRfpError(err, "Could not record the decision."));
     } finally {
       setBusy(false);
     }

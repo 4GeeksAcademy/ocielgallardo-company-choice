@@ -21,7 +21,7 @@ export function LoginForm() {
     event.preventDefault();
 
     if (!email.trim() || !password) {
-      setError("Introduce email y contraseña.");
+      setError("Enter your email and password.");
       return;
     }
 
@@ -37,11 +37,11 @@ export function LoginForm() {
         if (err instanceof HealthcoreApiError) {
           setError(
             err.status === 401
-              ? "Credenciales incorrectas."
+              ? "Incorrect email or password."
               : err.message
           );
         } else {
-          setError("No se pudo iniciar sesión. Inténtalo de nuevo.");
+          setError("Could not sign in. Please try again.");
         }
       }
     });
@@ -59,7 +59,7 @@ export function LoginForm() {
         required
       />
       <Input
-        label="Contraseña"
+        label="Password"
         name="password"
         type="password"
         autoComplete="current-password"
@@ -71,18 +71,18 @@ export function LoginForm() {
       {error ? <FormMessage variant="error">{error}</FormMessage> : null}
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Entrando…" : "Iniciar sesión"}
+        {isSubmitting ? "Signing in…" : "Sign in"}
       </Button>
 
       <p className="text-center text-sm text-slate-600 dark:text-slate-300">
-        ¿No tienes cuenta?{" "}
+        Don&apos;t have an account?{" "}
         <Link href="/register" className="font-medium text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-300">
-          Regístrate
+          Sign up
         </Link>
       </p>
       <p className="text-center text-sm text-slate-600 dark:text-slate-300">
         <Link href="/forgot-password" className="font-medium text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-300">
-          ¿Olvidaste tu contraseña?
+          Forgot your password?
         </Link>
       </p>
     </form>

@@ -4,8 +4,8 @@ import { AuthPageShell } from "@/components/layout/AuthPageShell";
 export default function ForgotPasswordPage() {
   return (
     <AuthPageShell
-      title="Restablecer contraseña"
-      description="Introduce tu email y te enviaremos un enlace para crear una nueva contraseña."
+      title="Reset password"
+      description="Enter your email and we will send you a link to create a new password."
     >
       <ForgotPasswordForm />
     </AuthPageShell>

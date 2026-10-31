@@ -162,6 +162,8 @@ export function PatientApplicationForm() {
               Country
               <select
                 id="country"
+                aria-invalid={errors.country ? true : undefined}
+                aria-describedby={errors.country ? "country-error" : undefined}
                 value={data.country}
                 onChange={(event) => update("country", event.target.value as FormData["country"])}
                 className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
@@ -170,7 +172,7 @@ export function PatientApplicationForm() {
                 <option value="US">US</option>
                 <option value="United Kingdom">United Kingdom</option>
               </select>
-              {errors.country ? <span className="mt-1 block text-xs text-red-600">{errors.country}</span> : null}
+              {errors.country ? <span id="country-error" className="mt-1 block text-xs text-red-600">{errors.country}</span> : null}
             </label>
           </div>
 
@@ -186,17 +188,21 @@ export function PatientApplicationForm() {
             Reason for appointment
             <textarea
               id="reason"
+              aria-invalid={errors.reason ? true : undefined}
+              aria-describedby={errors.reason ? "reason-error" : undefined}
               value={data.reason}
               onChange={(event) => update("reason", event.target.value)}
               rows={4}
               className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
             />
-            {errors.reason ? <span className="mt-1 block text-xs text-red-600">{errors.reason}</span> : null}
+            {errors.reason ? <span id="reason-error" className="mt-1 block text-xs text-red-600">{errors.reason}</span> : null}
           </label>
 
           <label className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200" htmlFor="consent">
             <input
               id="consent"
+              aria-invalid={errors.consent ? true : undefined}
+              aria-describedby={errors.consent ? "consent-error" : undefined}
               type="checkbox"
               checked={data.consent}
               onChange={(event) => update("consent", event.target.checked)}
@@ -206,7 +212,7 @@ export function PatientApplicationForm() {
               I consent to HealthCore processing this request under HIPAA/UK GDPR obligations.
             </span>
           </label>
-          {errors.consent ? <p className="text-xs text-red-600">{errors.consent}</p> : null}
+          {errors.consent ? <p id="consent-error" className="text-xs text-red-600">{errors.consent}</p> : null}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <button

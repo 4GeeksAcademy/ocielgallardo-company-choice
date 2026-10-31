@@ -94,6 +94,12 @@ html.dark .hero-carousel::after {
   transition: transform 0.8s ease-in-out;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .hero-carousel-track {
+    transition: none;
+  }
+}
+
 .hero-carousel-slide {
   position: relative;
   flex: 0 0 100%;

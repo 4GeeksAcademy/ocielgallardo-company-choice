@@ -22,7 +22,7 @@ export function useSuppliers() {
       setSuppliers(data);
       setStatus("success");
     } catch (err) {
-      setError(resolveErrorMessage(err, "No se pudieron cargar los proveedores."));
+      setError(resolveErrorMessage(err, "Could not load suppliers."));
       setStatus("error");
     }
   }, []);

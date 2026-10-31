@@ -12,6 +12,14 @@
   --surface: #ffffff;
   --border: #e2e8f0; /* slate-200 */
   --muted: #475569; /* slate-600 */
+  /* Dashboard / data-viz tokens (D2: primary #004ac6) */
+  --primary: #004ac6;
+  --primary-container: #2563eb;
+  --success: #16a34a;
+  --success-soft: #22c55e;
+  --warning: #f59e0b;
+  --danger: #dc2626;
+  --info: #06b6d4;
 }
 
 .dark {
@@ -24,6 +32,13 @@
   --surface: #0f172a;
   --border: #334155;
   --muted: #94a3b8;
+  --primary: #7aa2ff;
+  --primary-container: #1d4ed8;
+  --success: #4ade80;
+  --success-soft: #22c55e;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #22d3ee;
 }
 
 @theme inline {
@@ -32,6 +47,13 @@
   --color-primary-600: var(--primary-600);
   --color-primary-700: var(--primary-700);
   --color-primary-900: var(--primary-900);
+  --color-primary: var(--primary);
+  --color-primary-container: var(--primary-container);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 

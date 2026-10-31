@@ -58,13 +58,13 @@ export function friendlyInventoryError(err: unknown, fallback: string): string {
     return fallback;
   }
   if (err.status >= 500) {
-    return "Algo falló en el servidor. Inténtalo de nuevo en un momento.";
+    return "Something went wrong on the server. Please try again in a moment.";
   }
   if (err.status === 404) {
-    return "No se encontró el recurso de inventario solicitado.";
+    return "The requested inventory resource was not found.";
   }
   if (err.status === 401 || err.status === 403) {
-    return "Tu sesión ha caducado. Vuelve a iniciar sesión.";
+    return "Your session has expired. Please sign in again.";
   }
   if (err.details && typeof err.details === "object" && "detail" in err.details) {
     const detail = (err.details as { detail: unknown }).detail;

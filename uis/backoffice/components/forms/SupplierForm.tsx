@@ -57,21 +57,21 @@ function validate(values: FormState): FormErrors {
   const errors: FormErrors = {};
 
   if (!values.name.trim()) {
-    errors.name = "El nombre es obligatorio.";
+    errors.name = "Name is required.";
   }
   if (values.categories.length === 0) {
-    errors.categories = "Selecciona al menos una categoria.";
+    errors.categories = "Select at least one category.";
   }
   if (!values.monthly_rate.trim()) {
-    errors.monthly_rate = "La tarifa mensual es obligatoria.";
+    errors.monthly_rate = "Monthly rate is required.";
   } else if (Number.isNaN(Number(values.monthly_rate)) || Number(values.monthly_rate) <= 0) {
-    errors.monthly_rate = "Introduce una tarifa mayor que 0.";
+    errors.monthly_rate = "Enter a rate greater than 0.";
   }
   if (
     values.contact_email.trim() &&
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.contact_email)
   ) {
-    errors.contact_email = "Introduce un email valido.";
+    errors.contact_email = "Enter a valid email.";
   }
 
   return errors;
@@ -114,11 +114,11 @@ export function SupplierForm({ isSubmitting, onSubmit, onCancel }: SupplierFormP
         contact_email: values.contact_email.trim() || null,
         notes: values.notes.trim() || null,
       });
-      setFormStatus("Proveedor registrado correctamente.");
+      setFormStatus("Supplier added.");
       setValues(initialState);
     } catch (err) {
       setFormStatus(
-        err instanceof Error ? err.message : "No se pudo registrar el proveedor."
+        err instanceof Error ? err.message : "Could not add the supplier."
       );
     }
   }
@@ -262,7 +262,7 @@ export function SupplierForm({ isSubmitting, onSubmit, onCancel }: SupplierFormP
 
       {formStatus && (
         <p
-          className={`text-sm ${formStatus.includes("No se") || formStatus.includes("Error") ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}`}
+          className={`text-sm ${formStatus.includes("Could not") || formStatus.includes("Error") ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}`}
           aria-live="polite"
         >
           {formStatus}

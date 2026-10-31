@@ -16,18 +16,18 @@ export const APPLICATION_STAGES: ApplicationStage[] = [
 ];
 
 export const STATUS_LABELS: Record<ApplicationStatus, string> = {
-  received: "Recibida",
-  in_progress: "En proceso",
-  selected: "Seleccionada",
-  discarded: "Descartada",
+  received: "Received",
+  in_progress: "In progress",
+  selected: "Selected",
+  discarded: "Discarded",
 };
 
 export const STAGE_LABELS: Record<ApplicationStage, string> = {
-  pending: "Pendiente",
-  review: "Revisión CV",
-  personal_interview: "Entrevista personal",
-  technical_interview: "Entrevista técnica",
-  offer_presented: "Oferta presentada",
+  pending: "Pending",
+  review: "CV review",
+  personal_interview: "Personal interview",
+  technical_interview: "Technical interview",
+  offer_presented: "Offer presented",
 };
 
 export const STATUS_BADGE_CLASSES: Record<ApplicationStatus, string> = {

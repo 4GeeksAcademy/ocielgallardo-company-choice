@@ -167,7 +167,7 @@ export async function healthcoreRequest<T>(
       });
     }
     clearSessionAndRedirectToLogin();
-    throw new HealthcoreApiError("Sesión expirada o no válida.", 401);
+    throw new HealthcoreApiError("Session expired or invalid.", 401);
   }
 
   if (response.status === 204) {
@@ -245,7 +245,7 @@ export async function healthcoreRequestBlob(
 
   if (response.status === 401 && auth) {
     clearSessionAndRedirectToLogin();
-    throw new HealthcoreApiError("Sesión expirada o no válida.", 401);
+    throw new HealthcoreApiError("Session expired or invalid.", 401);
   }
 
   if (!response.ok) {

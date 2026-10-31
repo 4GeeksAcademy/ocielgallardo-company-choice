@@ -52,7 +52,7 @@ export interface SupplierStatusUpdateInput {
 }
 
 export const SUPPLIER_COUNTRY_OPTIONS = [
-  { value: "", label: "Todos los paises" },
+  { value: "", label: "All countries" },
   { value: "USA", label: "USA" },
   { value: "UK", label: "UK" },
 ] as const;

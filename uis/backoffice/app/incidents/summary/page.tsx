@@ -14,7 +14,7 @@ const IncidentSummaryPanel = dynamic(
     })),
   {
     loading: () => (
-      <PanelPlaceholder minHeight={360} label="Cargando resumen de incidentes…" />
+      <PanelPlaceholder minHeight={360} label="Loading incident summary…" />
     ),
   },
 );
@@ -47,7 +47,7 @@ export default function IncidentSummaryPage() {
 
       <LazyWhenVisible
         fallback={
-          <PanelPlaceholder minHeight={360} label="Cargando resumen de incidentes…" />
+          <PanelPlaceholder minHeight={360} label="Loading incident summary…" />
         }
         minHeight={360}
       >

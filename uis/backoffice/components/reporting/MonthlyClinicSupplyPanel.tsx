@@ -71,21 +71,22 @@ function CountrySection({
       </h2>
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse text-left text-sm">
+          <caption className="sr-only">{label}</caption>
           <thead>
             <tr className="border-b border-slate-200 dark:border-slate-700">
-              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
+              <th scope="col" className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
                 Clinic
               </th>
-              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
+              <th scope="col" className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
                 Supply Cost per Clinic
               </th>
-              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
+              <th scope="col" className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
                 Supply Consumption Volume
               </th>
-              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
+              <th scope="col" className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
                 Critical Stockout Frequency
               </th>
-              <th className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
+              <th scope="col" className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
                 Expiry Risk Count
               </th>
             </tr>

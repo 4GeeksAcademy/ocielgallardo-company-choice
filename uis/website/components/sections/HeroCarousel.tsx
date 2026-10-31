@@ -14,6 +14,8 @@ export function HeroCarousel() {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
+    // Respect users who ask for less motion: keep the first slide static.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const id = window.setInterval(() => {
       setIndex((current) => (current + 1) % HERO_IMAGES.length);
     }, 10_000);

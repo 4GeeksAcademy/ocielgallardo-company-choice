@@ -44,7 +44,7 @@ export function ApplicationList({
           <span className="font-semibold text-slate-900 dark:text-slate-50">
             {applications.length}
           </span>{" "}
-          de {totalCount} candidaturas
+          of {totalCount} applications
         </p>
       </div>
 
@@ -68,9 +68,9 @@ export function ApplicationList({
         </div>
       ) : applications.length === 0 ? (
         <EmptyState
-          title="Sin resultados"
-          description="No hay candidaturas que coincidan con los filtros actuales."
-          actionLabel="Registrar candidatura"
+          title="No results"
+          description="No applications match the current filters."
+          actionLabel="Add application"
           onAction={onCreate}
         />
       ) : (

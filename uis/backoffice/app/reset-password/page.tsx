@@ -5,12 +5,12 @@ import { AuthPageShell } from "@/components/layout/AuthPageShell";
 export default function ResetPasswordPage() {
   return (
     <AuthPageShell
-      title="Nueva contraseña"
-      description="Crea una nueva contraseña para tu cuenta."
+      title="New password"
+      description="Create a new password for your account."
     >
       <Suspense
         fallback={
-          <p className="text-center text-sm text-slate-500 dark:text-slate-400">Cargando…</p>
+          <p className="text-center text-sm text-slate-500 dark:text-slate-400">Loading…</p>
         }
       >
         <ResetPasswordTokenReader />

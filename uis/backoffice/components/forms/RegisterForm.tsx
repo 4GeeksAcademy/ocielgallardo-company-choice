@@ -29,19 +29,19 @@ function validate(values: {
 }): FormErrors {
   const errors: FormErrors = {};
   if (!values.email.trim()) {
-    errors.email = "El email es obligatorio.";
+    errors.email = "Email is required.";
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
-    errors.email = "Introduce un email válido.";
+    errors.email = "Enter a valid email.";
   }
   if (!values.password) {
-    errors.password = "La contraseña es obligatoria.";
+    errors.password = "Password is required.";
   } else if (values.password.length < 8) {
-    errors.password = "La contraseña debe tener al menos 8 caracteres.";
+    errors.password = "Password must be at least 8 characters.";
   }
   if (!values.confirmPassword) {
-    errors.confirmPassword = "Confirma tu contraseña.";
+    errors.confirmPassword = "Confirm your password.";
   } else if (values.password !== values.confirmPassword) {
-    errors.confirmPassword = "Las contraseñas no coinciden.";
+    errors.confirmPassword = "Passwords do not match.";
   }
   return errors;
 }
@@ -91,13 +91,13 @@ export function RegisterForm() {
           if (err.status === 409) {
             setFieldErrors((prev) => ({
               ...prev,
-              email: err.message || "Este email ya está registrado.",
+              email: err.message || "This email is already registered.",
             }));
           } else if (!apiFields) {
             setFormError(err.message);
           }
         } else {
-          setFormError("No se pudo completar el registro. Inténtalo de nuevo.");
+          setFormError("Could not complete sign-up. Please try again.");
         }
       }
     });
@@ -116,7 +116,7 @@ export function RegisterForm() {
         required
       />
       <Input
-        label="Contraseña"
+        label="Password"
         name="password"
         type="password"
         autoComplete="new-password"
@@ -126,7 +126,7 @@ export function RegisterForm() {
         required
       />
       <Input
-        label="Confirmar contraseña"
+        label="Confirm password"
         name="confirmPassword"
         type="password"
         autoComplete="new-password"
@@ -136,7 +136,7 @@ export function RegisterForm() {
         required
       />
       <Input
-        label="Nombre (opcional)"
+        label="Name (optional)"
         name="name"
         type="text"
         autoComplete="name"
@@ -145,7 +145,7 @@ export function RegisterForm() {
         error={fieldErrors.name}
       />
       <Input
-        label="Teléfono (opcional)"
+        label="Phone (optional)"
         name="phone"
         type="tel"
         autoComplete="tel"
@@ -154,7 +154,7 @@ export function RegisterForm() {
         error={fieldErrors.phone}
       />
       <Input
-        label="Dirección (opcional)"
+        label="Address (optional)"
         name="address"
         type="text"
         autoComplete="street-address"
@@ -166,13 +166,13 @@ export function RegisterForm() {
       {formError ? <FormMessage variant="error">{formError}</FormMessage> : null}
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Creando cuenta…" : "Crear cuenta"}
+        {isSubmitting ? "Creating account…" : "Create account"}
       </Button>
 
       <p className="text-center text-sm text-slate-600 dark:text-slate-300">
-        ¿Ya tienes cuenta?{" "}
+        Already have an account?{" "}
         <Link href="/login" className="font-medium text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-300">
-          Inicia sesión
+          Sign in
         </Link>
       </p>
     </form>

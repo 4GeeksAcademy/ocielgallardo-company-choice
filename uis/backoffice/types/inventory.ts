@@ -88,19 +88,19 @@ export const SUPPLY_CATEGORY_OPTIONS: Array<{
   value: SupplyCategory;
   label: string;
 }> = [
-  { value: "ppe", label: "EPI" },
-  { value: "wound_care", label: "Curas" },
-  { value: "diagnostics", label: "Diagnóstico" },
-  { value: "medications", label: "Medicamentos" },
-  { value: "consumables", label: "Consumibles" },
+  { value: "ppe", label: "PPE" },
+  { value: "wound_care", label: "Wound care" },
+  { value: "diagnostics", label: "Diagnostics" },
+  { value: "medications", label: "Medications" },
+  { value: "consumables", label: "Consumables" },
 ];
 
 export const SUPPLY_UNIT_OPTIONS: Array<{
   value: SupplyUnit;
   label: string;
 }> = [
-  { value: "box", label: "Caja" },
-  { value: "unit", label: "Unidad" },
+  { value: "box", label: "Box" },
+  { value: "unit", label: "Unit" },
   { value: "pack", label: "Pack" },
   { value: "vial", label: "Vial" },
 ];
@@ -109,24 +109,24 @@ export const SUPPLY_COUNTRY_OPTIONS: Array<{
   value: SupplyCountry;
   label: string;
 }> = [
-  { value: "US", label: "EE.UU." },
-  { value: "UK", label: "Reino Unido" },
+  { value: "US", label: "US" },
+  { value: "UK", label: "UK" },
 ];
 
 export const CONSUMPTION_TYPE_OPTIONS: Array<{
   value: ConsumptionType;
   label: string;
 }> = [
-  { value: "clinical_use", label: "Uso clínico" },
-  { value: "expiry_waste", label: "Caducado / desecho" },
+  { value: "clinical_use", label: "Clinical use" },
+  { value: "expiry_waste", label: "Expired / waste" },
 ];
 
 export const ORDER_TYPE_OPTIONS: Array<{
   value: OrderType;
   label: string;
 }> = [
-  { value: "inbound", label: "Entrega" },
-  { value: "outbound", label: "Consumo" },
+  { value: "inbound", label: "Delivery" },
+  { value: "outbound", label: "Usage" },
 ];
 
 export const SUPPLY_CATEGORY_LABELS: Record<SupplyCategory, string> =
@@ -166,9 +166,9 @@ export const STOCK_LEVEL_BADGE_CLASSES: Record<StockLevel, string> = {
 };
 
 export const STOCK_LEVEL_LABELS: Record<StockLevel, string> = {
-  critical: "Crítico",
-  low: "Bajo",
-  healthy: "Saludable",
+  critical: "Critical",
+  low: "Low",
+  healthy: "Healthy",
 };
 
 export function categoryLabel(category: string): string {
@@ -182,7 +182,7 @@ export function unitLabel(unit: string): string {
 }
 
 export function countryLabel(country: string): string {
-  if (country === "US") return "EE.UU.";
-  if (country === "UK") return "Reino Unido";
+  if (country === "US") return "US";
+  if (country === "UK") return "UK";
   return country;
 }

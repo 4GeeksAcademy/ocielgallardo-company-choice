@@ -12,7 +12,7 @@ const IncidentCreateForm = dynamic(
     })),
   {
     loading: () => (
-      <PanelPlaceholder minHeight={420} label="Cargando formulario de incidente…" />
+      <PanelPlaceholder minHeight={420} label="Loading incident form…" />
     ),
   },
 );
@@ -42,7 +42,7 @@ export default function NewIncidentPage() {
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
         <LazyWhenVisible
           fallback={
-            <PanelPlaceholder minHeight={420} label="Cargando formulario de incidente…" />
+            <PanelPlaceholder minHeight={420} label="Loading incident form…" />
           }
           minHeight={420}
         >

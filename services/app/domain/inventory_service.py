@@ -161,7 +161,15 @@ def create_consumption(
     payload: SupplyConsumptionCreate,
     user_uuid: str,
 ) -> SupplyConsumptionResponse:
-    supply = session.get(MedicalSupply, payload.supply_id)
+    # Lock the supply row (SELECT ... FOR UPDATE on Postgres) so concurrent
+    # consumptions of the same supply are serialised and the stock check +
+    # insert below happen atomically. SQLite ignores FOR UPDATE (it already
+    # serialises writers).
+    supply = session.exec(
+        select(MedicalSupply)
+        .where(MedicalSupply.id == payload.supply_id)
+        .with_for_update()
+    ).first()
     if supply is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -169,11 +177,13 @@ def create_consumption(
         )
     available = _stock_for_supply_id(session, payload.supply_id)
     if payload.quantity > available:
+        # Release the row lock; nothing has been written.
+        session.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail=(
                 f"Insufficient stock for supply '{supply.name}'. "
-                f"Available: {available}, requested: {payload.quantity}."
+                f"Available: {max(available, 0)}, requested: {payload.quantity}."
             ),
         )
     consumption = SupplyConsumption(
