@@ -11,7 +11,7 @@ export default function WebsiteHomePage() {
   return (
     <div>
       <SiteHeader />
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <main id="main-content" tabIndex={-1} className="mx-auto focus:outline-none w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <HeroSection />
         <ServicesSectionLazy />
         <ImpactSectionLazy />

@@ -21,6 +21,12 @@ export function BackofficeShell({ children }: BackofficeShellProps) {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-blue-700 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-700"
+      >
+        Skip to main content
+      </a>
       <DesktopSidebar />
 
       <div className="md:pl-60">
@@ -66,7 +72,10 @@ export function BackofficeShell({ children }: BackofficeShellProps) {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl px-4 py-5 pb-24 sm:px-6 md:pb-5 lg:px-8">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-7xl focus:outline-none px-4 py-5 pb-24 sm:px-6 md:pb-5 lg:px-8">
           {children}
         </main>
       </div>
