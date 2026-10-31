@@ -78,22 +78,22 @@ export function ApplicationsWorkspace() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
-              Pipeline de candidaturas
+              Application pipeline
             </h2>
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              Herramienta interna de Personas y Fuerza Laboral (Diane Foster) para
-              cubrir perfiles clínicos en las 12 sedes de HealthCore.
+              Internal People & Workforce tool (Diane Foster) for filling clinical
+              roles across HealthCore&apos;s 12 sites.
             </p>
           </div>
           <Button onClick={() => setFormMode("create")}>
-            Nueva candidatura
+            New application
           </Button>
         </div>
 
         {formMode === "create" && (
           <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 sm:p-5">
             <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-slate-50">
-              Registrar candidatura
+              Add application
             </h3>
             <ApplicationForm
               key="create"

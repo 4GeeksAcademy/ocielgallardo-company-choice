@@ -25,7 +25,7 @@ export default function ProfilePage() {
           setError(
             err instanceof HealthcoreApiError
               ? err.message
-              : "No se pudo cargar el perfil."
+              : "Could not load your profile."
           );
         }
       } finally {
@@ -40,13 +40,13 @@ export default function ProfilePage() {
   }, []);
 
   if (loading) {
-    return <p className="text-sm text-slate-500 dark:text-slate-400">Cargando perfil…</p>;
+    return <p className="text-sm text-slate-500 dark:text-slate-400">Loading profile…</p>;
   }
 
   if (error || !me) {
     return (
       <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-        {error ?? "Perfil no disponible."}
+        {error ?? "Profile unavailable."}
       </p>
     );
   }
@@ -54,9 +54,9 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto max-w-lg space-y-4">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">Mi perfil</h1>
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">My profile</h1>
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          Email de la cuenta y datos de contacto.
+          Account email and contact details.
         </p>
       </div>
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-sm">

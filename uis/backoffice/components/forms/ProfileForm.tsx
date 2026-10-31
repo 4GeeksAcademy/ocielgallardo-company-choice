@@ -33,12 +33,12 @@ export function ProfileForm({ me, onSaved }: ProfileFormProps) {
         address: address.trim() || null,
       });
       onSaved({ ...me, profile });
-      setSuccess("Perfil actualizado.");
+      setSuccess("Profile updated.");
     } catch (err) {
       if (err instanceof HealthcoreApiError) {
         setError(err.message);
       } else {
-        setError("No se pudo guardar el perfil. Inténtalo de nuevo.");
+        setError("Could not save your profile. Please try again.");
       }
     } finally {
       setIsSubmitting(false);
@@ -57,21 +57,21 @@ export function ProfileForm({ me, onSaved }: ProfileFormProps) {
       />
 
       <Input
-        label="Nombre"
+        label="Name"
         name="name"
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
       <Input
-        label="Teléfono"
+        label="Phone"
         name="phone"
         type="tel"
         value={phone}
         onChange={(e) => setPhone(e.target.value)}
       />
       <Input
-        label="Dirección"
+        label="Address"
         name="address"
         type="text"
         value={address}
@@ -90,7 +90,7 @@ export function ProfileForm({ me, onSaved }: ProfileFormProps) {
       )}
 
       <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "Guardando…" : "Guardar cambios"}
+        {isSubmitting ? "Saving…" : "Save changes"}
       </Button>
     </form>
   );

@@ -48,7 +48,7 @@ export function CandidateDetailWorkspace({
       searchParams.get("created") === "1"
         ? {
             type: "success",
-            message: "Candidatura registrada correctamente.",
+            message: "Application added.",
           }
         : null
   );
@@ -133,12 +133,12 @@ export function CandidateDetailWorkspace({
       setIsEditing(false);
       setActionFeedback({
         type: "success",
-        message: "Candidatura actualizada correctamente.",
+        message: "Application updated.",
       });
     } catch (error) {
       setActionFeedback({
         type: "error",
-        message: "No se pudieron guardar los cambios. Inténtalo de nuevo.",
+        message: "Could not save the changes. Please try again.",
       });
       throw error;
     } finally {
@@ -154,7 +154,7 @@ export function CandidateDetailWorkspace({
             href="/applications"
             className="text-sm font-medium text-blue-600 dark:text-blue-300 hover:underline"
           >
-            ← Volver al pipeline
+            ← Back to pipeline
           </Link>
         </div>
 
@@ -199,7 +199,7 @@ export function CandidateDetailWorkspace({
             {isEditing && application && (
               <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 sm:p-5">
                 <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-slate-50">
-                  Editar candidatura
+                  Edit application
                 </h3>
                 <ApplicationForm
                   key={application.id}

@@ -195,33 +195,33 @@ export function friendlyRfpError(err: unknown, fallback: string): string {
     return fallback;
   }
   if (err.status >= 500) {
-    return "El servicio de RFPs no está disponible. Intenta de nuevo.";
+    return "The RFP service is unavailable. Please try again.";
   }
   const raw = (err.message || "").trim();
   const lower = raw.toLowerCase();
   if (lower.includes("no open interrupt")) {
     return (
-      "Esta decisión aún no está lista. Usa «Reintentar aprobaciones» para " +
-      "reiniciar el flujo y vuelve a intentarlo."
+      "This decision is not ready yet. Use “Retry approvals” to " +
+      "restart the flow and try again."
     );
   }
   if (lower.includes("already in progress")) {
-    return "Las aprobaciones de este ticket ya están en curso.";
+    return "Approvals for this ticket are already in progress.";
   }
   if (lower.includes("not waiting for department approval")) {
-    return "Este ticket no está esperando una aprobación de departamento.";
+    return "This ticket is not waiting for a department approval.";
   }
   if (
     lower.includes("failed to start approval") ||
     lower.includes("could not start the approval")
   ) {
-    return "No se pudo iniciar la revisión de aprobaciones. Intenta de nuevo.";
+    return "Could not start the approval review. Please try again.";
   }
   // Prefer short API messages; hide LangGraph dump (pending=[] next=[]).
   if (lower.includes("pending=") || lower.includes("department_id=")) {
     return (
-      "No se pudo registrar la decisión. Reintenta las aprobaciones y vuelve a " +
-      "probar; si el problema continúa, contacta a soporte."
+      "Could not record the decision. Retry the approvals and try again; " +
+      "if the problem continues, contact support."
     );
   }
   return raw || fallback;
@@ -233,17 +233,17 @@ export function friendlyRfpLastError(message: string | null | undefined): string
   const lower = message.toLowerCase();
   if (lower.includes("no open interrupt")) {
     return (
-      "La revisión de este departamento no está disponible en el servidor. " +
-      "Usa «Reintentar aprobaciones» y vuelve a decidir."
+      "This department's review is not available on the server. " +
+      "Use “Retry approvals” and decide again."
     );
   }
   if (lower.includes("failed to start approval graph")) {
-    return "No se pudo iniciar el flujo de aprobaciones. Intenta de nuevo.";
+    return "Could not start the approval flow. Please try again.";
   }
   if (lower.includes("pending=") || /department_id=/.test(message)) {
     return (
-      "Hubo un problema técnico al registrar la decisión. " +
-      "Reintenta las aprobaciones."
+      "A technical problem occurred while recording the decision. " +
+      "Retry the approvals."
     );
   }
   return message;
@@ -251,7 +251,7 @@ export function friendlyRfpLastError(message: string | null | undefined): string
 
 export function formatReadability(value: number | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) {
-    return "N/A (documento corto o métrica no calculable)";
+    return "N/A (short document or metric not computable)";
   }
   return String(Math.round(value * 10) / 10);
 }

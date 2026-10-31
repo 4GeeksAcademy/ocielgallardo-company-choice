@@ -24,7 +24,7 @@ interface ApplicationDetailPanelProps {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("es-ES", {
+  return new Intl.DateTimeFormat("en-US", {
     dateStyle: "long",
   }).format(new Date(value));
 }
@@ -50,9 +50,9 @@ export function ApplicationDetailPanel({
     return (
       <div className="flex h-full min-h-[320px] items-center justify-center rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center">
         <div>
-          <p className="font-medium text-slate-800 dark:text-slate-100">Selecciona una candidatura</p>
+          <p className="font-medium text-slate-800 dark:text-slate-100">Select an application</p>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            Elige un candidato del listado para ver su detalle y gestionar su pipeline.
+            Choose a candidate from the list to see their details and manage their pipeline.
           </p>
         </div>
       </div>
@@ -63,9 +63,9 @@ export function ApplicationDetailPanel({
     setFeedback(null);
     try {
       await onStatusChange(status);
-      setFeedback("Estado actualizado correctamente.");
+      setFeedback("Status updated.");
     } catch {
-      setFeedback("No se pudo actualizar el estado.");
+      setFeedback("Could not update the status.");
     }
   };
 
@@ -73,9 +73,9 @@ export function ApplicationDetailPanel({
     setFeedback(null);
     try {
       await onStageChange(stage);
-      setFeedback("Etapa actualizada correctamente.");
+      setFeedback("Stage updated.");
     } catch {
-      setFeedback("No se pudo actualizar la etapa.");
+      setFeedback("Could not update the stage.");
     }
   };
 
@@ -100,14 +100,14 @@ export function ApplicationDetailPanel({
                 type="button"
                 onClick={() => window.open(application.cv_url!, "_blank", "noopener,noreferrer")}
               >
-                Ver CV
+                View CV
               </Button>
             )}
             <Button variant="secondary" onClick={onEdit}>
-              Editar
+              Edit
             </Button>
             {onClose && (
-              <Button variant="ghost" onClick={onClose} aria-label="Cerrar detalle">
+              <Button variant="ghost" onClick={onClose} aria-label="Close details">
                 ✕
               </Button>
             )}
@@ -122,17 +122,17 @@ export function ApplicationDetailPanel({
             <dd className="font-medium text-slate-900 dark:text-slate-50">{application.email}</dd>
           </div>
           <div>
-            <dt className="text-slate-500 dark:text-slate-400">Teléfono</dt>
+            <dt className="text-slate-500 dark:text-slate-400">Phone</dt>
             <dd className="font-medium text-slate-900 dark:text-slate-50">{application.phone}</dd>
           </div>
           <div>
-            <dt className="text-slate-500 dark:text-slate-400">Experiencia</dt>
+            <dt className="text-slate-500 dark:text-slate-400">Experience</dt>
             <dd className="font-medium text-slate-900 dark:text-slate-50">
-              {application.experience_years} años
+              {application.experience_years} years
             </dd>
           </div>
           <div>
-            <dt className="text-slate-500 dark:text-slate-400">Fecha de candidatura</dt>
+            <dt className="text-slate-500 dark:text-slate-400">Application date</dt>
             <dd className="font-medium text-slate-900 dark:text-slate-50">
               {formatDate(application.applied_at)}
             </dd>
@@ -147,7 +147,7 @@ export function ApplicationDetailPanel({
                   rel="noopener noreferrer"
                   className="font-medium text-blue-600 dark:text-blue-300 hover:underline"
                 >
-                  Ver perfil
+                  View profile
                 </a>
               </dd>
             </div>
@@ -162,10 +162,10 @@ export function ApplicationDetailPanel({
                   rel="noopener noreferrer"
                   className="font-medium text-blue-600 dark:text-blue-300 hover:underline"
                 >
-                  Descargar o ver currículum
+                  Download or view CV
                 </a>
               ) : (
-                <span className="text-slate-500 dark:text-slate-400">No disponible</span>
+                <span className="text-slate-500 dark:text-slate-400">Not available</span>
               )}
             </dd>
           </div>
@@ -173,7 +173,7 @@ export function ApplicationDetailPanel({
 
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-            Actualizar pipeline
+            Update pipeline
           </h3>
           <StatusStageControls
             status={application.status}

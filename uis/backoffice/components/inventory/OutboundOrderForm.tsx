@@ -40,7 +40,7 @@ const emptyForm: FormState = {
 
 const CLINIC_OPTIONS = Array.from({ length: 12 }, (_, index) => {
   const id = index + 1;
-  return { value: String(id), label: `Clínica ${id}` };
+  return { value: String(id), label: `Clinic ${id}` };
 });
 
 function isConsumptionType(value: string): value is ConsumptionType {
@@ -50,24 +50,24 @@ function isConsumptionType(value: string): value is ConsumptionType {
 function validate(values: FormState): FormErrors {
   const errors: FormErrors = {};
   if (!values.supply_id) {
-    errors.supply_id = "Selecciona un suministro.";
+    errors.supply_id = "Select a supply.";
   }
   const quantity = Number(values.quantity);
   if (!values.quantity.trim()) {
-    errors.quantity = "La cantidad es obligatoria.";
+    errors.quantity = "Quantity is required.";
   } else if (!Number.isInteger(quantity) || quantity <= 0) {
-    errors.quantity = "Introduce un entero mayor que 0.";
+    errors.quantity = "Enter a whole number greater than 0.";
   }
   if (!values.consumption_type) {
-    errors.consumption_type = "Selecciona el tipo de consumo.";
+    errors.consumption_type = "Select the usage type.";
   } else if (!isConsumptionType(values.consumption_type)) {
-    errors.consumption_type = "El tipo debe ser uso clínico o caducado / desecho.";
+    errors.consumption_type = "Type must be clinical use or expired / waste.";
   }
   const clinicId = Number(values.clinic_id);
   if (!values.clinic_id) {
-    errors.clinic_id = "Selecciona una clínica.";
+    errors.clinic_id = "Select a clinic.";
   } else if (!Number.isInteger(clinicId) || clinicId < 1 || clinicId > 12) {
-    errors.clinic_id = "La clínica debe estar entre 1 y 12.";
+    errors.clinic_id = "Clinic must be between 1 and 12.";
   }
   return errors;
 }
@@ -116,7 +116,7 @@ export function OutboundOrderForm() {
       setLoadError(
         friendlyInventoryError(
           err,
-          "No se pudieron cargar los suministros. Comprueba que la API esté en marcha."
+          "Could not load supplies. Check that the API is running."
         )
       );
     } finally {
@@ -152,7 +152,7 @@ export function OutboundOrderForm() {
 
   const supplyOptions = useMemo(
     () => [
-      { value: "", label: "Selecciona un suministro" },
+      { value: "", label: "Select a supply" },
       ...supplies.map((supply) => ({
         value: String(supply.id),
         label: `${supply.name} (${supply.sku})`,
@@ -230,7 +230,7 @@ export function OutboundOrderForm() {
 
       setValues(emptyForm);
       setErrors({});
-      setSuccessMessage("Consumo registrado correctamente.");
+      setSuccessMessage("Usage logged.");
       await loadSupplies();
     } catch (err) {
       track("outbound_order_rejected", {
@@ -239,7 +239,7 @@ export function OutboundOrderForm() {
       });
       const message = friendlyInventoryError(
         err,
-        "No se pudo registrar el consumo. Revisa los datos e inténtalo de nuevo."
+        "Could not log the usage. Check the details and try again."
       );
       if (err instanceof InventoryApiError && err.status === 400) {
         setErrors((current) => ({ ...current, quantity: message }));
@@ -254,7 +254,7 @@ export function OutboundOrderForm() {
   return (
     <div className="space-y-4">
       {isLoadingSupplies && (
-        <p className="text-sm text-slate-600 dark:text-slate-300">Cargando suministros…</p>
+        <p className="text-sm text-slate-600 dark:text-slate-300">Loading supplies…</p>
       )}
 
       {loadError && (
@@ -269,7 +269,7 @@ export function OutboundOrderForm() {
             className="mt-3 text-xs"
             onClick={() => void loadSupplies()}
           >
-            Reintentar
+            Retry
           </Button>
         </div>
       )}
@@ -295,7 +295,7 @@ export function OutboundOrderForm() {
       <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
         <div className="space-y-1.5">
           <Select
-            label="Suministro"
+            label="Supply"
             name="supply_id"
             options={supplyOptions}
             value={values.supply_id}
@@ -313,7 +313,7 @@ export function OutboundOrderForm() {
         {selectedSupply && (
           <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Stock disponible
+              Available stock
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <p className="text-sm text-slate-700 dark:text-slate-200">
@@ -326,7 +326,7 @@ export function OutboundOrderForm() {
 
         <div className="space-y-1.5">
           <Input
-            label="Cantidad"
+            label="Quantity"
             name="quantity"
             type="number"
             min={1}
@@ -338,19 +338,19 @@ export function OutboundOrderForm() {
           />
           {quantityExceedsStock && !errors.quantity && (
             <p className="text-sm text-amber-700" role="status">
-              La cantidad supera el stock disponible (
-              {selectedSupply?.current_stock}). Puedes enviar, pero la API
-              rechazará el consumo si no hay existencias suficientes.
+              The quantity exceeds available stock (
+              {selectedSupply?.current_stock}). You can submit, but the API
+              will reject the usage if there is not enough stock.
             </p>
           )}
         </div>
 
         <div className="space-y-1.5">
           <Select
-            label="Tipo de consumo"
+            label="Usage type"
             name="consumption_type"
             options={[
-              { value: "", label: "Selecciona el tipo de consumo" },
+              { value: "", label: "Select the usage type" },
               ...CONSUMPTION_TYPE_OPTIONS,
             ]}
             value={values.consumption_type}
@@ -368,10 +368,10 @@ export function OutboundOrderForm() {
 
         <div className="space-y-1.5">
           <Select
-            label="Clínica"
+            label="Clinic"
             name="clinic_id"
             options={[
-              { value: "", label: "Selecciona una clínica (1–12)" },
+              { value: "", label: "Select a clinic (1–12)" },
               ...CLINIC_OPTIONS,
             ]}
             value={values.clinic_id}
@@ -390,13 +390,13 @@ export function OutboundOrderForm() {
             type="submit"
             disabled={isSubmitting || isLoadingSupplies || Boolean(loadError)}
           >
-            {isSubmitting ? "Registrando…" : "Registrar consumo"}
+            {isSubmitting ? "Logging…" : "Log usage"}
           </Button>
           <Link
             href="/inventory/products"
             className="text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline"
           >
-            Volver a suministros
+            Back to supplies
           </Link>
         </div>
       </form>

@@ -30,17 +30,17 @@ export function ResetPasswordForm({ token }: { token?: string | null }) {
     setFormError(null);
 
     if (!effectiveToken) {
-      setFormError("El enlace de restablecimiento no es válido o ha expirado.");
+      setFormError("This reset link is invalid or has expired.");
       return;
     }
 
     if (!newPassword || newPassword.length < 8) {
-      setFieldError("La contraseña debe tener al menos 8 caracteres.");
+      setFieldError("Password must be at least 8 characters.");
       return;
     }
 
     if (!confirmPassword || newPassword !== confirmPassword) {
-      setFieldError("Las contraseñas no coinciden.");
+      setFieldError("Passwords do not match.");
       return;
     }
 
@@ -50,9 +50,9 @@ export function ResetPasswordForm({ token }: { token?: string | null }) {
         router.replace("/login?reset=success");
       } catch (err) {
         if (err instanceof HealthcoreApiError) {
-          setFormError(err.message || "Token inválido o expirado.");
+          setFormError(err.message || "Invalid or expired token.");
         } else {
-          setFormError("Token inválido o expirado.");
+          setFormError("Invalid or expired token.");
         }
       }
     });
@@ -62,11 +62,11 @@ export function ResetPasswordForm({ token }: { token?: string | null }) {
     return (
       <div className="space-y-4">
         <FormMessage variant="error">
-          El enlace de restablecimiento no es válido o ha expirado.
+          This reset link is invalid or has expired.
         </FormMessage>
         <p className="text-center text-sm text-slate-600 dark:text-slate-300">
           <Link href="/forgot-password" className="font-medium text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-300">
-            Solicitar un nuevo enlace
+            Request a new link
           </Link>
         </p>
       </div>
@@ -76,7 +76,7 @@ export function ResetPasswordForm({ token }: { token?: string | null }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <Input
-        label="Nueva contraseña"
+        label="New password"
         name="newPassword"
         type="password"
         autoComplete="new-password"
@@ -86,7 +86,7 @@ export function ResetPasswordForm({ token }: { token?: string | null }) {
         error={fieldError ?? undefined}
       />
       <Input
-        label="Confirmar nueva contraseña"
+        label="Confirm new password"
         name="confirmPassword"
         type="password"
         autoComplete="new-password"
@@ -98,13 +98,13 @@ export function ResetPasswordForm({ token }: { token?: string | null }) {
       {formError ? <FormMessage variant="error">{formError}</FormMessage> : null}
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Actualizando…" : "Actualizar contraseña"}
+        {isSubmitting ? "Updating…" : "Update password"}
       </Button>
 
       {formError && (
         <p className="text-center text-sm text-slate-600 dark:text-slate-300">
           <Link href="/forgot-password" className="font-medium text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-300">
-            ¿Solicitar un nuevo enlace?
+            Request a new link?
           </Link>
         </p>
       )}

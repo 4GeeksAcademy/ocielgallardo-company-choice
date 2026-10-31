@@ -29,19 +29,19 @@ export function ApplicationFilters({
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <Input
-        label="Buscar por nombre o email"
+        label="Search by name or email"
         name="search"
         value={query}
         onChange={(event) => onQueryChange(event.target.value)}
-        placeholder="Ej. Elena o elena@..."
+        placeholder="e.g. Elena or elena@..."
       />
       <Select
-        label="Estado"
+        label="Status"
         name="status"
         value={status}
         onChange={(event) => onStatusChange(event.target.value)}
         options={[
-          { value: "", label: "Todos los estados" },
+          { value: "", label: "All statuses" },
           ...APPLICATION_STATUSES.map((value) => ({
             value,
             label: STATUS_LABELS[value],
@@ -49,12 +49,12 @@ export function ApplicationFilters({
         ]}
       />
       <Select
-        label="Etapa"
+        label="Stage"
         name="stage"
         value={stage}
         onChange={(event) => onStageChange(event.target.value)}
         options={[
-          { value: "", label: "Todas las etapas" },
+          { value: "", label: "All stages" },
           ...APPLICATION_STAGES.map((value) => ({
             value,
             label: STAGE_LABELS[value],

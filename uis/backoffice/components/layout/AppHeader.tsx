@@ -14,12 +14,12 @@ export function AppHeader() {
               HealthCore
             </p>
             <h1 className="text-sm font-semibold text-slate-900 dark:text-slate-50 sm:text-base">
-              People &amp; Talent · Pipeline de candidaturas
+              People &amp; Talent · Application pipeline
             </h1>
           </div>
         </div>
         <p className="hidden text-xs text-slate-500 dark:text-slate-400 sm:block">
-          Diane Foster · Personas y Fuerza Laboral
+          Diane Foster · People &amp; Workforce
         </p>
       </div>
     </header>

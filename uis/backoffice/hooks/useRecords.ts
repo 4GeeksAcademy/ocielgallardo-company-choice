@@ -24,7 +24,7 @@ export function useRecords() {
       setStatus("success");
     } catch (err) {
       setError(
-        resolveErrorMessage(err, "No se pudieron cargar las candidaturas.")
+        resolveErrorMessage(err, "Could not load applications.")
       );
       setStatus("error");
     }
@@ -42,7 +42,7 @@ export function useRecords() {
       } catch (err) {
         if (!isActive) return;
         setError(
-          resolveErrorMessage(err, "No se pudieron cargar las candidaturas.")
+          resolveErrorMessage(err, "Could not load applications.")
         );
         setStatus("error");
       }

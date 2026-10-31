@@ -27,7 +27,7 @@ export function StatusStageControls({
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <Select
-        label="Estado"
+        label="Status"
         name="detail-status"
         value={status}
         disabled={isUpdating}
@@ -40,7 +40,7 @@ export function StatusStageControls({
         }))}
       />
       <Select
-        label="Etapa"
+        label="Stage"
         name="detail-stage"
         value={stage}
         disabled={isUpdating}

@@ -25,7 +25,7 @@ function formatCreatedAt(value: string): string {
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
-  return parsed.toLocaleString("es-ES", {
+  return parsed.toLocaleString("en-US", {
     dateStyle: "short",
     timeStyle: "short",
   });
@@ -38,7 +38,7 @@ export function InventoryOrdersList() {
     (err: unknown) =>
       friendlyInventoryError(
         err,
-        "No se pudieron cargar las órdenes. Comprueba que la API esté en marcha."
+        "Could not load orders. Check that the API is running."
       ),
     []
   );
@@ -107,10 +107,10 @@ export function InventoryOrdersList() {
       <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
-            Historial de órdenes
+            Order history
           </h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            Entregas y consumos registrados. Esta vista es de solo lectura.
+            Logged deliveries and usage. This view is read-only.
           </p>
         </div>
         <Button
@@ -120,22 +120,22 @@ export function InventoryOrdersList() {
           onClick={() => void reload()}
           disabled={status === "loading"}
         >
-          {status === "loading" ? "Cargando…" : "Actualizar"}
+          {status === "loading" ? "Loading…" : "Refresh"}
         </Button>
       </header>
 
       <AsyncRequestPanel
         status={status}
         error={error}
-        loadingMessage="Cargando órdenes…"
+        loadingMessage="Loading orders…"
         onRetry={() => void reload()}
-        retryLabel="Reintentar"
+        retryLabel="Retry"
       >
         {orders.length === 0 ? (
           <EmptyState
-            title="No hay órdenes"
-            description="La API no devolvió entregas ni consumos. Registra un movimiento o ejecuta el seed de inventario."
-            actionLabel="Reintentar"
+            title="No orders"
+            description="The API returned no deliveries or usage. Log a movement or run the inventory seed."
+            actionLabel="Retry"
             onAction={() => void reload()}
           />
         ) : (
@@ -151,32 +151,32 @@ export function InventoryOrdersList() {
               </div>
               <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Entregas
+                  Deliveries
                 </p>
                 <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-50">
                   {orderSummary.inboundCount}{" "}
                   <span className="text-sm font-normal text-slate-600 dark:text-slate-300">
-                    ({orderSummary.inboundQty} uds)
+                    ({orderSummary.inboundQty} units)
                   </span>
                 </p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Consumos
+                  Usage
                 </p>
                 <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-50">
                   {orderSummary.outboundCount}{" "}
                   <span className="text-sm font-normal text-slate-600 dark:text-slate-300">
-                    ({orderSummary.outboundQty} uds)
+                    ({orderSummary.outboundQty} units)
                   </span>
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by type">
               {(
                 [
-                  { value: "all", label: "Todas" },
+                  { value: "all", label: "All" },
                   { value: "inbound", label: ORDER_TYPE_LABELS.inbound },
                   { value: "outbound", label: ORDER_TYPE_LABELS.outbound },
                 ] as const
@@ -195,9 +195,9 @@ export function InventoryOrdersList() {
 
             {displayRows.length === 0 ? (
               <EmptyState
-                title="Sin coincidencias"
-                description="No hay órdenes para el filtro seleccionado."
-                actionLabel="Ver todas"
+                title="No matches"
+                description="No orders for the selected filter."
+                actionLabel="Show all"
                 onAction={() => setTypeFilter("all")}
               />
             ) : (
@@ -206,16 +206,16 @@ export function InventoryOrdersList() {
                   <thead className="bg-slate-50 dark:bg-slate-800 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
                     <tr>
                       <th scope="col" className="px-4 py-3">
-                        Producto
+                        Product
                       </th>
                       <th scope="col" className="px-4 py-3">
-                        Cantidad
+                        Quantity
                       </th>
                       <th scope="col" className="px-4 py-3">
-                        Tipo
+                        Type
                       </th>
                       <th scope="col" className="px-4 py-3">
-                        Fecha
+                        Date
                       </th>
                       <th scope="col" className="px-4 py-3">
                         user_uuid

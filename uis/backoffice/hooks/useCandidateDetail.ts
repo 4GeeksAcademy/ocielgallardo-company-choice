@@ -32,7 +32,7 @@ export function useCandidateDetail(candidateId: string) {
       setRecordStatus("success");
     } catch (err) {
       setRecordError(
-        resolveErrorMessage(err, "No se pudo cargar la candidatura.")
+        resolveErrorMessage(err, "Could not load the application.")
       );
       setApplication(null);
       setRecordStatus("error");
@@ -48,7 +48,7 @@ export function useCandidateDetail(candidateId: string) {
       setNotesStatus("success");
     } catch (err) {
       setNotesError(
-        resolveErrorMessage(err, "No se pudieron cargar las notas internas.")
+        resolveErrorMessage(err, "Could not load the internal notes.")
       );
       setNotes([]);
       setNotesStatus("error");
@@ -67,7 +67,7 @@ export function useCandidateDetail(candidateId: string) {
       } catch (err) {
         if (!isActive) return;
         setRecordError(
-          resolveErrorMessage(err, "No se pudo cargar la candidatura.")
+          resolveErrorMessage(err, "Could not load the application.")
         );
         setApplication(null);
         setRecordStatus("error");
@@ -83,7 +83,7 @@ export function useCandidateDetail(candidateId: string) {
       } catch (err) {
         if (!isActive) return;
         setNotesError(
-          resolveErrorMessage(err, "No se pudieron cargar las notas internas.")
+          resolveErrorMessage(err, "Could not load the internal notes.")
         );
         setNotes([]);
         setNotesStatus("error");

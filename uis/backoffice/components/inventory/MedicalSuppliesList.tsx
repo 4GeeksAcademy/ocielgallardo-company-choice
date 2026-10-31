@@ -24,7 +24,7 @@ export function MedicalSuppliesList() {
     (err: unknown) =>
       friendlyInventoryError(
         err,
-        "No se pudieron cargar los suministros. Comprueba que la API esté en marcha."
+        "Could not load supplies. Check that the API is running."
       ),
     []
   );
@@ -75,11 +75,11 @@ export function MedicalSuppliesList() {
       <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
-            Suministros médicos
+            Medical supplies
           </h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            Stock actual por suministro. Los niveles de color son solo de
-            interfaz (crítico &lt; 5, bajo &lt; 15).
+            Current stock per supply. Color levels are display-only
+            (critical &lt; 5, low &lt; 15).
           </p>
         </div>
         <Button
@@ -89,22 +89,22 @@ export function MedicalSuppliesList() {
           onClick={() => void reload()}
           disabled={status === "loading"}
         >
-          {status === "loading" ? "Cargando…" : "Actualizar"}
+          {status === "loading" ? "Loading…" : "Refresh"}
         </Button>
       </header>
 
       <AsyncRequestPanel
         status={status}
         error={error}
-        loadingMessage="Cargando suministros…"
+        loadingMessage="Loading supplies…"
         onRetry={() => void reload()}
-        retryLabel="Reintentar"
+        retryLabel="Retry"
       >
         {items.length === 0 ? (
           <EmptyState
-            title="No hay suministros"
-            description="La API no devolvió suministros médicos. Ejecuta el seed de inventario o registra uno nuevo."
-            actionLabel="Reintentar"
+            title="No supplies"
+            description="The API returned no medical supplies. Run the inventory seed or add a new one."
+            actionLabel="Retry"
             onAction={() => void reload()}
           />
         ) : (
@@ -113,25 +113,25 @@ export function MedicalSuppliesList() {
               <thead className="bg-slate-50 dark:bg-slate-800 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
                 <tr>
                   <th scope="col" className="px-4 py-3">
-                    Nombre
+                    Name
                   </th>
                   <th scope="col" className="px-4 py-3">
                     SKU
                   </th>
                   <th scope="col" className="px-4 py-3">
-                    Categoría
+                    Category
                   </th>
                   <th scope="col" className="px-4 py-3">
-                    Unidad
+                    Unit
                   </th>
                   <th scope="col" className="px-4 py-3">
-                    Jurisdicción
+                    Jurisdiction
                   </th>
                   <th scope="col" className="px-4 py-3">
                     Stock actual
                   </th>
                   <th scope="col" className="px-4 py-3">
-                    Acciones
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -162,13 +162,13 @@ export function MedicalSuppliesList() {
                           href={`/inventory/orders/inbound?supply_id=${supply.id}`}
                           className="text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline"
                         >
-                          Registrar entrega
+                          Log delivery
                         </Link>
                         <Link
                           href={`/inventory/orders/outbound?supply_id=${supply.id}`}
                           className="text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline"
                         >
-                          Registrar consumo
+                          Log usage
                         </Link>
                       </div>
                     </td>

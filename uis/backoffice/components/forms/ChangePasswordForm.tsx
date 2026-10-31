@@ -25,27 +25,27 @@ export function ChangePasswordForm() {
     event.preventDefault();
 
     if (!newPassword || newPassword.length < 8) {
-      setFormError("La nueva contraseña debe tener al menos 8 caracteres.");
+      setFormError("The new password must be at least 8 characters.");
       return;
     }
 
     if (newPassword !== confirmNewPassword) {
-      setFormError("Las nuevas contraseñas no coinciden.");
+      setFormError("The new passwords do not match.");
       return;
     }
 
     await runSubmit(async () => {
       try {
         await changePassword({ currentPassword, newPassword });
-        setFormSuccess("Contraseña actualizada correctamente.");
+        setFormSuccess("Password updated.");
         setCurrentPassword("");
         setNewPassword("");
         setConfirmNewPassword("");
       } catch (err) {
         if (err instanceof HealthcoreApiError) {
-          setFormError(err.message || "No se pudo cambiar la contraseña.");
+          setFormError(err.message || "Could not change the password.");
         } else {
-          setFormError("No se pudo cambiar la contraseña. Inténtalo de nuevo.");
+          setFormError("Could not change the password. Please try again.");
         }
       }
     });
@@ -54,7 +54,7 @@ export function ChangePasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <Input
-        label="Contraseña actual"
+        label="Current password"
         name="currentPassword"
         type="password"
         autoComplete="current-password"
@@ -63,7 +63,7 @@ export function ChangePasswordForm() {
         required
       />
       <Input
-        label="Nueva contraseña"
+        label="New password"
         name="newPassword"
         type="password"
         autoComplete="new-password"
@@ -72,7 +72,7 @@ export function ChangePasswordForm() {
         required
       />
       <Input
-        label="Confirmar nueva contraseña"
+        label="Confirm new password"
         name="confirmNewPassword"
         type="password"
         autoComplete="new-password"
@@ -87,7 +87,7 @@ export function ChangePasswordForm() {
       {formSuccess ? <FormMessage variant="success">{formSuccess}</FormMessage> : null}
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Actualizando…" : "Actualizar contraseña"}
+        {isSubmitting ? "Updating…" : "Update password"}
       </Button>
     </form>
   );

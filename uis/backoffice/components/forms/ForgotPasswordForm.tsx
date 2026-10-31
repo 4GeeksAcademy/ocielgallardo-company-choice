@@ -19,7 +19,7 @@ export function ForgotPasswordForm() {
 
     const trimmed = email.trim();
     if (!trimmed || !trimmed.includes("@")) {
-      setError("Introduce un email válido.");
+      setError("Enter a valid email.");
       return;
     }
 
@@ -29,9 +29,9 @@ export function ForgotPasswordForm() {
         setSent(true);
       } catch (err) {
         if (err instanceof HealthcoreApiError) {
-          setError(err.message || "No se pudo enviar el enlace. Inténtalo de nuevo.");
+          setError(err.message || "Could not send the link. Please try again.");
         } else {
-          setError("No se pudo enviar el enlace. Inténtalo de nuevo.");
+          setError("Could not send the link. Please try again.");
         }
       }
     });
@@ -41,12 +41,12 @@ export function ForgotPasswordForm() {
     return (
       <div className="space-y-4">
         <FormMessage variant="success">
-          Si esa dirección está registrada, recibirás un enlace en breve para
-          restablecer tu contraseña.
+          If that address is registered, you will shortly receive a link to
+          reset your password.
         </FormMessage>
         <p className="text-center text-sm text-slate-600 dark:text-slate-300">
           <Link href="/login" className="font-medium text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-300">
-            Volver a iniciar sesión
+            Back to sign in
           </Link>
         </p>
       </div>
@@ -68,7 +68,7 @@ export function ForgotPasswordForm() {
       {error ? <FormMessage variant="error">{error}</FormMessage> : null}
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Enviando…" : "Enviar enlace"}
+        {isSubmitting ? "Sending…" : "Send link"}
       </Button>
     </form>
   );

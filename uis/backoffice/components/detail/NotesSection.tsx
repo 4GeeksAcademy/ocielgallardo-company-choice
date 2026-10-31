@@ -16,7 +16,7 @@ interface NotesSectionProps {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("es-ES", {
+  return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
@@ -35,13 +35,13 @@ export function NotesSection({
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleDelete = async (noteId: string) => {
-    if (!window.confirm("¿Eliminar esta nota interna?")) return;
+    if (!window.confirm("Delete this internal note?")) return;
     setDeletingId(noteId);
     setDeleteError(null);
     try {
       await onDeleteNote(noteId);
     } catch {
-      setDeleteError("No se pudo eliminar la nota. Inténtalo de nuevo.");
+      setDeleteError("Could not delete the note. Please try again.");
     } finally {
       setDeletingId(null);
     }
@@ -50,10 +50,10 @@ export function NotesSection({
   return (
     <section className="space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Notas internas</h3>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Internal notes</h3>
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          Observaciones del equipo de People &amp; Talent de HealthCore sobre esta
-          candidatura.
+          Notes from the HealthCore People &amp; Talent team about this
+          application.
         </p>
       </div>
 
@@ -86,13 +86,13 @@ export function NotesSection({
               className="mt-3 text-red-700 dark:text-red-400"
               onClick={onRetry}
             >
-              Reintentar
+              Retry
             </Button>
           )}
         </div>
       ) : notes.length === 0 ? (
         <p className="rounded-lg border border-dashed border-slate-200 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
-          Aún no hay notas para esta candidatura.
+          No notes for this application yet.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -114,7 +114,7 @@ export function NotesSection({
                   disabled={deletingId === note.id}
                   onClick={() => handleDelete(note.id)}
                 >
-                  Eliminar
+                  Delete
                 </Button>
               </div>
             </li>

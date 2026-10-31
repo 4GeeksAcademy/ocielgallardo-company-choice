@@ -59,10 +59,10 @@ export const WORK_NAV_GROUPS: NavGroup[] = [
     label: "Inventory",
     icon: Boxes,
     items: [
-      { href: "/inventory/products", label: "Suministros" },
-      { href: "/inventory/orders/inbound", label: "Registrar entrega" },
-      { href: "/inventory/orders/outbound", label: "Registrar consumo" },
-      { href: "/inventory/orders", label: "Historial de órdenes" },
+      { href: "/inventory/products", label: "Supplies" },
+      { href: "/inventory/orders/inbound", label: "Log delivery" },
+      { href: "/inventory/orders/outbound", label: "Log usage" },
+      { href: "/inventory/orders", label: "Order history" },
     ],
   },
   {
