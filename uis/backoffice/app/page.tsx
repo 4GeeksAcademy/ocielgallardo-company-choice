@@ -1,4 +1,3 @@
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   Boxes,
@@ -8,20 +7,6 @@ import {
   Truck,
   Users,
 } from "lucide-react";
-import { LazyWhenVisible } from "@/components/ui/LazyWhenVisible";
-import { PanelPlaceholder } from "@/components/ui/PanelPlaceholder";
-
-const Hito2Playground = dynamic(
-  () =>
-    import("@/components/dashboard/Hito2Playground").then((mod) => ({
-      default: mod.Hito2Playground,
-    })),
-  {
-    loading: () => (
-      <PanelPlaceholder minHeight={400} label="Loading Hito 2 playground…" />
-    ),
-  },
-);
 
 const MODULES = [
   {
@@ -74,8 +59,7 @@ export default function HomePage() {
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300 sm:text-base">
           Internal console for incidents, suppliers, inventory, and People &amp;
-          Talent. Hito 2 domain utilities remain available below for interactive
-          demos.
+          Talent.
         </p>
       </section>
 
@@ -99,13 +83,6 @@ export default function HomePage() {
           </Link>
         ))}
       </section>
-
-      <LazyWhenVisible
-        fallback={<PanelPlaceholder minHeight={400} label="Loading Hito 2 playground…" />}
-        minHeight={400}
-      >
-        <Hito2Playground />
-      </LazyWhenVisible>
     </div>
   );
 }
