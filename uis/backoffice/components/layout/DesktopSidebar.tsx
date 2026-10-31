@@ -105,7 +105,7 @@ export function DesktopSidebar() {
       className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-slate-200 bg-white shadow-[4px_0_16px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:bg-slate-900 dark:shadow-[4px_0_16px_rgba(0,0,0,0.35)] md:flex"
       aria-label="Backoffice navigation"
     >
-      <div className="flex h-20 shrink-0 items-center gap-3 border-b border-slate-200 px-5 dark:border-slate-700">
+      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 px-5 dark:border-slate-700">
         <span
           className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white"
           aria-hidden="true"

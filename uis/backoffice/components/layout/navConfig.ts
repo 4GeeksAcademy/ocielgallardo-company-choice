@@ -125,6 +125,24 @@ export function isGroupActive(pathname: string, group: NavGroup): boolean {
   return group.items.some((item) => isPathActive(pathname, item.href));
 }
 
+/** Presentation-only: human label of the section that owns `pathname` (header title). */
+export function getSectionLabel(pathname: string): string {
+  if (pathname === DASHBOARD_HREF) {
+    return "Dashboard";
+  }
+  const group = WORK_NAV_GROUPS.find((candidate) => isGroupActive(pathname, candidate));
+  if (group) {
+    return group.label;
+  }
+  if (pathname.startsWith("/account")) {
+    return "Account";
+  }
+  if (pathname === "/playground") {
+    return "Playground";
+  }
+  return "HealthCore";
+}
+
 export function linkClassName(active: boolean): string {
   return active
     ? "bg-blue-50 text-blue-700 font-semibold dark:bg-blue-950/60 dark:text-blue-300"

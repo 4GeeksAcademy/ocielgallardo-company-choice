@@ -3,7 +3,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { ACCOUNT_MENU_ITEMS, isPathActive } from "@/components/layout/navConfig";
+import { clearSessionAndRedirectToLogin } from "@/lib/services/healthcoreClient";
+import { track } from "@/lib/services/telemetry";
 
 function ProfileAvatarIcon() {
   return (
@@ -99,6 +102,20 @@ export function AccountMenu() {
               </Link>
             );
           })}
+          <div role="separator" className="my-1 border-t border-slate-200 dark:border-slate-700" />
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none dark:text-slate-300 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800"
+            onClick={() => {
+              setOpen(false);
+              track("logout_completed", { path: window.location.pathname });
+              clearSessionAndRedirectToLogin();
+            }}
+          >
+            <LogOut size={14} strokeWidth={2} aria-hidden="true" />
+            Log out
+          </button>
         </div>
       ) : null}
     </div>
