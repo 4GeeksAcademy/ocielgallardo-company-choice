@@ -24,6 +24,8 @@ export interface NavGroup {
   href?: string;
   icon: LucideIcon;
   items: NavLinkItem[];
+  /** One-line summary shown on the dashboard module grid. */
+  description?: string;
 }
 
 export const DASHBOARD_HREF = "/" as const;
@@ -33,6 +35,7 @@ export const DASHBOARD_ICON = LayoutDashboard;
 export const WORK_NAV_GROUPS: NavGroup[] = [
   {
     id: "incidents",
+    description: "Register, triage, and resolve incidents across clinics.",
     label: "Incidents",
     icon: Siren,
     items: [
@@ -44,6 +47,7 @@ export const WORK_NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "suppliers",
+    description: "Supplier directory, rates, contracts, and status.",
     label: "Suppliers",
     href: "/suppliers",
     icon: Truck,
@@ -51,6 +55,7 @@ export const WORK_NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "inventory",
+    description: "Medical supplies stock, deliveries, and consumption.",
     label: "Inventory",
     icon: Boxes,
     items: [
@@ -62,6 +67,7 @@ export const WORK_NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "reporting",
+    description: "Monthly clinic supply performance KPIs.",
     label: "Reporting",
     href: "/reporting",
     icon: BarChart3,
@@ -69,6 +75,7 @@ export const WORK_NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "telemetry",
+    description: "Platform events, error rates, and latency.",
     label: "Telemetry",
     href: "/telemetry",
     icon: Activity,
@@ -76,6 +83,7 @@ export const WORK_NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "knowledge",
+    description: "Ask the internal knowledge assistant.",
     label: "Knowledge",
     href: "/knowledge",
     icon: BookOpen,
@@ -83,6 +91,7 @@ export const WORK_NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "rfp-intake",
+    description: "Upload and track RFP documents through review.",
     label: "RFP Intake",
     href: "/rfp",
     icon: FileText,
@@ -90,6 +99,7 @@ export const WORK_NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "people-talent",
+    description: "Candidate pipeline tracker.",
     label: "People & Talent",
     href: "/applications",
     icon: Users,
