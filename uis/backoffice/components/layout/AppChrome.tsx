@@ -24,6 +24,22 @@ function getServerTokenSnapshot(): string | null {
   return null;
 }
 
+function subscribeNoop() {
+  return () => {};
+}
+
+/**
+ * `false` during SSR and the hydration render, `true` afterwards. Until then the
+ * token snapshot is the server one (`null`), so auth redirects must wait for it.
+ */
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    subscribeNoop,
+    () => true,
+    () => false
+  );
+}
+
 interface AppChromeProps {
   children: React.ReactNode;
 }
@@ -36,10 +52,11 @@ export function AppChrome({ children }: AppChromeProps) {
     getTokenSnapshot,
     getServerTokenSnapshot
   );
+  const hydrated = useHydrated();
   const isAuthPage = AUTH_PATHS.has(pathname);
 
-  const shouldRedirectHome = isAuthPage && Boolean(token);
-  const shouldRedirectLogin = !isAuthPage && !token;
+  const shouldRedirectHome = hydrated && isAuthPage && Boolean(token);
+  const shouldRedirectLogin = hydrated && !isAuthPage && !token;
 
   /* ── page_viewed ─────────────────────────────────────────────── */
   const prevPathRef = useRef<string | null>(null);
@@ -90,10 +107,15 @@ export function AppChrome({ children }: AppChromeProps) {
     }
   }, [shouldRedirectHome, shouldRedirectLogin, router]);
 
-  if (shouldRedirectHome || shouldRedirectLogin) {
+  const awaitingSession = !hydrated && !isAuthPage;
+  if (awaitingSession || shouldRedirectHome || shouldRedirectLogin) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-slate-500 dark:text-slate-400">
-        Cargando…
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex min-h-screen items-center justify-center text-sm text-slate-500 dark:text-slate-400"
+      >
+        Loading…
       </div>
     );
   }
