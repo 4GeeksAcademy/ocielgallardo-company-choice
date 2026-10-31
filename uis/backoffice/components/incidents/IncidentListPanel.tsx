@@ -194,14 +194,15 @@ export function IncidentListPanel() {
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
           <table className="min-w-full text-left text-sm">
+            <caption className="sr-only">Incidents matching the current filters</caption>
             <thead className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
               <tr>
-                <th className="px-3 py-2">ID</th>
-                <th className="px-3 py-2">Title</th>
-                <th className="px-3 py-2">Category</th>
-                <th className="px-3 py-2">Origin</th>
-                <th className="px-3 py-2">Branch</th>
-                <th className="px-3 py-2">Status</th>
+                <th scope="col" className="px-3 py-2">ID</th>
+                <th scope="col" className="px-3 py-2">Title</th>
+                <th scope="col" className="px-3 py-2">Category</th>
+                <th scope="col" className="px-3 py-2">Origin</th>
+                <th scope="col" className="px-3 py-2">Branch</th>
+                <th scope="col" className="px-3 py-2">Status</th>
               </tr>
             </thead>
             <tbody>
