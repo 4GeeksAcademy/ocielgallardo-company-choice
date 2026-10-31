@@ -178,6 +178,16 @@ export function OutboundOrderForm() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     const nextErrors = validate(values);
+    if (!nextErrors.quantity && selectedSupply) {
+      const requested = Number(values.quantity);
+      const available = Math.max(selectedSupply.current_stock, 0);
+      if (requested > available) {
+        nextErrors.quantity =
+          available === 0
+            ? "No stock available for this supply."
+            : `Insufficient stock: only ${available} available.`;
+      }
+    }
     setErrors(nextErrors);
     setSuccessMessage(null);
     setSubmitError(null);
@@ -241,7 +251,10 @@ export function OutboundOrderForm() {
         err,
         "Could not log the usage. Check the details and try again."
       );
-      if (err instanceof InventoryApiError && err.status === 400) {
+      if (
+        err instanceof InventoryApiError &&
+        (err.status === 400 || err.status === 409 || err.status === 422)
+      ) {
         setErrors((current) => ({ ...current, quantity: message }));
         return;
       }
@@ -330,6 +343,11 @@ export function OutboundOrderForm() {
             name="quantity"
             type="number"
             min={1}
+            max={
+              selectedSupply
+                ? Math.max(selectedSupply.current_stock, 0)
+                : undefined
+            }
             step={1}
             value={values.quantity}
             onChange={(event) => updateField("quantity", event.target.value)}
@@ -337,10 +355,10 @@ export function OutboundOrderForm() {
             required
           />
           {quantityExceedsStock && !errors.quantity && (
-            <p className="text-sm text-amber-700" role="status">
+            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
               The quantity exceeds available stock (
-              {selectedSupply?.current_stock}). You can submit, but the API
-              will reject the usage if there is not enough stock.
+              {Math.max(selectedSupply?.current_stock ?? 0, 0)}). Reduce it to
+              log this usage.
             </p>
           )}
         </div>
@@ -388,7 +406,12 @@ export function OutboundOrderForm() {
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <Button
             type="submit"
-            disabled={isSubmitting || isLoadingSupplies || Boolean(loadError)}
+            disabled={
+              isSubmitting ||
+              isLoadingSupplies ||
+              Boolean(loadError) ||
+              quantityExceedsStock
+            }
           >
             {isSubmitting ? "Logging…" : "Log usage"}
           </Button>
