@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DashboardKpis } from "@/components/dashboard/DashboardKpis";
 import {
   Boxes,
   ClipboardList,
@@ -62,6 +63,8 @@ export default function HomePage() {
           Talent.
         </p>
       </section>
+
+      <DashboardKpis />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {MODULES.map((module) => (
