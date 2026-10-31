@@ -10,6 +10,7 @@ import {
   toRfpView,
   toStockView,
 } from "@/components/dashboard/selectors";
+import { sharedRequest } from "@/components/dashboard/requestQueue";
 import type { Tone } from "@/components/dashboard/tones";
 import { useAsyncQuery } from "@/hooks/useAsyncQuery";
 import { fetchIncidentSummary, friendlyIncidentError } from "@/lib/services/incidentsManagerApi";
@@ -18,16 +19,16 @@ import { friendlyRfpError, listRfpTickets } from "@/lib/services/rfpApi";
 import { fetchTelemetryReport, friendlyTelemetryError } from "@/lib/services/telemetryApi";
 
 /* Module-level query/error functions keep useAsyncQuery dependencies stable. */
-const loadIncidents = async () => toIncidentStatusView(await fetchIncidentSummary());
+const loadIncidents = async () => toIncidentStatusView(await sharedRequest("incident-summary", fetchIncidentSummary));
 const incidentsError = (err: unknown) => friendlyIncidentError(err, "Could not load incidents.");
 
-const loadRfps = async () => toRfpView(await listRfpTickets(), new Date());
+const loadRfps = async () => toRfpView(await sharedRequest("rfp-tickets", listRfpTickets), new Date());
 const rfpsError = (err: unknown) => friendlyRfpError(err, "Could not load RFP tickets.");
 
-const loadStock = async () => toStockView(await fetchMedicalSupplies());
+const loadStock = async () => toStockView(await sharedRequest("medical-supplies", fetchMedicalSupplies));
 const stockError = (err: unknown) => friendlyInventoryError(err, "Could not load supplies.");
 
-const loadHealth = async () => toPlatformHealthView(await fetchTelemetryReport());
+const loadHealth = async () => toPlatformHealthView(await sharedRequest("telemetry-report", () => fetchTelemetryReport()));
 const healthError = (err: unknown) => friendlyTelemetryError(err, "Could not load telemetry.");
 
 const formatNumber = (value: number) => value.toLocaleString("en-US");

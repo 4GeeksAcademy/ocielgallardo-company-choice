@@ -10,6 +10,7 @@ import {
   toSupplierView,
   topEntries,
 } from "@/components/dashboard/selectors";
+import { sharedRequest } from "@/components/dashboard/requestQueue";
 import { useAsyncQuery } from "@/hooks/useAsyncQuery";
 import { HealthcoreApiError } from "@/lib/services/healthcoreClient";
 import { fetchIncidentSummary, friendlyIncidentError } from "@/lib/services/incidentsManagerApi";
@@ -18,16 +19,16 @@ import { fetchMonthlyClinicSupplyPerformance, friendlyReportingError } from "@/l
 import { fetchSuppliers } from "@/lib/services/suppliersApi";
 
 /* Module-level query/error functions keep useAsyncQuery dependencies stable. */
-const loadBranches = async () => topEntries((await fetchIncidentSummary()).by_branch, 6);
+const loadBranches = async () => topEntries((await sharedRequest("incident-summary", fetchIncidentSummary)).by_branch, 6);
 const branchesError = (err: unknown) => friendlyIncidentError(err, "Could not load incidents.");
 
-const loadMovement = async () => toMovementDays(await fetchInventoryOrders(), new Date(), 14);
+const loadMovement = async () => toMovementDays(await sharedRequest("inventory-orders", fetchInventoryOrders), new Date(), 14);
 const movementError = (err: unknown) => friendlyInventoryError(err, "Could not load inventory orders.");
 
 /** 404 / 503 mean "no computed month yet" or "reporting DB not configured" — shown as an empty state. */
 const loadClinicSupply = async () => {
   try {
-    return toClinicSupplyView(await fetchMonthlyClinicSupplyPerformance());
+    return toClinicSupplyView(await sharedRequest("clinic-supply", () => fetchMonthlyClinicSupplyPerformance()));
   } catch (err) {
     if (err instanceof HealthcoreApiError && (err.status === 404 || err.status === 503)) {
       return null;
@@ -37,7 +38,7 @@ const loadClinicSupply = async () => {
 };
 const clinicSupplyError = (err: unknown) => friendlyReportingError(err, "Could not load the clinic supply report.");
 
-const loadSuppliers = async () => toSupplierView(await fetchSuppliers(), new Date(), 60);
+const loadSuppliers = async () => toSupplierView(await sharedRequest("suppliers", fetchSuppliers), new Date(), 60);
 const suppliersError = (err: unknown) =>
   err instanceof HealthcoreApiError ? err.message || "Could not load suppliers." : "Could not load suppliers.";
 
