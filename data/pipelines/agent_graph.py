@@ -38,6 +38,7 @@ import sys
 import time
 import uuid
 from collections import OrderedDict
+from collections.abc import Callable
 from typing import Literal, TypedDict
 
 from langgraph.checkpoint.memory import MemorySaver
@@ -604,7 +605,57 @@ def run_agent(question: str) -> dict:
     Returns ``{"question": ..., "context": [...], "answer": ..., "route": ...,
     "tool_result": ..., "sources_used": [...], "trace_id": ...}``.
     """
-    trace_id = uuid.uuid4().hex
+    return _run_agent_inner(question, thread_id=None)
+
+
+def run_agent_stream(
+    question: str,
+    *,
+    thread_id: str,
+    on_token: Callable[[str], None],
+    cancel_check: Callable[[], bool],
+) -> dict:
+    """Same graph as :func:`run_agent`, streaming LLM tokens via ``on_token``.
+
+    Does not change routing/tools — only installs RAG stream hooks for the
+    duration of ``graph.invoke``. Non-LLM routes emit the final answer as
+    token chunks after the run. Raises
+    :class:`data.pipelines.rag.GenerationInterrupted` when cancelled mid-stream.
+    """
+    from data.pipelines.rag import (
+        GenerationInterrupted,
+        reset_stream_hooks,
+        set_stream_hooks,
+    )
+
+    emitted = {"n": 0}
+
+    def _on_token(tok: str) -> None:
+        if cancel_check():
+            raise GenerationInterrupted("chat generation cancelled")
+        emitted["n"] += 1
+        on_token(tok)
+
+    hooks_token = set_stream_hooks(_on_token, cancel_check)
+    try:
+        result = _run_agent_inner(question, thread_id=thread_id)
+        answer = (result.get("answer") or "").strip()
+        if emitted["n"] == 0 and answer:
+            # Tool / refuse paths: surface the deterministic answer as chunks.
+            if cancel_check():
+                raise GenerationInterrupted("chat generation cancelled")
+            on_token(answer)
+        result["stream_status"] = "completed"
+        return result
+    except GenerationInterrupted:
+        raise
+    finally:
+        reset_stream_hooks(hooks_token)
+
+
+def _run_agent_inner(question: str, *, thread_id: str | None) -> dict:
+    """Shared invoke path for sync query and streaming chat."""
+    trace_id = thread_id or uuid.uuid4().hex
     started = time.time()
     trace: dict = {
         "trace_id": trace_id,
@@ -669,6 +720,11 @@ def run_agent(question: str) -> dict:
                 "error": f"{type(exc).__name__}: {exc}",
             }
         )
+        # GenerationInterrupted is expected for chat abort — don't log as error.
+        from data.pipelines.rag import GenerationInterrupted
+
+        if isinstance(exc, GenerationInterrupted):
+            raise
         logger.exception("agent_graph run %s failed", trace_id)
         raise
     finally:
