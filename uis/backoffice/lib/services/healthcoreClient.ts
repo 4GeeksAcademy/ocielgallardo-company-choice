@@ -1,4 +1,4 @@
-const HEALTHCORE_API_BASE_URL =
+export const HEALTHCORE_API_BASE_URL =
   process.env.NEXT_PUBLIC_HEALTHCORE_API_URL ?? "http://127.0.0.1:8000";
 
 export const AUTH_TOKEN_KEY = "healthcore_access_token";
