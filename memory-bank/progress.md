@@ -1,5 +1,26 @@
 # Progress
 
+## Latest Update (2026-11-03) — Hito 29: OWASP Top 10 audit + critical fixes
+
+- **Branch `feature/owasp-top10-audit`** (from `feature/websocket-chat`).
+- BRIEFING: `docs/cybersecurity-analysis/healthcore-BRIEFING.{md,es.md}`.
+- Server baseline: `scripts/hardening/harden-linux-baseline.sh` +
+  `verify-baseline.sh`; runbook `docs/cybersecurity-analysis/server-hardening.*`
+  (Linux/Codespaces; Windows uses Compose evidence).
+- Compose A05: Redis/Qdrant/Flower **not** published on host in prod; Flower
+  loopback-only in dev overlay; non-root `USER app` in prod Dockerfiles;
+  `.dockerignore` excludes auth/pem; API docs off when `APP_ENV=production`.
+- A01 fixes: auth on incidents analyze/export; telemetry report JWT + ingest
+  key; RFP department approver allowlist; `ALLOW_PUBLIC_REGISTRATION`;
+  Compliance WS staff-only.
+- Agentic: `data/pipelines/agent_guardrails.py` (injection refuse + PHI-like
+  output gate); RAG UNTRUSTED_REFERENCE delimiters; traces without raw
+  questions.
+- Reports: `owasp-top10-report.*`, `nist-protect-checklist.*` (no PHI).
+- Tests: `tests/test_agent_injection.py`, `tests/test_owasp_access_control.py`,
+  WS staff-role rejection.
+- **Do not use** personal `docs/audit/security-audit-2026-10-31.md` as source.
+
 ## Latest Update (2026-11-02) — Hito 28 Part 2: WebSocket chat streaming
 
 - **Branch `feature/websocket-chat`**: Compliance assistant chat over WebSocket
