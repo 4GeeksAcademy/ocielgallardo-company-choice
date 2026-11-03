@@ -1,5 +1,20 @@
 # Progress
 
+## Latest Update (2026-11-02) — Hito 28 Part 2: WebSocket chat streaming
+
+- **Branch `feature/websocket-chat`**: Compliance assistant chat over WebSocket
+  (`WS /agent/chat/ws?token=`), BRIEFING session + events (`token_chunk`,
+  `interrupt_requested`, `generation_interrupted`, `generation_completed`,
+  `session_snapshot`, `user_message`).
+- In-memory pub/sub `chat.<session_id>`; genuine abort via cancel flag +
+  `GenerationInterrupted` during LLM stream; **partial tokens kept** on
+  interrupted assistant messages.
+- `generate_answer_stream` + `run_agent_stream` (same LangGraph; no tool/route
+  redesign). UI: Knowledge panel streams tokens + Interrupt + reconnect.
+- Tests: `tests/test_agent_chat_ws.py` (stream, interrupt+partial, reconnect).
+- Design Q&A: `docs/real-time-comunication/websocket-part2-design.md`.
+- BRIEFING: `docs/real-time-comunication/healthcore-BRIEFING(parte-2).*.md`.
+
 ## Latest Update (2026-10-29) — Part 3 HITL verified (Compose + recovery)
 
 - **Verified:** shared checkpoints volume, sync approval start, friendly errors,
