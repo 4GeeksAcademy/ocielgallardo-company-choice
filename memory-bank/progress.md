@@ -1,5 +1,13 @@
 # Progress
 
+## Latest Update (2026-11-03) — Hito 29 rubric gaps (folders + before/after)
+
+- Hardening layout: `/opt/healthcore/{app,logs,secrets,config}` modes
+  750/750/700/750 in `harden-linux-baseline.sh` + `verify-baseline.sh`.
+- OWASP reports: reproducible before/after table for critical fixes C1–C8.
+- Tests aligned: trace `question_chars`; Flower not published on host.
+- Local Temas MD updated with official “Qué Necesitas Hacer / Evaluar” rubric.
+
 ## Latest Update (2026-11-03) — Hito 29: OWASP Top 10 audit + critical fixes
 
 - **Branch `feature/owasp-top10-audit`** (from `feature/websocket-chat`).

@@ -4,6 +4,7 @@
 set -euo pipefail
 
 DEPLOY_USER="${DEPLOY_USER:-healthcore}"
+HEALTHCORE_ROOT="${HEALTHCORE_ROOT:-/opt/healthcore}"
 FAIL=0
 
 pass() { echo "[PASS] $*"; }
@@ -68,6 +69,36 @@ if command -v ufw >/dev/null 2>&1; then
 else
   fail "ufw not installed"
 fi
+
+echo "==> Folder permissions under ${HEALTHCORE_ROOT}"
+check_dir_mode() {
+  local path="$1"
+  local expect="$2"
+  local label="$3"
+  if [[ ! -d "${path}" ]]; then
+    fail "${label} missing (${path})"
+    return
+  fi
+  local mode
+  mode="$(stat -c '%a' "${path}" 2>/dev/null || stat -f '%OLp' "${path}" 2>/dev/null || echo "")"
+  local owner
+  owner="$(stat -c '%U' "${path}" 2>/dev/null || stat -f '%Su' "${path}" 2>/dev/null || echo "")"
+  if [[ "${mode}" == "${expect}" ]]; then
+    pass "${label} mode ${mode} (${path})"
+  else
+    fail "${label} expected mode ${expect}, got '${mode}' (${path})"
+  fi
+  if [[ "${owner}" == "${DEPLOY_USER}" ]]; then
+    pass "${label} owner ${owner}"
+  else
+    fail "${label} expected owner ${DEPLOY_USER}, got '${owner}'"
+  fi
+}
+
+check_dir_mode "${HEALTHCORE_ROOT}/app" "750" "app/"
+check_dir_mode "${HEALTHCORE_ROOT}/logs" "750" "logs/"
+check_dir_mode "${HEALTHCORE_ROOT}/secrets" "700" "secrets/"
+check_dir_mode "${HEALTHCORE_ROOT}/config" "750" "config/"
 
 if [[ "${FAIL}" -eq 0 ]]; then
   echo "==> All baseline checks passed."

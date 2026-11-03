@@ -31,6 +31,28 @@ Tres carriles por categoría: **API/Backend** | **Frontend/Staff UI** | **Agenti
 | C6 | A03/Agentic | Refuse injection + gate PHI + delimiters RAG | `agent_guardrails.py`, `rag.py`, `test_agent_injection.py` |
 | C7 | Baseline | Scripts SSH/UFW + runbook | `scripts/hardening/`, `server-hardening.es.md` |
 
+## Evidencia antes / después (reproducible)
+
+Sin PHI en comandos ni fixtures (solo IDs sintéticos).
+
+| ID | Hallazgo crítico | Antes | Después (reproducir) |
+| --- | --- | --- | --- |
+| C1 | Incidents analyze/export abiertos | Sin Bearer aceptaban tráfico | `pytest tests/test_owasp_access_control.py::test_incidents_*` → **401** |
+| C2 | Telemetry report abierto | Sin JWT devolvía métricas | `…::test_telemetry_report_requires_auth` → **401** |
+| C3 | Registro abierto | `POST /users` siempre | `ALLOW_PUBLIC_REGISTRATION=false` → **403** |
+| C4 | Aprobación RFP sin dueño | Cualquier JWT | `test_department_approval_requires_owner_or_admin` |
+| C5 | WS compliance cualquier user | Rol `user` entraba | `test_ws_rejects_non_staff_role` |
+| C6 | Redis/Qdrant/Flower en host | `ports` publicados | `expose` only; test Flower sin `"5555:5555"` |
+| C7 | Prompt injection | Llegaba al LLM | `tests/test_agent_injection.py` + `refuse_security` |
+| C8 | SSH root / firewall / carpetas planas | Defaults Linux | `scripts/hardening/*` + `verify-baseline.sh` (dirs 750/700) |
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/telemetry/report
+curl -s -o /dev/null -w "%{http_code}\n" -X POST http://127.0.0.1:8000/api/incidents/analyze
+```
+
+Detalle EN: [owasp-top10-report.md](./owasp-top10-report.md).
+
 ## Residuales documentados
 
 RBAC completo de inventario/proveedores, tokens MCP por usuario, JWT fuera del query string WS, concurrencia TinyDB — seguimientos, no bloquean el sign-off de críticos de este hito.

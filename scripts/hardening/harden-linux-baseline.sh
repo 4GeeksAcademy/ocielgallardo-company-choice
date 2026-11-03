@@ -5,6 +5,7 @@
 set -euo pipefail
 
 DEPLOY_USER="${DEPLOY_USER:-healthcore}"
+HEALTHCORE_ROOT="${HEALTHCORE_ROOT:-/opt/healthcore}"
 SSH_CONFIG="${SSH_CONFIG:-/etc/ssh/sshd_config}"
 SSH_DROPIN_DIR="${SSH_DROPIN_DIR:-/etc/ssh/sshd_config.d}"
 UFW_BIN="${UFW_BIN:-ufw}"
@@ -27,6 +28,35 @@ usermod -aG sudo "${DEPLOY_USER}" 2>/dev/null || usermod -aG wheel "${DEPLOY_USE
 
 # Lock down home permissions (no world-writable)
 chmod 750 "/home/${DEPLOY_USER}" 2>/dev/null || true
+
+echo "==> Folder layout under ${HEALTHCORE_ROOT} (code / logs / secrets)"
+# Separate code, logs, and sensitive config with explicit modes.
+#   app/     — application checkout / deploy tree (750)
+#   logs/    — runtime logs (750)
+#   secrets/ — .env, PEM, auth stores (700 — owner-only)
+#   config/  — non-secret config templates (750)
+mkdir -p \
+  "${HEALTHCORE_ROOT}/app" \
+  "${HEALTHCORE_ROOT}/logs" \
+  "${HEALTHCORE_ROOT}/secrets" \
+  "${HEALTHCORE_ROOT}/config"
+chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${HEALTHCORE_ROOT}"
+chmod 750 "${HEALTHCORE_ROOT}"
+chmod 750 "${HEALTHCORE_ROOT}/app"
+chmod 750 "${HEALTHCORE_ROOT}/logs"
+chmod 700 "${HEALTHCORE_ROOT}/secrets"
+chmod 750 "${HEALTHCORE_ROOT}/config"
+# Drop a reminder file (no secrets) for operators.
+cat >"${HEALTHCORE_ROOT}/README.perms.txt" <<EOF
+HealthCore folder separation (Hito 29)
+- app/      code         mode 750  owner ${DEPLOY_USER}
+- logs/     logs         mode 750  owner ${DEPLOY_USER}
+- secrets/  .env, PEM    mode 700  owner ${DEPLOY_USER}
+- config/   non-secret   mode 750  owner ${DEPLOY_USER}
+Map Compose: mount/copy repo into app/; keep host .env and data/process/auth/ under secrets/.
+EOF
+chown "${DEPLOY_USER}:${DEPLOY_USER}" "${HEALTHCORE_ROOT}/README.perms.txt"
+chmod 640 "${HEALTHCORE_ROOT}/README.perms.txt"
 
 echo "==> SSH: PermitRootLogin no, PasswordAuthentication no (key-only)"
 mkdir -p "${SSH_DROPIN_DIR}"

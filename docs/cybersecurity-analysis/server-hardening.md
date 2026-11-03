@@ -9,6 +9,7 @@ Academic hardening for `ai-eng-cybersecurity-vulnerabilities` (BRIEFING §7).
 | --- | --- |
 | No direct root SSH login | `PermitRootLogin no` via `scripts/hardening/` |
 | Non-root deploy user | `healthcore` (or `DEPLOY_USER`) with sudo |
+| Explicit folder permissions | `/opt/healthcore/{app,logs,secrets,config}` modes 750/750/700/750 |
 | Firewall with minimal ports | UFW: 22, 80, 443 only |
 | Clinical APIs / dashboards not exposing DB/queues/admin | Compose: Redis, Qdrant, Flower **not** published on the host |
 
@@ -20,11 +21,30 @@ sudo bash scripts/hardening/harden-linux-baseline.sh
 sudo bash scripts/hardening/verify-baseline.sh
 ```
 
-Optional: `DEPLOY_USER=myuser sudo -E bash scripts/hardening/harden-linux-baseline.sh`
+Optional:
+
+```bash
+DEPLOY_USER=myuser HEALTHCORE_ROOT=/opt/healthcore sudo -E bash scripts/hardening/harden-linux-baseline.sh
+```
+
+### Folder separation (code / logs / secrets)
+
+Created by `harden-linux-baseline.sh` under `HEALTHCORE_ROOT` (default `/opt/healthcore`):
+
+| Path | Purpose | Mode | Owner |
+| --- | --- | --- | --- |
+| `app/` | Application code / deploy checkout | `750` | deploy user |
+| `logs/` | Runtime / operational logs | `750` | deploy user |
+| `secrets/` | `.env`, PEM keys, TinyDB auth stores | `700` | deploy user (owner-only) |
+| `config/` | Non-secret templates / static config | `750` | deploy user |
+
+**Compose mapping:** keep the monorepo (or release tarball) under `app/`; place host `.env` and `data/process/auth/*` under `secrets/` (never world-readable); write container/host logs into `logs/`.
+
+Verify modes with `verify-baseline.sh` (`stat` checks for `750` / `700`).
 
 ### Windows workstation limitation
 
-`harden-linux-baseline.sh` / `verify-baseline.sh` **exit on non-Linux**. Capture SSH/UFW evidence from Codespaces; keep Compose port lockdown as the in-repo, locally verifiable control on Windows.
+`harden-linux-baseline.sh` / `verify-baseline.sh` **exit on non-Linux**. Capture SSH/UFW/folder evidence from Codespaces; keep Compose port lockdown as the in-repo, locally verifiable control on Windows.
 
 ## Compose / image mapping (in-repo firewall)
 

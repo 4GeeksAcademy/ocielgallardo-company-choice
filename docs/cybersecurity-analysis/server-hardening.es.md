@@ -9,6 +9,7 @@ Endurecimiento académico para `ai-eng-cybersecurity-vulnerabilities` (BRIEFING 
 | --- | --- |
 | Sin login SSH directo como root | `PermitRootLogin no` vía `scripts/hardening/` |
 | Usuario deploy no-root | `healthcore` (o `DEPLOY_USER`) con sudo |
+| Permisos explícitos de carpetas | `/opt/healthcore/{app,logs,secrets,config}` modos 750/750/700/750 |
 | Firewall con puertos mínimos | UFW: solo 22, 80, 443 |
 | APIs/dashboards sin exponer DB/colas/admin | Compose: Redis, Qdrant, Flower **sin** puertos en el host |
 
@@ -19,9 +20,14 @@ sudo bash scripts/hardening/harden-linux-baseline.sh
 sudo bash scripts/hardening/verify-baseline.sh
 ```
 
+### Separación de carpetas
+
+Bajo `HEALTHCORE_ROOT` (por defecto `/opt/healthcore`): `app/` (750), `logs/` (750), `secrets/` (700), `config/` (750).  
+Mapeo Compose: código en `app/`; `.env` y `data/process/auth/` en `secrets/`; logs en `logs/`.
+
 ### Limitación en Windows
 
-Los scripts **salen en no-Linux**. Captura evidencia SSH/UFW en Codespaces; el lockdown de puertos Compose es el control verificable en el monorepo desde Windows.
+Los scripts **salen en no-Linux**. Captura evidencia SSH/UFW/carpetas en Codespaces; el lockdown de puertos Compose es el control verificable en el monorepo desde Windows.
 
 ## Mapeo Compose (firewall en-repo)
 

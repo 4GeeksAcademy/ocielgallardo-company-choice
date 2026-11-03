@@ -143,7 +143,30 @@ Evidence: [server-hardening.md](./server-hardening.md); `docker compose config` 
 3. Registration disable flag  
 4. Compose internal-only Redis/Qdrant/Flower + non-root images + docs off in prod  
 5. Agent prompt-injection refuse + PHI output sanitize + RAG untrusted delimiters  
-6. Linux hardening scripts + runbook (Codespaces evidence path)
+6. Linux hardening scripts + runbook (Codespaces evidence path) — includes `/opt/healthcore/{app,logs,secrets,config}` folder modes
+
+## Before / after evidence (reproducible)
+
+No PHI in commands or fixtures (synthetic IDs only).
+
+| ID | Critical finding | Before | After (reproduce) |
+| --- | --- | --- | --- |
+| C1 | Incidents analyze/export open | Unauthenticated `POST /api/incidents/analyze` and `GET /api/incidents/results/export` accepted traffic | `UV_SYSTEM_CERTS=1 uv run pytest tests/test_owasp_access_control.py::test_incidents_analyze_requires_auth tests/test_owasp_access_control.py::test_incidents_export_requires_auth -q` → **401** without Bearer |
+| C2 | Telemetry report open | `GET /telemetry/report` without JWT | `…::test_telemetry_report_requires_auth` → **401**; ingest bad key → **401** (`test_telemetry_ingest_rejects_bad_key`) |
+| C3 | Open registration | `POST /users` always created accounts | With `ALLOW_PUBLIC_REGISTRATION=false`: `…::test_registration_disabled_returns_403` → **403** |
+| C4 | RFP any-user approve | Any JWT could resume any department | `user_may_approve_department` + `…::test_department_approval_requires_owner_or_admin` (non-owner → False; admin/owner → True) |
+| C5 | Compliance WS any user | Role `user` opened chat | `tests/test_agent_chat_ws.py::test_ws_rejects_non_staff_role` closes non-staff; staff stream still passes |
+| C6 | Redis/Qdrant/Flower on host | `ports: "6379:6379"`, `"6333:6333"`, `"5555:5555"` in prod compose | `docker compose config` shows **no** `published` for those; `tests/test_async_tasks.py::test_compose_declares_shared_redis_worker_and_flower` asserts `"5555:5555"` **absent** and `expose` present |
+| C7 | Prompt injection / PHI-like output | Jailbreak reached LLM | `tests/test_agent_injection.py` — refuse without `generate`; output SSN-like blocked; traces use `question_chars` only |
+| C8 | Root SSH / wide firewall / flat dirs | Default Linux image | `sudo bash scripts/hardening/harden-linux-baseline.sh` then `verify-baseline.sh`: `PermitRootLogin no`, UFW 22/80/443, dirs `app/logs` 750, `secrets` 700 |
+
+Manual curl examples (API up on `:8000`):
+
+```bash
+# After fix: expect 401
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/telemetry/report
+curl -s -o /dev/null -w "%{http_code}\n" -X POST http://127.0.0.1:8000/api/incidents/analyze
+```
 
 ## Residual (accepted for follow-up)
 
