@@ -34,6 +34,10 @@ venv/
 .env.*
 !.env.example
 !**/.env.example
+data/process/auth/
+**/auth.json
+**/*.pem
+**/*.key
 
 # Logs and audit artifacts
 *.log

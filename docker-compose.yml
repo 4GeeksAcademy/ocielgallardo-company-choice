@@ -4,8 +4,9 @@ services:
     image: redis:7-alpine
     container_name: healthcore-redis
     command: ["redis-server", "--maxmemory-policy", "noeviction"]
-    ports:
-      - "6379:6379"
+    # Internal only — do not publish broker on the host (OWASP A05).
+    expose:
+      - "6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -18,9 +19,10 @@ services:
   qdrant:
     image: qdrant/qdrant:latest
     container_name: healthcore-qdrant
-    ports:
-      - "6333:6333"
-      - "6334:6334"
+    # Internal only — vector DB stays on the compose network (OWASP A05).
+    expose:
+      - "6333"
+      - "6334"
     volumes:
       - qdrant_storage:/qdrant/storage
     # The qdrant image ships no curl/wget; probe /readyz over bash's /dev/tcp.
@@ -229,8 +231,9 @@ services:
     command: ["celery", "-A", "services.app.tasks.celery_app:celery_app", "flower", "--port=5555"]
     depends_on:
       - redis
-    ports:
-      - "5555:5555"
+    # Flower admin UI is internal-only in prod compose (OWASP A05).
+    expose:
+      - "5555"
     networks:
       - healthcore_net
 

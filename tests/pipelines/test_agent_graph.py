@@ -279,7 +279,9 @@ def test_run_agent_produces_queryable_trace(monkeypatch) -> None:
     assert trace is not None
     assert trace["trace_id"] == result["trace_id"]
     assert trace["status"] == "success"
-    assert trace["question"] == "trace me"
+    # Metadata only — raw question text must not live in traces (Hito 29 / PHI).
+    assert "question" not in trace
+    assert trace["question_chars"] == len("trace me")
     assert trace["n_chunks"] == 1
     assert trace["sources"] == ["referral-process"]
     assert trace["sources_used"] == ["rag"]

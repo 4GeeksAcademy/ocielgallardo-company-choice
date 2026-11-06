@@ -1,6 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from services.app.core.deps import get_current_user, require_self_or_admin
+from services.app.core.deps import (
+    get_current_user,
+    public_registration_allowed,
+    require_self_or_admin,
+)
 from services.app.domain.user_service import (
     create_user,
     list_users,
@@ -23,6 +27,11 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.post("", response_model=RegisterResponse, status_code=201)
 def register_user(payload: UserCreate):
+    if not public_registration_allowed():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Public registration is disabled",
+        )
     try:
         user = create_user(payload)
         return RegisterResponse(
