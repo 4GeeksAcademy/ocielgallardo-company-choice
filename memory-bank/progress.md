@@ -1,5 +1,19 @@
 # Progress
 
+## Latest Update (2026-11-06) — Hito 29 NIST AI secure practices
+
+- **Branch `feature/nist-security-practices`** (merged `feature/owasp-top10-audit`).
+- Inventory: `docs/cybersecurity-analysis/ai-systems-inventory.{md,es.md}` with
+  owners + third-party control per component (BRIEFING §2/§3).
+- NIST six-function report: `nist-ai-security-report.{md,es.md}` (Govern →
+  Recover) citing HIPAA ≤60d vs UK GDPR ICO 72h; residual gaps documented.
+- Protect: rate limit on `POST /agent/query` (`services/app/core/rate_limit.py`,
+  env `AGENT_QUERY_RATE_LIMIT` / `AGENT_QUERY_RATE_WINDOW_SECONDS`); RAG
+  exception logs use `question_chars` only.
+- Tests: `tests/test_agent_rate_limit.py` + existing `test_agent_injection.py`
+  (7 passed together).
+- Temas MD (outside repo): Practicas-Seguras rubric Qué Necesitas / Evaluar.
+
 ## Latest Update (2026-11-03) — Hito 29 rubric gaps (folders + before/after)
 
 - Hardening layout: `/opt/healthcore/{app,logs,secrets,config}` modes
