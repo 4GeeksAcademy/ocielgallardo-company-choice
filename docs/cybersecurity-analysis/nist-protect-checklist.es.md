@@ -1,6 +1,8 @@
 # Checklist NIST Protect — HealthCore (Hito 29)
 
 Alineado con BRIEFING §§2–6. Complementa el [informe OWASP](./owasp-top10-report.es.md).  
+Informe de seis funciones: [nist-ai-security-report.es.md](./nist-ai-security-report.es.md).  
+Inventario: [ai-systems-inventory.es.md](./ai-systems-inventory.es.md).  
 **Sin PHI** en este documento ni en artefactos de prueba.
 
 ## Regímenes regulatorios separados
@@ -32,6 +34,7 @@ No son una política global única: el playbook de incidentes debe ramificar por
 - [x] Contexto RAG marcado como UNTRUSTED REFERENCE.
 - [x] Gate de salida ante patrones tipo PHI/SSN.
 - [x] Acciones irreversibles §5: N/A donde no hay implementación; RFP exige HITL.
-- [x] Sin PHI en traces/logs de agente (solo metadatos).
+- [x] Sin PHI en traces/logs de agente (solo metadatos); RAG también usa `question_chars`.
+- [x] Rate limiting en endpoint LLM — `POST /agent/query` (`rate_limit.py` + `tests/test_agent_rate_limit.py`).
 
 Controles de servidor: [server-hardening.es.md](./server-hardening.es.md).

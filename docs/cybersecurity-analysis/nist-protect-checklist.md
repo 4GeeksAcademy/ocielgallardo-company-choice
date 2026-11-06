@@ -1,6 +1,8 @@
 # NIST Protect Checklist — HealthCore (Hito 29)
 
 Aligned with BRIEFING §§2–6. Complements the [OWASP report](./owasp-top10-report.md).  
+Full six-function report: [nist-ai-security-report.md](./nist-ai-security-report.md).  
+Inventory: [ai-systems-inventory.md](./ai-systems-inventory.md).  
 **No PHI** in this document or test artifacts.
 
 ## Separate regulatory regimes
@@ -32,7 +34,8 @@ These are **not** a single global policy — incident playbooks must branch by c
 - [x] **Indirect injection framing** — `<<<UNTRUSTED_REFERENCE_*>>>` in `data/pipelines/rag.py`.
 - [x] **Output PHI-like gate** — `sanitize_agent_output` refuses SSN-like / PHI-pattern answers.
 - [x] **Irreversible actions (§5)** — SOAP sign/send and patient lab notify **N/A** (not built). RFP final document requires HITL (`approval_graph`). Sharing history cross-clinic without formal referral: N/A (no patient record share API).
-- [x] **No PHI in logs / traces (Protect)** — agent traces store `question_chars` only; agent exception logs avoid raw question text; audit artifacts use synthetic IDs.
+- [x] **No PHI in logs / traces (Protect)** — agent traces store `question_chars` only; agent/RAG exception logs avoid raw question text; audit artifacts use synthetic IDs.
+- [x] **Rate limiting on LLM endpoint** — `POST /agent/query` via `services/app/core/rate_limit.py`; reproducible in `tests/test_agent_rate_limit.py`.
 
 ## Server Protect controls
 
