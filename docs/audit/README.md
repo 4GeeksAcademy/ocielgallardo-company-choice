@@ -23,6 +23,13 @@ Status: closed on branch `feature/serialization-audit`. Every JSON route declare
 | [`REPORT.md`](./REPORT.md) | Informe en español, deltas, notas PR |
 | [`CACHING_REPORT.md`](./CACHING_REPORT.md) | Optimización de caching (frontend + backend) |
 
+## RFP intake and language check (2026-10-31)
+
+| Document | Content |
+|----------|---------|
+| [`rfp-intake-improvements-2026-10-31.md`](./rfp-intake-improvements-2026-10-31.md) | Proposal (no code yet): root causes for tickets stuck in `analyzing`, unreadable/irrelevant PDFs, missing live refresh and timeouts; proposed changes, tests, effort |
+| [`language-check-2026-10-31.md`](./language-check-2026-10-31.md) | Docs/UI language consistency report against the English + `*.es.md` convention |
+
 ## Evidencia Lighthouse
 
 | Carpeta | Cuándo | Entorno |
