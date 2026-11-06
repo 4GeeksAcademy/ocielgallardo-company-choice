@@ -36,7 +36,10 @@ def _validation_http_exception(exc: IncidentValidationError) -> HTTPException:
 
 
 @router.post("/analyze", response_model=IncidentAnalysisSummary)
-async def analyze(file: UploadFile = File(...)):
+async def analyze(
+    file: UploadFile = File(...),
+    _current_user: UserPublic = Depends(get_current_user),
+):
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="CSV file required")
 
@@ -45,7 +48,9 @@ async def analyze(file: UploadFile = File(...)):
 
 
 @router.get("/results/export")
-async def export_last_results():
+async def export_last_results(
+    _current_user: UserPublic = Depends(get_current_user),
+):
     results_csv = results_csv_path()
     if not results_csv.exists():
         raise HTTPException(

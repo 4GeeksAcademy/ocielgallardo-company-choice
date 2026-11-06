@@ -10,7 +10,10 @@ from services.app.core.database import get_db, is_inventory_db_configured
 from services.app.core.deps import get_current_user
 from services.app.domain import rfp_service
 from services.app.models.user import UserPublic
-from data.pipelines.rfp_intake.departments import KNOWN_DEPARTMENTS
+from data.pipelines.rfp_intake.departments import (
+    KNOWN_DEPARTMENTS,
+    user_may_approve_department,
+)
 from services.app.schemas import (
     RfpApprovalDecisionIn,
     RfpTicketCreated,
@@ -312,6 +315,12 @@ def decide_rfp_approval(
         raise HTTPException(
             status_code=400,
             detail="This ticket is not waiting for department approval right now.",
+        )
+
+    if not user_may_approve_department(current_user, department_id):
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to approve for this department.",
         )
 
     actor = getattr(current_user, "email", None) or getattr(

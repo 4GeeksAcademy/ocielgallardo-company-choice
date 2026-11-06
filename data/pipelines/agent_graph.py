@@ -315,6 +315,22 @@ def refuse_node(state: AgentState) -> dict:
         _record_span("refuse", started, time.time(), {"reason": "blank_question"})
 
 
+def refuse_security_node(state: AgentState) -> dict:
+    """Refuse jailbreak / PHI-exfil prompts without calling the LLM."""
+    from data.pipelines.agent_guardrails import SECURITY_REFUSAL_ANSWER
+
+    started = time.time()
+    try:
+        return {"answer": SECURITY_REFUSAL_ANSWER}
+    finally:
+        _record_span(
+            "refuse_security",
+            started,
+            time.time(),
+            {"reason": "prompt_injection_or_phi_exfil"},
+        )
+
+
 def honest_node(state: AgentState) -> dict:
     """Answer empty retrieval honestly via the existing empty-context path."""
     started = time.time()
@@ -530,9 +546,18 @@ def synthesize_hybrid_node(state: AgentState) -> dict:
 # --- Conditional edges: explicit routing, never a hardcoded straight line ---
 
 
-def route_question(state: AgentState) -> Literal["refuse", "decide_route"]:
-    """Blank question short-circuits to ``refuse``; otherwise decide source."""
-    return "refuse" if not state["question"].strip() else "decide_route"
+def route_question(
+    state: AgentState,
+) -> Literal["refuse", "refuse_security", "decide_route"]:
+    """Blank → refuse; jailbreak/PHI-exfil → refuse_security; else decide."""
+    from data.pipelines.agent_guardrails import is_prompt_injection_or_phi_exfil
+
+    question = state["question"].strip()
+    if not question:
+        return "refuse"
+    if is_prompt_injection_or_phi_exfil(question):
+        return "refuse_security"
+    return "decide_route"
 
 
 def route_after_decide(
@@ -576,6 +601,7 @@ _builder.add_node("decide_route", decide_route_node)
 _builder.add_node("retrieve", retrieve_node)
 _builder.add_node("generate", generate_node)
 _builder.add_node("refuse", refuse_node)
+_builder.add_node("refuse_security", refuse_security_node)
 _builder.add_node("honest", honest_node)
 _builder.add_node("lookup_incident", lookup_incident_node)
 _builder.add_node("lookup_inventory", lookup_inventory_node)
@@ -589,6 +615,7 @@ _builder.add_conditional_edges("retrieve", route_context)
 _builder.add_conditional_edges("lookup_incident", route_after_tool)
 _builder.add_conditional_edges("lookup_inventory", route_after_tool)
 _builder.add_edge("refuse", END)
+_builder.add_edge("refuse_security", END)
 _builder.add_edge("honest", END)
 _builder.add_edge("generate", END)
 _builder.add_edge("tool_fallback", END)
@@ -660,7 +687,8 @@ def _run_agent_inner(question: str, *, thread_id: str | None) -> dict:
     trace: dict = {
         "trace_id": trace_id,
         "thread_id": trace_id,
-        "question": question,
+        # Metadata only — never store raw staff/user text (PHI risk).
+        "question_chars": len(question or ""),
         "started_at": started,
         "finished_at": started,
         "duration_ms": 0.0,
@@ -709,7 +737,10 @@ def _run_agent_inner(question: str, *, thread_id: str | None) -> dict:
             sources_used,
             trace["duration_ms"],
         )
-        return {**result, "trace_id": trace_id}
+        from data.pipelines.agent_guardrails import sanitize_agent_output
+
+        safe_answer = sanitize_agent_output(str(result.get("answer") or ""))
+        return {**result, "answer": safe_answer, "trace_id": trace_id}
     except Exception as exc:
         finished = time.time()
         trace.update(
