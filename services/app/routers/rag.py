@@ -36,7 +36,10 @@ def query_knowledge_base(
             detail="Knowledge assistant is temporarily unavailable.",
         ) from exc
     except Exception as exc:  # Qdrant connectivity, LLM transport, ...
-        logger.exception("RAG query failed for question %.60r", body.question)
+        logger.exception(
+            "RAG query failed (question_chars=%s)",
+            len(body.question or ""),
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Knowledge assistant is temporarily unavailable.",

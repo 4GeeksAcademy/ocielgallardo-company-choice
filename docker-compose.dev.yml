@@ -70,8 +70,9 @@ services:
     command: celery -A services.app.tasks.celery_app:celery_app flower --port=5555
     volumes:
       - ./:/app
+    # Loopback-only for local Flower debugging (never 0.0.0.0).
     ports:
-      - "5555:5555"
+      - "127.0.0.1:5555:5555"
 
 volumes:
   uis_website_node_modules:

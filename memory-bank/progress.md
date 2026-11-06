@@ -1,5 +1,48 @@
 # Progress
 
+## Latest Update (2026-11-06) — Hito 29 NIST AI secure practices
+
+- **Branch `feature/nist-security-practices`** (merged `feature/owasp-top10-audit`).
+- Inventory: `docs/cybersecurity-analysis/ai-systems-inventory.{md,es.md}` with
+  owners + third-party control per component (BRIEFING §2/§3).
+- NIST six-function report: `nist-ai-security-report.{md,es.md}` (Govern →
+  Recover) citing HIPAA ≤60d vs UK GDPR ICO 72h; residual gaps documented.
+- Protect: rate limit on `POST /agent/query` (`services/app/core/rate_limit.py`,
+  env `AGENT_QUERY_RATE_LIMIT` / `AGENT_QUERY_RATE_WINDOW_SECONDS`); RAG
+  exception logs use `question_chars` only.
+- Tests: `tests/test_agent_rate_limit.py` + existing `test_agent_injection.py`
+  (7 passed together).
+- Temas MD (outside repo): Practicas-Seguras rubric Qué Necesitas / Evaluar.
+
+## Latest Update (2026-11-03) — Hito 29 rubric gaps (folders + before/after)
+
+- Hardening layout: `/opt/healthcore/{app,logs,secrets,config}` modes
+  750/750/700/750 in `harden-linux-baseline.sh` + `verify-baseline.sh`.
+- OWASP reports: reproducible before/after table for critical fixes C1–C8.
+- Tests aligned: trace `question_chars`; Flower not published on host.
+- Local Temas MD updated with official “Qué Necesitas Hacer / Evaluar” rubric.
+
+## Latest Update (2026-11-03) — Hito 29: OWASP Top 10 audit + critical fixes
+
+- **Branch `feature/owasp-top10-audit`** (from `feature/websocket-chat`).
+- BRIEFING: `docs/cybersecurity-analysis/healthcore-BRIEFING.{md,es.md}`.
+- Server baseline: `scripts/hardening/harden-linux-baseline.sh` +
+  `verify-baseline.sh`; runbook `docs/cybersecurity-analysis/server-hardening.*`
+  (Linux/Codespaces; Windows uses Compose evidence).
+- Compose A05: Redis/Qdrant/Flower **not** published on host in prod; Flower
+  loopback-only in dev overlay; non-root `USER app` in prod Dockerfiles;
+  `.dockerignore` excludes auth/pem; API docs off when `APP_ENV=production`.
+- A01 fixes: auth on incidents analyze/export; telemetry report JWT + ingest
+  key; RFP department approver allowlist; `ALLOW_PUBLIC_REGISTRATION`;
+  Compliance WS staff-only.
+- Agentic: `data/pipelines/agent_guardrails.py` (injection refuse + PHI-like
+  output gate); RAG UNTRUSTED_REFERENCE delimiters; traces without raw
+  questions.
+- Reports: `owasp-top10-report.*`, `nist-protect-checklist.*` (no PHI).
+- Tests: `tests/test_agent_injection.py`, `tests/test_owasp_access_control.py`,
+  WS staff-role rejection.
+- **Do not use** personal `docs/audit/security-audit-2026-10-31.md` as source.
+
 ## Latest Update (2026-11-02) — Hito 28 Part 2: WebSocket chat streaming
 
 - **Branch `feature/websocket-chat`**: Compliance assistant chat over WebSocket

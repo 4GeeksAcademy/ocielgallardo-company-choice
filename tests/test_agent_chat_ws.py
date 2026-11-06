@@ -40,13 +40,23 @@ def app(monkeypatch):
     user = UserPublic(
         id=42,
         email="staff@healthcore.example",
+        role=UserRole.MANAGER,
+        is_active=True,
+        created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+    )
+    guest = UserPublic(
+        id=99,
+        email="guest@healthcore.example",
         role=UserRole.USER,
         is_active=True,
         created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
     )
+
     def _auth(token: str | None):
         if token == "good-token":
             return user
+        if token == "guest-token":
+            return guest
         return None
 
     monkeypatch.setattr(agent_module, "_user_from_ws_token", _auth)
@@ -80,6 +90,12 @@ def test_ws_rejects_missing_token(client: TestClient) -> None:
             pass
     with pytest.raises(Exception):
         with client.websocket_connect("/agent/chat/ws?token=bad-token"):
+            pass
+
+
+def test_ws_rejects_non_staff_role(client: TestClient) -> None:
+    with pytest.raises(Exception):
+        with client.websocket_connect("/agent/chat/ws?token=guest-token"):
             pass
 
 

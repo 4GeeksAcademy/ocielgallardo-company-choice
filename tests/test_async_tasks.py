@@ -87,4 +87,9 @@ def test_compose_declares_shared_redis_worker_and_flower() -> None:
     assert "REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}" in compose
     assert "container_name: healthcore-worker" in compose
     assert "container_name: healthcore-flower" in compose
-    assert '"5555:5555"' in compose
+    # Flower stays on the compose network only (OWASP A05) — not published on host.
+    assert '"5555:5555"' not in compose
+    assert "healthcore-flower" in compose
+    flower_block = compose.split("flower:", 1)[1].split("\nvolumes:", 1)[0]
+    assert "expose:" in flower_block
+    assert '"5555"' in flower_block or "5555" in flower_block
