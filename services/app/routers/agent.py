@@ -21,6 +21,7 @@ from jose import JWTError
 from data.pipelines.agent_graph import run_agent, run_agent_stream
 from data.pipelines.rag import GenerationInterrupted
 from services.app.core.deps import get_current_user
+from services.app.core.rate_limit import check_agent_query_rate
 from services.app.core.security import decode_token_claims
 from services.app.core.service_identity import is_service_claims
 from services.app.domain.chat_sessions import chat_store
@@ -38,15 +39,29 @@ router = APIRouter(prefix="/agent", tags=["agent"])
 @router.post("/query", response_model=RagQueryResponse)
 def query_agent(
     body: RagQueryRequest,
-    _current_user: UserPublic = Depends(get_current_user),
+    current_user: UserPublic = Depends(get_current_user),
 ) -> RagQueryResponse:
     """Answer a coordinator question through the compiled agent graph.
 
     Thin wrapper over ``run_agent()`` — no retrieval/generation logic here.
     Returns only the model-generated string (never raw chunks or scores).
     Returns 503 when the knowledge backend is unavailable; never a raw
-    traceback.
+    traceback. Returns 429 when the per-user agent query rate limit is hit.
     """
+    decision = check_agent_query_rate(f"user:{current_user.id}")
+    if not decision.allowed:
+        logger.warning(
+            "Agent query rate limited (user_id=%s limit=%s window_s=%s)",
+            current_user.id,
+            decision.limit,
+            decision.window_seconds,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Agent query rate limit exceeded. Try again shortly.",
+            headers={"Retry-After": str(decision.retry_after_seconds)},
+        )
+
     try:
         answer = run_agent(body.question)["answer"]
     except RuntimeError as exc:

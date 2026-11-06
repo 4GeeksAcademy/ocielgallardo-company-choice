@@ -51,6 +51,7 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .venv/
+.venv-nist/
 venv/
 env/
 *.egg-info/
