@@ -32,7 +32,11 @@ export type ChatWsServerEvent =
     }
   | {
       event: "generation_completed";
-      data: { session_id: string; message_id: string };
+      data: {
+        session_id: string;
+        message_id: string;
+        memory_proposal_pending?: boolean;
+      };
     }
   | {
       event: "generation_interrupted";
@@ -51,7 +55,10 @@ export interface AgentChatWsHandlers {
   onStatus?: (status: ChatWsStatus) => void;
   onSnapshot?: (sessionId: string, messages: ChatMessageView[]) => void;
   onToken?: (token: string, sequence: number) => void;
-  onGenerationCompleted?: (messageId: string) => void;
+  onGenerationCompleted?: (
+    messageId: string,
+    memoryProposalPending?: boolean
+  ) => void;
   onGenerationInterrupted?: (messageId: string) => void;
   onUserMessageEcho?: (text: string) => void;
 }
@@ -146,7 +153,10 @@ export function createAgentChatSocket(options: {
           handlers.onToken?.(parsed.data.token, parsed.data.sequence);
           break;
         case "generation_completed":
-          handlers.onGenerationCompleted?.(parsed.data.message_id);
+          handlers.onGenerationCompleted?.(
+            parsed.data.message_id,
+            parsed.data.memory_proposal_pending
+          );
           break;
         case "generation_interrupted":
           handlers.onGenerationInterrupted?.(parsed.data.message_id);

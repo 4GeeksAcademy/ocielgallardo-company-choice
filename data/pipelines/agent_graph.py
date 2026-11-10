@@ -8,8 +8,16 @@ traces, and checkpointing.
 
 Node contract (binding):
 - ``receive_node`` normalizes the question only (no retrieval, no LLM, no tools).
+- ``scope_check_node`` screens the message for agent scope (jailbreak /
+  personal task / casual / domain) via ``agent_scope_guard.evaluate_scope``.
+- ``scope_refusal_node`` returns the fixed bilingual refusal for jailbreak /
+  personal-task messages (no LLM, no tools, no memory proposal).
+- ``casual_redirect_node`` answers casual small talk with one constrained
+  LLM call (canned bilingual fallback) that redirects to HealthCore topics.
 - ``decide_route_node`` classifies RAG vs incidents vs inventory vs hybrid.
-- ``retrieve_node`` calls ONLY ``retrieve(question)``.
+- ``retrieve_node`` calls ONLY ``retrieve(question)``; retrieved chunks pass
+  ``agent_content_guard.sanitize_context_chunk`` (external content is data,
+  never instructions).
 - ``generate_node`` calls ONLY ``generate_answer(question, context)``.
 - ``lookup_incident_node`` / ``lookup_inventory_node`` call ONLY their
   MCP tool (MCP is the single transport — no direct HTTP fallback; never RAG,
@@ -20,6 +28,21 @@ Node contract (binding):
 - ``tool_fallback_node`` answers honestly when a tool fails (no invented state).
 - ``refuse_node`` / ``honest_node`` keep the Part 1 blank/empty-context paths.
 - No node imports or calls the monolithic ``query()``.
+
+Memory (Hito 26, orchestrated by :func:`run_agent` around the graph, so the
+node/span contract above stays stable):
+
+1. any **pending proposal** for the session is resolved first — classified
+   against the incoming message (``approve``/``reject``/``edit``/``unrelated``;
+   silence or ambiguity = rejected by default) and written to the audit trail;
+2. approved facts relevant to the question are injected as ``memory_context``
+   (explicit ``agent:memory`` store, never the RAG collections);
+3. the answer-producing paths return answer + ``propuesta_memoria`` from a
+   **single structured call** (``generate_answer_with_proposal``); tool-only
+   paths self-evaluate with one structured call;
+4. a proposal is shown to the user inside the same answer (question at the
+   end) only after the PHI screen passes — otherwise the user gets an explicit
+   HIPAA/UK GDPR refusal and nothing is stored.
 
 The graph is compiled at import time (with a ``MemorySaver`` checkpointer) so
 structural errors fail fast. Services call :func:`run_agent` and read
@@ -44,7 +67,15 @@ from typing import Literal, TypedDict
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
-from data.pipelines import mcp_client, rag as rag_pipeline
+from data.pipelines import (
+    agent_content_guard,
+    agent_memory,
+    agent_scope_guard,
+    mcp_client,
+    memory_phi_guard,
+    memory_proposer,
+    rag as rag_pipeline,
+)
 from data.pipelines.agent_tools import (
     INCIDENT_TOOL_FALLBACK,
     INVENTORY_TOOL_FALLBACK,
@@ -89,7 +120,15 @@ _POLICY_SIGNAL_RE = re.compile(
 
 
 class AgentState(TypedDict):
-    """State travelling between nodes. Tools add route + tool_result only."""
+    """State travelling between nodes. Tools add route + tool_result only.
+
+    Memory fields are set by ``run_agent`` orchestration: ``session_id``
+    scopes the pending proposal, ``memory_context`` holds the approved facts
+    relevant to this question, ``proposal`` carries the candidate memory
+    emitted by the single structured generation call (empty when none).
+    Scope fields are set by ``scope_check_node``
+    (``domain|casual|personal_task|jailbreak`` + reason codes).
+    """
 
     question: str
     context: list[dict]
@@ -97,6 +136,64 @@ class AgentState(TypedDict):
     route: str
     tool_result: dict
     sources_used: list[str]
+    session_id: str
+    memory_context: list[dict]
+    proposal: dict
+    scope_decision: str
+    scope_reasons: list[str]
+
+
+DEFAULT_MEMORY_SESSION = "default"
+
+PROPOSAL_QUESTION_ES = (
+    "\n\n¿Quieres que recuerde esto para la próxima vez? Responde sí, "
+    "no o corrígeme."
+)
+PROPOSAL_QUESTION_EN = (
+    "\n\nDo you want me to remember this for next time? Reply yes, no, "
+    "or correct me."
+)
+
+_SAVENOTE_ES = "\n\nGuardado en mi memoria."
+_SAVENOTE_EN = "\n\nSaved to my memory."
+_REJECTNOTE_ES = "\n\nEntendido, no lo guardaré."
+_REJECTNOTE_EN = "\n\nUnderstood — I won't store it."
+
+_ES_MARKERS = (
+    " el ",
+    " la ",
+    " los ",
+    " las ",
+    " un ",
+    " una ",
+    " de ",
+    " del ",
+    " en ",
+    " que ",
+    " con ",
+    " por ",
+    " para ",
+    " se ",
+    " no ",
+    " sí,",
+    " sí ",
+    "gracias",
+    "por favor",
+    "cómo",
+    "cuándo",
+    "próxima",
+    "clínica",
+    "paciente",
+    "recuerda",
+    "guardar",
+    "guarda",
+)
+
+
+def _is_spanish(text: str) -> bool:
+    """Tiny language heuristic so memory prompts follow the user's language."""
+    probe = f" {(text or '').lower()} "
+    return sum(1 for marker in _ES_MARKERS if marker in probe) >= 2
 
 
 # --- Internal per-run trace store (queryable, bounded, no PHI beyond the question) ---
@@ -247,6 +344,96 @@ def receive_node(state: AgentState) -> dict:
         )
 
 
+def scope_check_node(state: AgentState) -> dict:
+    """Screen the message for agent scope (SEC-114 harness).
+
+    Deterministic jailbreak/personal-task screens run before any LLM call;
+    the model-assisted intent classifier only runs on the remainder.
+    """
+    started = time.time()
+    decision = "domain"
+    reasons: list[str] = []
+    try:
+        verdict = agent_scope_guard.evaluate_scope(state["question"])
+        decision = verdict.decision
+        reasons = list(verdict.reasons)
+        return {"scope_decision": decision, "scope_reasons": reasons}
+    finally:
+        _record_span(
+            "scope_check",
+            started,
+            time.time(),
+            {
+                "scope_decision": decision,
+                "scope_reasons": reasons,
+                "failure_type": (
+                    agent_scope_guard.scope_failure_type(decision)
+                    if decision != "domain"
+                    else None
+                ),
+            },
+        )
+
+
+def scope_refusal_node(state: AgentState) -> dict:
+    """Fixed bilingual refusal for jailbreak / personal-task messages.
+
+    No LLM, no tools, no memory proposal — the task is never performed and
+    the system prompt is never revealed or changed.
+    """
+    started = time.time()
+    decision = state.get("scope_decision") or "personal_task"
+    failure_type = agent_scope_guard.scope_failure_type(decision)
+    answer = ""
+    try:
+        answer = agent_scope_guard.refusal_message(
+            decision, state["question"]
+        )
+        return {"answer": answer}
+    finally:
+        _record_span(
+            "scope_refusal",
+            started,
+            time.time(),
+            {
+                "scope_decision": decision,
+                "failure_type": failure_type,
+                "answer_chars": len(answer),
+                "route": "scope_refusal",
+            },
+        )
+
+
+def casual_redirect_node(state: AgentState) -> dict:
+    """Answer casual small talk with one constrained LLM call + redirect.
+
+    Canned bilingual fallback when the model is unavailable so a greeting
+    never crashes the run and never becomes a general-purpose answer.
+    """
+    started = time.time()
+    answer = ""
+    used_fallback = False
+    try:
+        answer = agent_scope_guard.generate_casual_redirect(state["question"])
+        used_fallback = answer in (
+            agent_scope_guard.CASUAL_FALLBACK_EN,
+            agent_scope_guard.CASUAL_FALLBACK_ES,
+        )
+        return {"answer": answer}
+    finally:
+        _record_span(
+            "casual_redirect",
+            started,
+            time.time(),
+            {
+                "answer_chars": len(answer),
+                "used_fallback": used_fallback,
+                "failure_type": agent_content_guard.FAILURE_CONTENT,
+                "route": "scope_casual",
+            },
+        )
+
+
 def decide_route_node(state: AgentState) -> dict:
     """Classify which source(s) the question needs: RAG, tool, or both."""
     started = time.time()
@@ -268,11 +455,23 @@ def decide_route_node(state: AgentState) -> dict:
 
 
 def retrieve_node(state: AgentState) -> dict:
-    """Retrieve policy chunks for ``state['question']`` via ``retrieve()``."""
+    """Retrieve policy chunks for ``state['question']`` via ``retrieve()``.
+
+    Every retrieved chunk passes the content-isolation guard: instruction-
+    like text *inside a document* is data, never a system instruction, and
+    is neutralized before it can reach the prompt.
+    """
     started = time.time()
     context: list[dict] = []
+    sanitized_hits = 0
     try:
-        context = rag_pipeline.retrieve(state["question"])
+        context = [
+            agent_content_guard.sanitize_context_chunk(chunk)
+            for chunk in rag_pipeline.retrieve(state["question"])
+        ]
+        sanitized_hits = sum(
+            1 for chunk in context if chunk.get("content_guard")
+        )
         sources = list(state.get("sources_used") or [])
         if "rag" not in sources:
             sources = [*sources, "rag"]
@@ -288,21 +487,34 @@ def retrieve_node(state: AgentState) -> dict:
                     {str(chunk.get("source_document", "")) for chunk in context}
                 ),
                 "source_kind": "rag",
+                "content_sanitized": sanitized_hits,
                 "hybrid": is_hybrid_route(state.get("route")),
             },
         )
 
 
 def generate_node(state: AgentState) -> dict:
-    """Generate the answer from ``question`` + already-retrieved ``context``."""
+    """Generate the answer from ``question`` + already-retrieved ``context``.
+
+    Single structured call: the answer the user sees plus an optional memory
+    proposal field (self-evaluation rides on the same call).
+    """
     started = time.time()
     answer = ""
+    proposal: dict | None = None
     try:
-        answer = rag_pipeline.generate_answer(state["question"], state["context"])
-        return {"answer": answer}
+        answer, proposal = rag_pipeline.generate_answer_with_proposal(
+            state["question"],
+            state["context"],
+            memory=state.get("memory_context") or [],
+        )
+        return {"answer": answer, "proposal": proposal or {}}
     finally:
         _record_span(
-            "generate", started, time.time(), {"answer_chars": len(answer)}
+            "generate",
+            started,
+            time.time(),
+            {"answer_chars": len(answer), "has_proposal": bool(proposal)},
         )
 
 
@@ -332,15 +544,26 @@ def refuse_security_node(state: AgentState) -> dict:
 
 
 def honest_node(state: AgentState) -> dict:
-    """Answer empty retrieval honestly via the existing empty-context path."""
+    """Answer empty retrieval honestly via the existing empty-context path.
+
+    Same single structured call as ``generate`` — answer plus memory field.
+    """
     started = time.time()
     answer = ""
+    proposal: dict | None = None
     try:
-        answer = rag_pipeline.generate_answer(state["question"], [])
-        return {"answer": answer}
+        answer, proposal = rag_pipeline.generate_answer_with_proposal(
+            state["question"],
+            [],
+            memory=state.get("memory_context") or [],
+        )
+        return {"answer": answer, "proposal": proposal or {}}
     finally:
         _record_span(
-            "honest", started, time.time(), {"answer_chars": len(answer)}
+            "honest",
+            started,
+            time.time(),
+            {"answer_chars": len(answer), "has_proposal": bool(proposal)},
         )
 
 
@@ -495,21 +718,26 @@ def synthesize_hybrid_node(state: AgentState) -> dict:
     started = time.time()
     answer = ""
     tool_ok = False
+    proposal: dict | None = None
     try:
         tool_result = state.get("tool_result") or {}
         sources = list(state.get("sources_used") or [])
         tool_text, tool_ok = _tool_facts_text(tool_result, sources)
         policy = list(state.get("context") or [])
         if tool_ok and policy:
-            policy_text = rag_pipeline.generate_answer(
-                state["question"], policy
+            policy_text, proposal = rag_pipeline.generate_answer_with_proposal(
+                state["question"],
+                policy,
+                memory=state.get("memory_context") or [],
             )
             answer = f"{tool_text}\n\n{policy_text}"
         elif tool_ok:
             answer = tool_text
         elif policy:
-            policy_text = rag_pipeline.generate_answer(
-                state["question"], policy
+            policy_text, proposal = rag_pipeline.generate_answer_with_proposal(
+                state["question"],
+                policy,
+                memory=state.get("memory_context") or [],
             )
             fallback = str(
                 tool_result.get("message")
@@ -529,7 +757,7 @@ def synthesize_hybrid_node(state: AgentState) -> dict:
                     else INCIDENT_TOOL_FALLBACK
                 )
             )
-        return {"answer": answer}
+        return {"answer": answer, "proposal": proposal or {}}
     finally:
         _record_span(
             "synthesize_hybrid",
@@ -539,8 +767,506 @@ def synthesize_hybrid_node(state: AgentState) -> dict:
                 "answer_chars": len(answer),
                 "tool_ok": tool_ok,
                 "n_policy_chunks": len(state.get("context") or []),
+                "has_proposal": bool(proposal),
             },
         )
+
+
+# --- Memory orchestration (explicit interface in ``agent_memory``) ---
+
+
+def _force_reject_pending(session_id: str) -> dict:
+    """Discard any pending proposal without the decision LLM (jailbreak path).
+
+    Injection text must never approve a pending memory. The outcome is
+    audited as ``default_rejected`` with ``decision="jailbreak_precheck"``.
+    """
+    store = agent_memory.get_store()
+    pending = store.get_pending(session_id)
+    if pending is None:
+        return {"action": "none"}
+    store.append_audit(
+        agent_memory.make_audit(
+            agent_memory.ACTION_DEFAULT_REJECTED,
+            session_id=session_id,
+            proposal_id=pending.id,
+            scope=pending.scope,
+            category=pending.category,
+            decision="jailbreak_precheck",
+        )
+    )
+    store.clear_pending(session_id)
+    return {"action": "default_rejected"}
+
+
+def _resolve_pending_memory(session_id: str, question: str) -> dict:
+    """Close the pending proposal, if any, before answering this message.
+
+    The user's message is classified against the proposal with an explicit
+    label. Silence, ambiguity or an unrelated message resolve as
+    ``default_rejected`` — approval never happens by omission. Every outcome
+    (approved, rejected, edited, PHI-blocked, default) lands in the audit
+    trail; the pending slot is always cleared so only one proposal can be
+    open per session.
+    """
+    store = agent_memory.get_store()
+    pending = store.get_pending(session_id)
+    if pending is None:
+        return {"action": "none"}
+
+    decision = memory_proposer.classify_decision(pending.model_dump(), question)
+    label = decision.get("label") or "unrelated"
+    edited_fact = decision.get("edited_fact")
+    base = {
+        "session_id": session_id,
+        "proposal_id": pending.id,
+        "scope": pending.scope,
+        "category": pending.category,
+    }
+    note = None
+    action = "default_rejected"
+
+    if label == "approve":
+        verdict = memory_phi_guard.scan(pending.fact)
+        if not verdict.allowed:
+            action = "rejected_phi"
+            store.append_audit(
+                agent_memory.make_audit(
+                    agent_memory.ACTION_REJECTED_PHI,
+                    **base,
+                    phi_reasons=verdict.reasons,
+                )
+            )
+        else:
+            entry = agent_memory.make_entry(
+                scope=pending.scope,
+                category=pending.category,
+                fact=pending.fact,
+                session_id=session_id,
+                source_proposal_id=pending.id,
+            )
+            store.put_entry(entry)
+            action = "approved"
+            store.append_audit(
+                agent_memory.make_audit(
+                    agent_memory.ACTION_APPROVED,
+                    **base,
+                    fact=pending.fact,
+                    decision="approve",
+                )
+            )
+            note = _SAVENOTE_ES if _is_spanish(question) else _SAVENOTE_EN
+    elif label == "edit":
+        verdict = memory_phi_guard.scan(edited_fact or "")
+        if not verdict.allowed or not edited_fact:
+            action = "rejected_phi" if not verdict.allowed else "default_rejected"
+            audit_kwargs = dict(base)
+            if not verdict.allowed:
+                audit_kwargs["phi_reasons"] = verdict.reasons
+            store.append_audit(
+                agent_memory.make_audit(
+                    agent_memory.ACTION_REJECTED_PHI
+                    if not verdict.allowed
+                    else agent_memory.ACTION_DEFAULT_REJECTED,
+                    **audit_kwargs,
+                )
+            )
+        else:
+            entry = agent_memory.make_entry(
+                scope=pending.scope,
+                category=pending.category,
+                fact=edited_fact,
+                session_id=session_id,
+                source_proposal_id=pending.id,
+            )
+            store.put_entry(entry)
+            action = "edited"
+            store.append_audit(
+                agent_memory.make_audit(
+                    agent_memory.ACTION_EDITED,
+                    **base,
+                    decision="edit",
+                    edited_fact=edited_fact,
+                )
+            )
+            note = _SAVENOTE_ES if _is_spanish(question) else _SAVENOTE_EN
+    elif label == "reject":
+        action = "rejected"
+        store.append_audit(
+            agent_memory.make_audit(
+                agent_memory.ACTION_REJECTED,
+                **base,
+                decision="reject",
+            )
+        )
+        note = _REJECTNOTE_ES if _is_spanish(question) else _REJECTNOTE_EN
+    else:  # unrelated / unknown label → discarded by default, audited
+        action = "default_rejected"
+        store.append_audit(
+            agent_memory.make_audit(
+                agent_memory.ACTION_DEFAULT_REJECTED,
+                **base,
+                decision=label,
+            )
+        )
+
+    store.clear_pending(session_id)
+    return {"action": action, "note": note, "proposal_id": pending.id}
+
+
+def _propose_memory(
+    session_id: str,
+    question: str,
+    answer: str,
+    route: str | None,
+    candidate: dict | None,
+) -> dict:
+    """Self-evaluate the finished answer: propose, or record "nothing to keep".
+
+    ``candidate`` comes from the single structured call on LLM answer paths;
+    tool-only paths self-evaluate with one structured call. The PHI screen
+    runs **before** the proposal is shown to the user (HealthCore
+    requirement); a blocked proposal produces an explicit refusal and an
+    audit record with reason codes only (never the PHI text).
+    """
+    store = agent_memory.get_store()
+    proposal = memory_proposer.normalize_proposal(candidate)
+    if proposal is None and route in ("incidents", "inventory"):
+        proposal = memory_proposer.propose_from_interaction(question, answer)
+    elif proposal is None:
+        # WebSocket chat streams via generate_answer (no structured proposal
+        # field). Evaluate after the streamed answer so memory buttons still work.
+        from data.pipelines.rag import _stream_hooks
+
+        if _stream_hooks.get() is not None:
+            proposal = memory_proposer.propose_from_interaction(question, answer)
+    if not proposal:
+        return {"action": "none"}
+
+    base = {
+        "session_id": session_id,
+        "scope": proposal.get("scope", ""),
+        "category": proposal.get("category", ""),
+    }
+    verdict = memory_phi_guard.scan_proposal(proposal)
+    if not verdict.allowed:
+        store.append_audit(
+            agent_memory.make_audit(
+                agent_memory.ACTION_REJECTED_PHI,
+                **base,
+                phi_reasons=verdict.reasons,
+            )
+        )
+        return {
+            "action": "rejected_phi",
+            "phi_reasons": verdict.reasons,
+            "suffix": memory_phi_guard.PHI_REFUSAL_ES
+            if _is_spanish(question)
+            else memory_phi_guard.PHI_REFUSAL_EN,
+        }
+
+    pending = agent_memory.make_pending(
+        session_id=session_id,
+        scope=proposal.get("scope", ""),
+        category=proposal.get("category", ""),
+        fact=proposal.get("fact", ""),
+        reason=proposal.get("reason", ""),
+        source_message=question,
+    )
+    if not store.set_pending(pending):
+        # One open proposal per session: never stack a second one.
+        store.append_audit(
+            agent_memory.make_audit(
+                agent_memory.ACTION_SKIPPED_PENDING, **base
+            )
+        )
+        return {"action": "skipped_pending"}
+
+    store.append_audit(
+        agent_memory.make_audit(
+            agent_memory.ACTION_PROPOSED,
+            **base,
+            proposal_id=pending.id,
+            fact=pending.fact,
+            status=agent_memory.STATUS_PENDING,
+            expires_at=pending.expires_at,
+        )
+    )
+    return {
+        "action": "proposed",
+        "proposal_id": pending.id,
+        "suffix": PROPOSAL_QUESTION_ES
+        if _is_spanish(question)
+        else PROPOSAL_QUESTION_EN,
+    }
+
+
+def run_agent(question: str, session_id: str | None = None) -> dict:
+    """Run the compiled graph for ``question`` and return the final state + trace id.
+
+    ``session_id`` scopes the memory conversation (one pending proposal per
+    session). Memory failures never break the answer: every memory step is
+    wrapped and degrades to "nothing happened" with a warning log.
+
+    Returns ``{"question": ..., "context": [...], "answer": ..., "route": ...,
+    "tool_result": ..., "sources_used": [...], "session_id": ...,
+    "memory_context": [...], "proposal": ..., "trace_id": ...,
+    "memory_proposal_pending": bool}``.
+    """
+    session_id = (session_id or "").strip() or DEFAULT_MEMORY_SESSION
+    trace_id = uuid.uuid4().hex
+    started = time.time()
+    # Deterministic pre-check (no LLM): a jailbreak must not resolve or
+    # approve memory proposals, and must not receive injected facts.
+    # Counted separately from the scope-check activation — this is the
+    # memory-safety layer firing, not the scope layer.
+    pre_jailbreak = bool(agent_scope_guard.detect_jailbreak(question))
+    if pre_jailbreak:
+        agent_content_guard.record_activation(
+            "memory_precheck_reject", agent_content_guard.FAILURE_SECURITY
+        )
+        logger.warning(
+            "guardrail memory_precheck_reject failure_type=%s session=%s",
+            agent_content_guard.FAILURE_SECURITY,
+            session_id,
+        )
+    trace: dict = {
+        "trace_id": trace_id,
+        "thread_id": trace_id,
+        # Metadata only — never store raw staff/user text (PHI risk).
+        "question_chars": len(question or ""),
+        "session_id": session_id,
+        "started_at": started,
+        "finished_at": started,
+        "duration_ms": 0.0,
+        "status": "running",
+        "n_chunks": 0,
+        "sources": [],
+        "sources_used": [],
+        "route": None,
+        "memory": {},
+        "scope": {"decision": None, "reasons": []},
+        "spans": [],
+        "error": None,
+    }
+    _store_trace(trace)
+    token = _current_trace_id.set(trace_id)
+    try:
+        # 1) Resolve any pending proposal BEFORE answering this message.
+        # A jailbreak attempt is force-rejected without the decision LLM so
+        # injection text can never approve a pending proposal.
+        resolution: dict = {"action": "none"}
+        try:
+            agent_memory.maybe_sweep()
+            if pre_jailbreak:
+                resolution = _force_reject_pending(session_id)
+            else:
+                resolution = _resolve_pending_memory(session_id, question)
+        except Exception:
+            logger.exception("memory: pending resolution failed")
+            resolution = {"action": "error"}
+
+        # 2) Load approved facts relevant to this question (explicit store read).
+        # Skipped for jailbreak attempts: injection text must not receive
+        # memory-injected context.
+        memory_context: list[dict] = []
+        if not pre_jailbreak:
+            try:
+                store = agent_memory.get_store()
+                entries = agent_memory.select_relevant(
+                    store.list_entries(), question
+                )
+                memory_context = [
+                    {
+                        "scope": entry.scope,
+                        "category": entry.category,
+                        "fact": entry.fact,
+                    }
+                    for entry in entries
+                ]
+            except Exception:
+                logger.exception("memory: context load failed")
+
+        result = graph.invoke(
+            {
+                "question": question,
+                "context": [],
+                "answer": "",
+                "route": "",
+                "tool_result": {},
+                "sources_used": [],
+                "session_id": session_id,
+                "memory_context": memory_context,
+                "proposal": {},
+                "scope_decision": "",
+                "scope_reasons": [],
+            },
+            {"configurable": {"thread_id": trace_id}},
+        )
+        finished = time.time()
+        context = result.get("context", [])
+        sources_used = list(result.get("sources_used") or [])
+        answer = result.get("answer") or ""
+        scope_decision = str(result.get("scope_decision") or "domain")
+
+        # 3) Self-evaluate the finished answer and act on the outcome.
+        # Scope refusals never propose memory: there is nothing worth
+        # remembering from a jailbreak or an off-domain personal request.
+        proposal_summary: dict = {"action": "none"}
+        if scope_decision not in ("jailbreak", "personal_task"):
+            try:
+                proposal_summary = _propose_memory(
+                    session_id,
+                    question,
+                    answer,
+                    result.get("route"),
+                    result.get("proposal") or None,
+                )
+            except Exception:
+                logger.exception("memory: proposal step failed")
+                proposal_summary = {"action": "error"}
+
+        suffixes = [
+            suffix
+            for suffix in (
+                resolution.get("note"),
+                proposal_summary.get("suffix"),
+            )
+            if suffix
+        ]
+        if suffixes:
+            answer = f"{answer}{''.join(suffixes)}"
+            result["answer"] = answer
+
+        # 4) Output guard: last gate before the answer reaches the user.
+        # Catches empty answers, leaked internal prompt markers and
+        # PHI-like content; fail-closed with a safe bilingual fallback
+        # (never echoing the rejected text).
+        output_verdict = agent_content_guard.validate_output(answer)
+        if not output_verdict.allowed:
+            answer = output_verdict.safe_answer
+            result["answer"] = answer
+
+        from data.pipelines.agent_guardrails import sanitize_agent_output
+
+        safe_answer = sanitize_agent_output(str(answer or ""))
+        if safe_answer != answer:
+            answer = safe_answer
+            result["answer"] = answer
+
+        trace.update(
+            {
+                "finished_at": finished,
+                "duration_ms": round((finished - started) * 1000, 2),
+                "status": "success",
+                "n_chunks": len(context),
+                "sources": sorted(
+                    {str(chunk.get("source_document", "")) for chunk in context}
+                ),
+                "sources_used": sources_used,
+                "route": result.get("route") or None,
+                "scope": {
+                    "decision": scope_decision,
+                    "reasons": list(result.get("scope_reasons") or []),
+                },
+                "output_guard": {
+                    "allowed": output_verdict.allowed,
+                    "reasons": list(output_verdict.reasons),
+                    "failure_type": output_verdict.failure_type,
+                },
+                "memory": {
+                    "n_memory_facts": len(memory_context),
+                    "resolution": resolution.get("action", "none"),
+                    "proposal": proposal_summary.get("action", "none"),
+                },
+            }
+        )
+        logger.info(
+            "agent_graph run %s via %s sources=%s memory=%s in %.1fms",
+            trace_id,
+            [span["node"] for span in trace["spans"]],
+            sources_used,
+            f"{trace['memory']['resolution']}/{trace['memory']['proposal']}",
+            trace["duration_ms"],
+        )
+        return {
+            **result,
+            "trace_id": trace_id,
+            # UI hint: the agent just asked whether to remember something, so a
+            # client can offer quick confirm/correct actions. Only the action
+            # label is exposed, never the proposed fact (PHI/PII rule).
+            "memory_proposal_pending": proposal_summary.get("action") == "proposed",
+        }
+    except Exception as exc:
+        finished = time.time()
+        trace.update(
+            {
+                "finished_at": finished,
+                "duration_ms": round((finished - started) * 1000, 2),
+                "status": "error",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+        )
+        # GenerationInterrupted is expected for chat abort — don't log as error.
+        from data.pipelines.rag import GenerationInterrupted
+
+        if isinstance(exc, GenerationInterrupted):
+            raise
+        logger.exception("agent_graph run %s failed", trace_id)
+        raise
+    finally:
+        _current_trace_id.reset(token)
+
+
+
+def run_agent_stream(
+    question: str,
+    *,
+    thread_id: str,
+    on_token: Callable[[str], None],
+    cancel_check: Callable[[], bool],
+) -> dict:
+    """Same graph as :func:`run_agent`, streaming LLM tokens via ``on_token``.
+
+    Memory is scoped to ``thread_id`` (the chat session). When the structured
+    generation path is used, tokens may arrive as a single trailing chunk.
+    Raises :class:`data.pipelines.rag.GenerationInterrupted` when cancelled.
+    """
+    from data.pipelines.rag import (
+        GenerationInterrupted,
+        reset_stream_hooks,
+        set_stream_hooks,
+    )
+
+    parts: list[str] = []
+
+    def _on_token(tok: str) -> None:
+        if cancel_check():
+            raise GenerationInterrupted("chat generation cancelled")
+        parts.append(tok)
+        on_token(tok)
+
+    hooks_token = set_stream_hooks(_on_token, cancel_check)
+    try:
+        result = run_agent(question, session_id=thread_id)
+        answer = (result.get("answer") or "").strip()
+        emitted_text = "".join(parts)
+        if answer.startswith(emitted_text) and len(answer) > len(emitted_text):
+            remainder = answer[len(emitted_text):]
+            if remainder:
+                if cancel_check():
+                    raise GenerationInterrupted("chat generation cancelled")
+                on_token(remainder)
+        elif not parts and answer:
+            if cancel_check():
+                raise GenerationInterrupted("chat generation cancelled")
+            on_token(answer)
+        result["stream_status"] = "completed"
+        return result
+    except GenerationInterrupted:
+        raise
+    finally:
+        reset_stream_hooks(hooks_token)
 
 
 # --- Conditional edges: explicit routing, never a hardcoded straight line ---
@@ -548,15 +1274,27 @@ def synthesize_hybrid_node(state: AgentState) -> dict:
 
 def route_question(
     state: AgentState,
-) -> Literal["refuse", "refuse_security", "decide_route"]:
-    """Blank → refuse; jailbreak/PHI-exfil → refuse_security; else decide."""
-    from data.pipelines.agent_guardrails import is_prompt_injection_or_phi_exfil
+) -> Literal["refuse", "refuse_security", "scope_check"]:
+    """Blank → refuse; PHI-exfil → refuse_security; else screen scope."""
+    from data.pipelines.agent_guardrails import is_phi_exfil_attempt
 
     question = state["question"].strip()
     if not question:
         return "refuse"
-    if is_prompt_injection_or_phi_exfil(question):
+    if is_phi_exfil_attempt(question):
         return "refuse_security"
+    return "scope_check"
+
+
+def route_after_scope(
+    state: AgentState,
+) -> Literal["scope_refusal", "casual_redirect", "decide_route"]:
+    """Refuse jailbreak/personal tasks; redirect casual; domain → tools/RAG."""
+    decision = state.get("scope_decision") or "domain"
+    if decision in ("jailbreak", "personal_task"):
+        return "scope_refusal"
+    if decision == "casual":
+        return "casual_redirect"
     return "decide_route"
 
 
@@ -597,6 +1335,9 @@ _checkpointer = MemorySaver()
 
 _builder = StateGraph(AgentState)
 _builder.add_node("receive", receive_node)
+_builder.add_node("scope_check", scope_check_node)
+_builder.add_node("scope_refusal", scope_refusal_node)
+_builder.add_node("casual_redirect", casual_redirect_node)
 _builder.add_node("decide_route", decide_route_node)
 _builder.add_node("retrieve", retrieve_node)
 _builder.add_node("generate", generate_node)
@@ -610,12 +1351,15 @@ _builder.add_node("answer_from_tool", answer_from_tool_node)
 _builder.add_node("synthesize_hybrid", synthesize_hybrid_node)
 _builder.add_edge(START, "receive")
 _builder.add_conditional_edges("receive", route_question)
+_builder.add_conditional_edges("scope_check", route_after_scope)
 _builder.add_conditional_edges("decide_route", route_after_decide)
 _builder.add_conditional_edges("retrieve", route_context)
 _builder.add_conditional_edges("lookup_incident", route_after_tool)
 _builder.add_conditional_edges("lookup_inventory", route_after_tool)
 _builder.add_edge("refuse", END)
 _builder.add_edge("refuse_security", END)
+_builder.add_edge("scope_refusal", END)
+_builder.add_edge("casual_redirect", END)
 _builder.add_edge("honest", END)
 _builder.add_edge("generate", END)
 _builder.add_edge("tool_fallback", END)
@@ -626,140 +1370,6 @@ _builder.add_edge("synthesize_hybrid", END)
 graph = _builder.compile(checkpointer=_checkpointer)
 
 
-def run_agent(question: str) -> dict:
-    """Run the compiled graph for ``question`` and return the final state + trace id.
-
-    Returns ``{"question": ..., "context": [...], "answer": ..., "route": ...,
-    "tool_result": ..., "sources_used": [...], "trace_id": ...}``.
-    """
-    return _run_agent_inner(question, thread_id=None)
-
-
-def run_agent_stream(
-    question: str,
-    *,
-    thread_id: str,
-    on_token: Callable[[str], None],
-    cancel_check: Callable[[], bool],
-) -> dict:
-    """Same graph as :func:`run_agent`, streaming LLM tokens via ``on_token``.
-
-    Does not change routing/tools — only installs RAG stream hooks for the
-    duration of ``graph.invoke``. Non-LLM routes emit the final answer as
-    token chunks after the run. Raises
-    :class:`data.pipelines.rag.GenerationInterrupted` when cancelled mid-stream.
-    """
-    from data.pipelines.rag import (
-        GenerationInterrupted,
-        reset_stream_hooks,
-        set_stream_hooks,
-    )
-
-    emitted = {"n": 0}
-
-    def _on_token(tok: str) -> None:
-        if cancel_check():
-            raise GenerationInterrupted("chat generation cancelled")
-        emitted["n"] += 1
-        on_token(tok)
-
-    hooks_token = set_stream_hooks(_on_token, cancel_check)
-    try:
-        result = _run_agent_inner(question, thread_id=thread_id)
-        answer = (result.get("answer") or "").strip()
-        if emitted["n"] == 0 and answer:
-            # Tool / refuse paths: surface the deterministic answer as chunks.
-            if cancel_check():
-                raise GenerationInterrupted("chat generation cancelled")
-            on_token(answer)
-        result["stream_status"] = "completed"
-        return result
-    except GenerationInterrupted:
-        raise
-    finally:
-        reset_stream_hooks(hooks_token)
-
-
-def _run_agent_inner(question: str, *, thread_id: str | None) -> dict:
-    """Shared invoke path for sync query and streaming chat."""
-    trace_id = thread_id or uuid.uuid4().hex
-    started = time.time()
-    trace: dict = {
-        "trace_id": trace_id,
-        "thread_id": trace_id,
-        # Metadata only — never store raw staff/user text (PHI risk).
-        "question_chars": len(question or ""),
-        "started_at": started,
-        "finished_at": started,
-        "duration_ms": 0.0,
-        "status": "running",
-        "n_chunks": 0,
-        "sources": [],
-        "sources_used": [],
-        "route": None,
-        "spans": [],
-        "error": None,
-    }
-    _store_trace(trace)
-    token = _current_trace_id.set(trace_id)
-    try:
-        result = graph.invoke(
-            {
-                "question": question,
-                "context": [],
-                "answer": "",
-                "route": "",
-                "tool_result": {},
-                "sources_used": [],
-            },
-            {"configurable": {"thread_id": trace_id}},
-        )
-        finished = time.time()
-        context = result.get("context", [])
-        sources_used = list(result.get("sources_used") or [])
-        trace.update(
-            {
-                "finished_at": finished,
-                "duration_ms": round((finished - started) * 1000, 2),
-                "status": "success",
-                "n_chunks": len(context),
-                "sources": sorted(
-                    {str(chunk.get("source_document", "")) for chunk in context}
-                ),
-                "sources_used": sources_used,
-                "route": result.get("route") or None,
-            }
-        )
-        logger.info(
-            "agent_graph run %s via %s sources=%s in %.1fms",
-            trace_id,
-            [span["node"] for span in trace["spans"]],
-            sources_used,
-            trace["duration_ms"],
-        )
-        from data.pipelines.agent_guardrails import sanitize_agent_output
-
-        safe_answer = sanitize_agent_output(str(result.get("answer") or ""))
-        return {**result, "answer": safe_answer, "trace_id": trace_id}
-    except Exception as exc:
-        finished = time.time()
-        trace.update(
-            {
-                "finished_at": finished,
-                "duration_ms": round((finished - started) * 1000, 2),
-                "status": "error",
-                "error": f"{type(exc).__name__}: {exc}",
-            }
-        )
-        # GenerationInterrupted is expected for chat abort — don't log as error.
-        from data.pipelines.rag import GenerationInterrupted
-
-        if isinstance(exc, GenerationInterrupted):
-            raise
-        logger.exception("agent_graph run %s failed", trace_id)
-        raise
-    finally:
-        _current_trace_id.reset(token)
 
 
 if __name__ == "__main__":
