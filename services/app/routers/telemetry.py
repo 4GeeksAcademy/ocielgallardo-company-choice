@@ -2,14 +2,18 @@
 
 from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
+import hmac
 import logging
+import os
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from sqlmodel import Session
 
 from services.app.core.database import get_engine, is_inventory_db_configured
+from services.app.core.deps import get_current_user
 from services.app.core.ttl_cache import telemetry_report_cache
 from services.app.domain import telemetry_service
+from services.app.models.user import UserPublic
 from services.app.schemas import (
     TelemetryBatch,
     TelemetryIngestResponse,
@@ -21,6 +25,32 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/telemetry", tags=["telemetry"])
 
 REPORT_CACHE_TTL_SECONDS = 60
+
+
+def require_telemetry_ingest_key(
+    request: Request,
+    x_telemetry_ingest_key: str | None = Header(default=None),
+) -> None:
+    """Require ``X-Telemetry-Ingest-Key`` when configured or in production."""
+    expected = os.getenv("TELEMETRY_INGEST_KEY", "").strip()
+    app_env = os.getenv("APP_ENV", "development").strip().lower()
+    if expected:
+        provided = (x_telemetry_ingest_key or "").strip()
+        if not provided or not hmac.compare_digest(provided, expected):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or missing telemetry ingest key",
+            )
+        return
+    if app_env == "production":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="TELEMETRY_INGEST_KEY must be set in production",
+        )
+    logger.warning(
+        "TELEMETRY_INGEST_KEY unset; allowing ingest in non-prod (path=%s)",
+        request.url.path,
+    )
 
 
 def get_telemetry_db() -> Generator[Session, None, None]:
@@ -63,6 +93,7 @@ def _resolve_report_period(
 def ingest_telemetry_events(
     batch: TelemetryBatch,
     session: Session = Depends(get_telemetry_db),
+    _auth: None = Depends(require_telemetry_ingest_key),
 ) -> TelemetryIngestResponse:
     """Accept a loose {events: [...]} envelope; persist valid items only."""
     return telemetry_service.ingest_events(session, batch.events)
@@ -79,6 +110,7 @@ def get_telemetry_report(
         description="ISO 8601 exclusive end (UTC). Defaults to now.",
     ),
     session: Session = Depends(get_telemetry_db),
+    _current_user: UserPublic = Depends(get_current_user),
 ) -> TelemetryReportResponse:
     """Serve cached operational metrics for a resolved period (TTL 60s)."""
     start, end = _resolve_report_period(start_date, end_date)

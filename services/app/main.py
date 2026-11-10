@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi import FastAPI, HTTPException, Request
@@ -40,7 +41,21 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="HealthCore API", lifespan=lifespan)
+def _api_docs_enabled() -> bool:
+    """Disable OpenAPI explorers in production (OWASP A05)."""
+    if os.getenv("DISABLE_API_DOCS", "").strip().lower() in {"1", "true", "yes"}:
+        return False
+    return os.getenv("APP_ENV", "development").strip().lower() != "production"
+
+
+_docs_on = _api_docs_enabled()
+app = FastAPI(
+    title="HealthCore API",
+    lifespan=lifespan,
+    docs_url="/docs" if _docs_on else None,
+    redoc_url="/redoc" if _docs_on else None,
+    openapi_url="/openapi.json" if _docs_on else None,
+)
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,3 +1,5 @@
+import os
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
@@ -14,6 +16,17 @@ from services.app.models.user import UserPublic, UserRole
 
 # Le dice a /docs dónde está el login (para el botón Authorize)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+_STAFF_ROLES = frozenset({UserRole.ADMIN, UserRole.MANAGER})
+
+
+def public_registration_allowed() -> bool:
+    """Open signup is allowed unless explicitly disabled (prod should disable)."""
+    return os.getenv("ALLOW_PUBLIC_REGISTRATION", "true").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
 
 def get_current_user(
@@ -43,6 +56,36 @@ def get_current_user(
     # Audit attribution: human principal in the api.timing log line.
     request.state.principal = f"user:{user.id}"
     return user
+
+
+def require_roles(*roles: UserRole):
+    """Dependency factory: caller must have one of ``roles``."""
+
+    allowed = frozenset(roles)
+
+    def _dependency(
+        current_user: UserPublic = Depends(get_current_user),
+    ) -> UserPublic:
+        if current_user.role not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions",
+            )
+        return current_user
+
+    return _dependency
+
+
+def require_staff_user(
+    current_user: UserPublic = Depends(get_current_user),
+) -> UserPublic:
+    """Managers and admins only (staff-facing surfaces)."""
+    if current_user.role not in _STAFF_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Staff role required",
+        )
+    return current_user
 
 
 def get_reader_principal(

@@ -30,6 +30,13 @@ RUN uv pip install --system --native-tls . \
          --allow-insecure-host files.pythonhosted.org \
          .
 
+# Non-root runtime user (OWASP A05) — volumes/checkpoints must be writable.
+RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin app \
+    && mkdir -p /app/data/process/rfp \
+    && chown -R app:app /app
+
+USER app
+
 EXPOSE 8000
 
 CMD ["uvicorn", "services.app.main:app", "--host", "0.0.0.0", "--port", "8000"]

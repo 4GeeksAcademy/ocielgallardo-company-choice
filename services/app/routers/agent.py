@@ -21,12 +21,15 @@ from jose import JWTError
 from data.pipelines.agent_graph import run_agent, run_agent_stream
 from data.pipelines.rag import GenerationInterrupted
 from services.app.core.deps import get_current_user
+from services.app.core.rate_limit import check_agent_query_rate
 from services.app.core.security import decode_token_claims
 from services.app.core.service_identity import is_service_claims
 from services.app.domain.chat_sessions import chat_store
 from services.app.domain.user_service import UserNotFoundError, get_user_by_id
-from services.app.models.user import UserPublic
+from services.app.models.user import UserPublic, UserRole
 from services.app.schemas import RagQueryRequest, RagQueryResponse
+
+_STAFF_ROLES = frozenset({UserRole.ADMIN, UserRole.MANAGER})
 
 logger = logging.getLogger(__name__)
 
@@ -36,15 +39,29 @@ router = APIRouter(prefix="/agent", tags=["agent"])
 @router.post("/query", response_model=RagQueryResponse)
 def query_agent(
     body: RagQueryRequest,
-    _current_user: UserPublic = Depends(get_current_user),
+    current_user: UserPublic = Depends(get_current_user),
 ) -> RagQueryResponse:
     """Answer a coordinator question through the compiled agent graph.
 
     Thin wrapper over ``run_agent()`` — no retrieval/generation logic here.
     Returns only the model-generated string (never raw chunks or scores).
     Returns 503 when the knowledge backend is unavailable; never a raw
-    traceback.
+    traceback. Returns 429 when the per-user agent query rate limit is hit.
     """
+    decision = check_agent_query_rate(f"user:{current_user.id}")
+    if not decision.allowed:
+        logger.warning(
+            "Agent query rate limited (user_id=%s limit=%s window_s=%s)",
+            current_user.id,
+            decision.limit,
+            decision.window_seconds,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Agent query rate limit exceeded. Try again shortly.",
+            headers={"Retry-After": str(decision.retry_after_seconds)},
+        )
+
     try:
         answer = run_agent(body.question)["answer"]
     except RuntimeError as exc:
@@ -54,7 +71,10 @@ def query_agent(
             detail="Knowledge assistant is temporarily unavailable.",
         ) from exc
     except Exception as exc:  # Qdrant connectivity, LLM transport, ...
-        logger.exception("Agent query failed for question %.60r", body.question)
+        logger.exception(
+            "Agent query failed (question_chars=%s)",
+            len(body.question or ""),
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Knowledge assistant is temporarily unavailable.",
@@ -196,6 +216,9 @@ async def compliance_chat_ws(
     user = _user_from_ws_token(token)
     if user is None:
         await websocket.close(code=4401)
+        return
+    if user.role not in _STAFF_ROLES:
+        await websocket.close(code=4403)
         return
 
     await websocket.accept()
