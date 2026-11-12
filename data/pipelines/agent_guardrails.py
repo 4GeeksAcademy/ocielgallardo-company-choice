@@ -46,12 +46,27 @@ _INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
 _OUTPUT_SSN_LIKE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 
 
+_PHI_EXFIL_PATTERNS: tuple[re.Pattern[str], ...] = _INJECTION_PATTERNS[2:]
+
+
 def is_prompt_injection_or_phi_exfil(question: str) -> bool:
     """True when the question looks like a jailbreak or PHI exfil attempt."""
     text = (question or "").strip()
     if not text:
         return False
     return any(pattern.search(text) for pattern in _INJECTION_PATTERNS)
+
+
+def is_phi_exfil_attempt(question: str) -> bool:
+    """True when the question looks like a PHI/identifier exfiltration attempt.
+
+    Jailbreak phrasing without identifier/PHI probes is handled by the Hito 26
+    scope harness (``scope_check``), so this stays focused on exfil patterns.
+    """
+    text = (question or "").strip()
+    if not text:
+        return False
+    return any(pattern.search(text) for pattern in _PHI_EXFIL_PATTERNS)
 
 
 def sanitize_agent_output(answer: str) -> str:

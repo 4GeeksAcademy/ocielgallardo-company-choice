@@ -27,7 +27,7 @@ from services.app.core.service_identity import is_service_claims
 from services.app.domain.chat_sessions import chat_store
 from services.app.domain.user_service import UserNotFoundError, get_user_by_id
 from services.app.models.user import UserPublic, UserRole
-from services.app.schemas import RagQueryRequest, RagQueryResponse
+from services.app.schemas import AgentQueryRequest, AgentQueryResponse
 
 _STAFF_ROLES = frozenset({UserRole.ADMIN, UserRole.MANAGER})
 
@@ -36,15 +36,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agent", tags=["agent"])
 
 
-@router.post("/query", response_model=RagQueryResponse)
+@router.post("/query", response_model=AgentQueryResponse)
 def query_agent(
-    body: RagQueryRequest,
+    body: AgentQueryRequest,
     current_user: UserPublic = Depends(get_current_user),
-) -> RagQueryResponse:
+) -> AgentQueryResponse:
     """Answer a coordinator question through the compiled agent graph.
 
     Thin wrapper over ``run_agent()`` — no retrieval/generation logic here.
-    Returns only the model-generated string (never raw chunks or scores).
+    The memory session is the caller-provided ``session_id`` when present,
+    otherwise the authenticated user (one pending memory proposal per
+    session; see ``docs/rag/agent-graph.md`` §10).
+    Returns the model-generated string plus ``memory_proposal_pending`` (a
+    boolean hint so the UI can offer confirm/correct actions) — never the
+    proposed fact, raw chunks or scores.
     Returns 503 when the knowledge backend is unavailable; never a raw
     traceback. Returns 429 when the per-user agent query rate limit is hit.
     """
@@ -62,8 +67,9 @@ def query_agent(
             headers={"Retry-After": str(decision.retry_after_seconds)},
         )
 
+    session_id = (body.session_id or "").strip() or f"user:{current_user.id}"
     try:
-        answer = run_agent(body.question)["answer"]
+        result = run_agent(body.question, session_id=session_id)
     except RuntimeError as exc:
         logger.warning("Agent unavailable: %s", exc)
         raise HTTPException(
@@ -79,7 +85,11 @@ def query_agent(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Knowledge assistant is temporarily unavailable.",
         ) from exc
-    return RagQueryResponse(question=body.question, answer=answer)
+    return AgentQueryResponse(
+        question=body.question,
+        answer=result["answer"],
+        memory_proposal_pending=bool(result.get("memory_proposal_pending")),
+    )
 
 
 def _user_from_ws_token(token: str | None) -> UserPublic | None:
@@ -167,7 +177,13 @@ def _run_generation_sync(
         chat_store.publish(
             session_id,
             "generation_completed",
-            {"session_id": session_id, "message_id": handle_message_id},
+            {
+                "session_id": session_id,
+                "message_id": handle_message_id,
+                "memory_proposal_pending": bool(
+                    result.get("memory_proposal_pending")
+                ),
+            },
         )
         chat_store.set_status(session_id, "active")
     except GenerationInterrupted:

@@ -112,18 +112,28 @@ def _record_from_api(payload: dict) -> IncidentRecord:
 
 
 def format_incident_answer(result: IncidentToolOutput) -> str:
-    """Turn a tool result into a coordinator-facing answer (no invented fields)."""
+    """Turn a tool result into a coordinator-facing answer (no invented fields).
+
+    Free-text fields from the external incidents API pass the content-
+    isolation guard: instruction-like text inside a ticket title/description
+    is data, never a system instruction.
+    """
+    from data.pipelines import agent_content_guard
+
     if not result.ok:
-        return result.message or INCIDENT_TOOL_FALLBACK
+        return agent_content_guard.sanitize_tool_text(
+            result.message or INCIDENT_TOOL_FALLBACK
+        )
     if not result.incidents:
         return INCIDENT_NOT_FOUND_MESSAGE
 
     lines: list[str] = []
     for item in result.incidents:
+        title = agent_content_guard.sanitize_tool_text(item.title)
         lines.append(
             f"Ticket {item.id}: status={item.status}, category={item.category}, "
             f"origin={item.origin}, branch={item.branch}, "
-            f"title={item.title!r}, updated_at={item.updated_at}."
+            f"title={title!r}, updated_at={item.updated_at}."
         )
     return " ".join(lines)
 
@@ -182,16 +192,25 @@ def _supply_from_api(payload: dict) -> InventoryRecord:
 
 
 def format_inventory_answer(result: InventoryToolOutput) -> str:
-    """Turn an inventory tool result into a coordinator-facing answer."""
+    """Turn an inventory tool result into a coordinator-facing answer.
+
+    Free-text fields (product name, failure message) pass the content-
+    isolation guard — external tool text is data, never instructions.
+    """
+    from data.pipelines import agent_content_guard
+
     if not result.ok:
-        return result.message or INVENTORY_TOOL_FALLBACK
+        return agent_content_guard.sanitize_tool_text(
+            result.message or INVENTORY_TOOL_FALLBACK
+        )
     if not result.products:
         return INVENTORY_NOT_FOUND_MESSAGE
 
     lines: list[str] = []
     for item in result.products:
+        name = agent_content_guard.sanitize_tool_text(item.name)
         lines.append(
-            f"{item.name} (SKU {item.sku}): current_stock={item.current_stock} "
+            f"{name} (SKU {item.sku}): current_stock={item.current_stock} "
             f"{item.unit}, category={item.category}, country={item.country}."
         )
     return " ".join(lines)

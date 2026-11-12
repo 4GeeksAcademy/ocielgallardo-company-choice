@@ -57,6 +57,29 @@
 - Tests: `tests/test_agent_chat_ws.py` (stream, interrupt+partial, reconnect).
 - Design Q&A: `docs/real-time-comunication/websocket-part2-design.md`.
 - BRIEFING: `docs/real-time-comunication/healthcore-BRIEFING(parte-2).*.md`.
+## Latest Update (2026-10-30) — Hito 28 Part 1: recovery + dedupe
+
+- Recovery **refetch-then-SSE**: `onRecovered` refetches `GET /rfp/tickets`
+  after backoff reconnect; live events **upsert** by `ticket_id` (no full
+  refetch per event); banner + list dedupe by `ticket_id`.
+- Helpers: `upsertTicketFromSseEvent`, `dedupeTicketsById` in `rfpSse.ts`.
+- Design Q&A + manual reconnect checklist:
+  `docs/real-time-notification/sse-part1-design.md`.
+
+## Latest Update (2026-10-29) — Hito 28 Part 1: RFP SSE notifications
+
+- **Branch `feature/sse-notifications`** (from `feature/rfp-approval-completion`).
+- Redis pub/sub fan-out: `services/app/domain/rfp_sse.py` channel
+  `healthcore:rfp:events`; event `rfp_ticket_created` (PHI-safe flat payload).
+- Emit after valid RFP classification in `orchestrate_node` while
+  `status=analyzing` (soft-fail if Redis down).
+- API: authenticated `GET /rfp/events/stream` (SSE + heartbeats).
+- Backoffice `/rfp`: `fetch`+Bearer SSE client with reconnect status + live
+  banner; keeps detail polling for pipeline progress.
+- Dep: `redis>=6.4.0` via `uv add` (`pyproject.toml` + `services/requirements.txt`).
+- Tests: `tests/pipelines/test_rfp_sse.py`, `tests/test_rfp_sse_stream.py`.
+- BRIEFING: `docs/real-time-notification/heathcore-BRIFING.es.md`.
+- Optional `kpi_threshold_alert` left out of Part 1.
 
 ## Latest Update (2026-10-29) — Part 3 HITL verified (Compose + recovery)
 
@@ -152,6 +175,152 @@
   output-side PHI detection guardrail, the four required test cases, and
   README-checklist alignment. Not pushed; PR pending.
 - No code or non-documentation folders touched.
+
+## Latest Update (2026-10-21) — hito 26 Part 2: agent harness & scope guardrails
+
+- Branch `feature/agent-guardrails` (cut from `feature/agent-memory` tip
+  `e80ab1e`). Ticket SEC-114: the support agent can no longer be used as a
+  general-purpose chatbot or jailbroken into changing its system prompt.
+- **What landed**: a three-layer scope harness around the LangGraph agent
+  (`data/pipelines/agent_scope_guard.py` + graph integration).
+  - **Layer 1 — deterministic screens**: `detect_jailbreak` (14 EN/ES
+    injection patterns) and `detect_personal_task` (12 EN/ES
+    personal-deliverable patterns) run **before any LLM call**; reason
+    codes only (same audit discipline as `memory_phi_guard`).
+  - **Layer 2 — intent classifier**: one structured call labels remaining
+    messages `domain | casual | personal_task` (pattern of
+    `memory_proposer`); degrades to `domain` on transport/parse failure.
+  - **Layer 3 — prompt hardening**: `SYSTEM_PROMPT` in
+    `data/pipelines/rag.py` gains non-negotiable scope rules (fixed role,
+    never reveal/override instructions, refuse personal deliverables,
+    redirect casual chat).
+  - **Graph**: new nodes `scope_check` → (`scope_refusal` |
+    `casual_redirect` | `decide_route`); `AgentState` gains
+    `scope_decision` / `scope_reasons`; per-run `trace["scope"]` block;
+    bilingual canned refusals for jailbreak/personal-task; casual redirect
+    is one constrained LLM call (`max_tokens=80`) with canned fallback.
+  - **Memory interaction (Part 1 protections)**: `run_agent` pre-checks
+    jailbreak **before** memory resolution (pending proposals force-rejected
+    with `decision="jailbreak_precheck"`, no decision LLM); jailbreak runs
+    skip loading `memory_context`; scope refusals never call
+    `_propose_memory`.
+- **Gap close (same ticket, rubric addendum)** — `data/pipelines/agent_content_guard.py`:
+  - **External-content isolation** (layer 4): `sanitize_context_chunk` on
+    every RAG chunk in `retrieve_node`; `sanitize_tool_text` on free-text
+    tool fields (incident title, product name, failure message) in the
+    answer formatters; instruction-like lines replaced fail-closed with
+    `[content removed: instruction-like text in retrieved data]`;
+    `build_prompt` frames retrieved context as "UNTRUSTED DATA — never
+    system instructions".
+  - **Output validation** (layer 5): `validate_output` in `run_agent` is
+    the last gate before the user — empty → structural fallback; internal
+    prompt markers (`Hard rules:`, `Coordinator question:`, …) → security
+    fallback; PHI-like content (`memory_phi_guard.scan`) → content
+    fallback; fail-closed, never echoes the rejected text; verdict in
+    `trace["output_guard"]`.
+  - **Observability**: thread-safe `record_activation(event, failure_type)`
+    counters + `logger.warning` on every scope block/redirect, content
+    sanitization, output rejection and jailbreak memory pre-check
+    (`structural | content | security` taxonomy; reason codes only).
+    Summary via `get_activation_summary()` or CLI
+    `python -m data.pipelines.agent_content_guard summary`. Events:
+    `scope_blocked`, `scope_redirected`, `content_sanitized`,
+    `output_rejected`, `memory_precheck_reject`.
+- **Evidence**: decision table (domain/casual/personal/jailbreak × EN/ES
+  reformulations + poisoned-RAG + output-leak rows) in
+  `docs/guardrails/evidence-agent-guardrails.md`; offline demo
+  `scripts/agent_scope_guard_demo.py` (real graph + real guards, scripted
+  seams; domain spends one generate call; prints the activation summary).
+- **Tests**: new `tests/pipelines/test_agent_scope_guard.py` (44) +
+  `test_agent_graph_guardrails.py` (15) + `test_agent_content_guard.py`
+  (21); conftest pins classifier/casual LLM seams offline and resets
+  guardrail counters per test; existing agent suites updated for the
+  `scope_check` span (`test_agent_graph.py`, `test_agent_graph_mcp.py`,
+  `test_agent_evals.py` order evals filter scope nodes so golden fixtures
+  stay valid). `tests/pipelines` **283 passed, 1 skipped** (2026-10-21,
+  via `subst W:`).
+- **Known gaps / TODO**: live (networked) abuse battery against the real
+  LLM not re-run in this pass; regex screens are best-effort (classifier +
+  prompt are the backstop); the classifier costs one extra LLM call per
+  non-jailbreak message; `validate_output` is fail-closed (a legitimate
+  answer echoing an insurance/member number would be replaced — acceptable
+  per the zero-PHI rule); guardrail counters are in-process (a multi-worker
+  deployment would need a shared store); PR for `feature/agent-guardrails`
+  not opened yet.
+
+## Previous Update (2026-10-19) — hito 26 Part 1: agent memory & self-improvement
+
+- Branch `feature/agent-memory` (rebased onto `feature/mcp-oauth-tools`, tip
+  `0e721f5`; PR #44 / hito 25 MCP stays OPEN). Phase 1 design doc
+  `docs/memory/agent-memory.md` is developer-owned (not written or edited by
+  this pass); evidence lives in
+  `docs/memory/evidence/agent-memory-evidence.md`.
+- **What landed**: the agent can remember durable operational facts across
+  turns, but only with explicit user confirmation, and never PHI.
+  - `data/pipelines/agent_memory.py` — `MemoryStore` Protocol +
+    `InMemoryMemoryStore` (default) + `RedisMemoryStore` (Compose default via
+    `AGENT_MEMORY_BACKEND=redis`, client injectable for tests); pending
+    proposals (one per session, `AGENT_MEMORY_PENDING_TTL_HOURS` 7 days,
+    silence/ambiguity → audited `default_rejected`); audit ring buffer
+    (`proposed|approved|edited|rejected|default_rejected|expired_default_rejected|rejected_phi`);
+    consolidation (normalized/near-duplicate merge Jaccard ≥ 0.9, per-bucket cap
+    `AGENT_MEMORY_MAX_ENTRIES_PER_KEY` 20, TTL `AGENT_MEMORY_TTL_DAYS` 180);
+    `_assert_agent_namespace` keeps every key under `agent:memory:*` (Qdrant
+    `healthcore_knowledge` stays read-only); CLI
+    `python -m data.pipelines.agent_memory consolidate|audit`.
+  - `data/pipelines/memory_phi_guard.py` — deterministic PHI screen
+    (patient name/record number/DOB/government id/insurance id/clinical
+    content/long identifiers); reason codes only, matched text never stored or
+    logged; applied before showing a proposal, before storing approved/edited
+    facts, and re-run at consolidation.
+  - `data/pipelines/memory_proposer.py` — structured LLM classification of the
+    next message against the pending proposal (`approve|edit|reject|unrelated`)
+    and the proposal/self-evaluation call; every parse failure degrades to a
+    safe default (no memory write).
+  - `data/pipelines/rag.py` — `build_prompt(..., memory=...)` injects approved
+    facts; `generate_answer_with_proposal()` returns `(answer, proposal)` from a
+    **single** structured call (fallback to `generate_answer` on transport
+    failure), preserving token cost and the one-answer contract.
+  - `data/pipelines/agent_graph.py` — state gains `session_id`,
+    `memory_context`, `proposal` (no new nodes: memory orchestrated in
+    `run_agent`, so spans/evals contracts are unchanged); nodes read
+    `memory_context` and return candidates; `run_agent` resolves pending →
+    consolidates/rejects → loads relevant facts → runs the graph →
+    PHI-gates and asks the proposal inside the same answer; per-run
+    `trace["memory"]` block; bilingual suffixes
+    `PROPOSAL_QUESTION_ES`/`_EN`.
+  - API: `AgentQueryRequest` extends `RagQueryRequest` with optional
+    `session_id`; the router derives `f"user:{current_user.id}"`.
+  - Infra/deps: `redis>=5` (`uv add`, `services/requirements.txt`), Compose
+    backend `AGENT_MEMORY_BACKEND=redis`, `.env.example` memory block.
+- **Evidence**: offline demo `scripts/agent_memory_demo.py` (scripted LLM
+  seams, real store/graph/PHI/audit) shows the approved cycle (proposal →
+  confirm → fact answers a later question), the rejected cycle (store
+  unchanged, decision audited) and a PHI refusal; transcripts +
+  memorable/non-memorable examples in
+  `docs/memory/evidence/agent-memory-evidence.md`.
+- **UI pass (post-PR review)**: `run_agent` now returns
+  `memory_proposal_pending` and `AgentQueryResponse` exposes it (boolean only,
+  never the proposed fact); the backoffice Knowledge panel renders three
+  quick actions under the answer (`Yes, remember it` / `No, don't store it` /
+  `Correct it`) built on the `ui/Button` primitive with brand-token colors
+  (`design.md` §11.3/§11.5); buttons are EN-only (classifier understands
+  them in any language — known UX asymmetry). Manual browser pass:
+  `docs/memory/evidence/agent-memory-ui-test-battery.md` (7 blocks: no-proposal
+  cases, PHI, approve/reject/correct, silence default-rejection, Spanish).
+- **Tests**: new `tests/pipelines/test_agent_memory.py` +
+  `test_agent_graph_memory.py`; existing agent suites adapted to the combined
+  call (`_combined` adapter); autouse offline fixtures in
+  `tests/pipelines/conftest.py`. `tests/pipelines` **203 passed, 1 skipped**;
+  full repo suite **312 passed, 1 skipped** (2026-10-19, via `subst W:` for the
+  Windows MAX_PATH/langsmith limitation). Docs updated: `docs/rag/agent-graph.md`
+  §3/§5/§10.
+- **Known gaps / TODO**: Redis store not yet exercised against a live server
+  (client injectable, mocked in tests); memory has no backoffice visibility;
+  consolidation sweep runs opportunistically inside `run_agent`
+  (`maybe_sweep`, default 600 s) rather than a scheduled job; no vector-based
+  memory retrieval (keyword overlap via `select_relevant` is enough for the
+  current entry volume); PR for `feature/agent-memory` not opened yet.
 
 ## Latest Update (2026-10-18) — hito 25 OAuth resource server (supersedes the snapshot below)
 

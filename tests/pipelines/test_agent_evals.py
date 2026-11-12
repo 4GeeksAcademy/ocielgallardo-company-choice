@@ -60,14 +60,34 @@ def _span_nodes(trace: dict) -> list[str]:
     return [span["node"] for span in trace["spans"]]
 
 
+# Scope-guard nodes run before domain routing (hito 26 Part 2). Golden
+# fixtures capture the domain path only, so order evals compare against the
+# filtered sequence; live traces include the extra scope_check span.
+_SCOPE_SPAN_NODES = frozenset({"scope_check", "scope_refusal", "casual_redirect"})
+
+
+def _domain_span_nodes(trace: dict) -> list[str]:
+    return [node for node in _span_nodes(trace) if node not in _SCOPE_SPAN_NODES]
+
+
 # --- Pure eval predicates: trace (and answer) in, violation out (None = pass) ---
 
 
+def _combined(fn):
+    """Adapt a str-returning generate spy to the answer+proposal contract."""
+
+    def _wrapped(question, context, *, memory=None):
+        return fn(question, context), None
+
+    return _wrapped
+
+
 def eval_routing_order(trace: dict) -> str | None:
-    """Happy RAG path: receive → decide_route → retrieve → generate."""
+    """Happy RAG path: receive → scope_check → decide_route → retrieve → generate."""
     expected = ["receive", "decide_route", "retrieve", "generate"]
-    if _span_nodes(trace) != expected:
-        return f"expected {expected}, got {_span_nodes(trace)}"
+    got = _domain_span_nodes(trace)
+    if got != expected:
+        return f"expected {expected}, got {got} (all: {_span_nodes(trace)})"
     return None
 
 
@@ -84,8 +104,9 @@ def eval_blank_short_circuit(trace: dict) -> str | None:
 def eval_empty_context_honesty(trace: dict) -> str | None:
     """Empty retrieval must route to honest instead of forcing generate."""
     expected = ["receive", "decide_route", "retrieve", "honest"]
-    if _span_nodes(trace) != expected:
-        return f"expected {expected}, got {_span_nodes(trace)}"
+    got = _domain_span_nodes(trace)
+    if got != expected:
+        return f"expected {expected}, got {got} (all: {_span_nodes(trace)})"
     if trace["n_chunks"] != 0:
         return f"expected n_chunks 0, got {trace['n_chunks']}"
     return None
@@ -291,7 +312,7 @@ def test_generator_happy_run_passes_routing_eval(monkeypatch) -> None:
     monkeypatch.setattr(
         rag_pipeline, "retrieve", lambda q, **kw: [_payload("ctx")]
     )
-    monkeypatch.setattr(rag_pipeline, "generate_answer", lambda q, ctx: "Answer")
+    monkeypatch.setattr(rag_pipeline, "generate_answer_with_proposal", _combined(lambda q, ctx: "Answer"))
 
     result = run_agent("hello?")
     trace = get_trace(result["trace_id"])
@@ -306,7 +327,7 @@ def test_generator_blank_run_passes_short_circuit_eval(monkeypatch) -> None:
         raise AssertionError("blank question must never reach retrieval/generation")
 
     monkeypatch.setattr(rag_pipeline, "retrieve", _forbidden)
-    monkeypatch.setattr(rag_pipeline, "generate_answer", _forbidden)
+    monkeypatch.setattr(rag_pipeline, "generate_answer_with_proposal", _combined(_forbidden))
 
     result = run_agent("   ")
 
@@ -315,7 +336,7 @@ def test_generator_blank_run_passes_short_circuit_eval(monkeypatch) -> None:
 
 def test_generator_empty_context_run_passes_honesty_eval(monkeypatch) -> None:
     monkeypatch.setattr(rag_pipeline, "retrieve", lambda q, **kw: [])
-    monkeypatch.setattr(rag_pipeline, "generate_answer", lambda q, ctx: "Honest")
+    monkeypatch.setattr(rag_pipeline, "generate_answer_with_proposal", _combined(lambda q, ctx: "Honest"))
 
     result = run_agent("unknown topic")
 
@@ -331,9 +352,7 @@ def test_generator_grounded_run_uses_real_corpus_chunk(monkeypatch) -> None:
         if chunk["source_document"] == "appointment-policy" and "50 USD" in chunk["text"]
     )
     monkeypatch.setattr(rag_pipeline, "retrieve", lambda q, **kw: [chunk])
-    monkeypatch.setattr(
-        rag_pipeline, "generate_answer", lambda q, ctx: f"Echo: {ctx[0]['text']}"
-    )
+    monkeypatch.setattr(rag_pipeline, "generate_answer_with_proposal", _combined(lambda q, ctx: f"Echo: {ctx[0]['text']}"))
 
     result = run_agent(CANCELLATION_QUESTION)
     trace = get_trace(result["trace_id"])
@@ -354,7 +373,7 @@ def test_generator_ticket_run_passes_tool_routing_eval(monkeypatch) -> None:
         raise AssertionError("ticket question must not call retrieve/generate")
 
     monkeypatch.setattr(rag_pipeline, "retrieve", _forbidden)
-    monkeypatch.setattr(rag_pipeline, "generate_answer", _forbidden)
+    monkeypatch.setattr(rag_pipeline, "generate_answer_with_proposal", _combined(_forbidden))
     monkeypatch.setattr(agent_graph.mcp_client, "lookup_incident_via_mcp", lambda payload, **kw: _incident_ok())
 
     result = run_agent(TICKET_QUESTION)
@@ -386,7 +405,7 @@ def test_generator_policy_run_passes_rag_routing_eval(monkeypatch) -> None:
     monkeypatch.setattr(
         rag_pipeline, "retrieve", lambda q, **kw: [_payload("ctx")]
     )
-    monkeypatch.setattr(rag_pipeline, "generate_answer", lambda q, ctx: "Policy answer")
+    monkeypatch.setattr(rag_pipeline, "generate_answer_with_proposal", _combined(lambda q, ctx: "Policy answer"))
 
     def _forbidden_tool(*args, **kwargs):
         raise AssertionError("policy question must not call tool nodes")
@@ -407,9 +426,7 @@ def test_generator_hybrid_run_passes_both_sources_eval(monkeypatch) -> None:
     monkeypatch.setattr(
         rag_pipeline, "retrieve", lambda q, **kw: [_payload("fee 50 USD")]
     )
-    monkeypatch.setattr(
-        rag_pipeline, "generate_answer", lambda q, ctx: "Policy: fee 50 USD."
-    )
+    monkeypatch.setattr(rag_pipeline, "generate_answer_with_proposal", _combined(lambda q, ctx: "Policy: fee 50 USD."))
 
     result = run_agent(HYBRID_QUESTION)
     trace = get_trace(result["trace_id"])

@@ -81,6 +81,28 @@ def orchestrate_node(state: RfpIntakeState) -> dict[str, Any]:
     if state.get("contains_phi"):
         metadata["contains_phi"] = True
     plan = plan_workstreams(state.get("markdown") or "", metadata)
+
+    # Real-time notify: valid RFP only (this node runs after classify → orchestrate).
+    ticket_id = state.get("ticket_id") or ""
+    if ticket_id:
+        try:
+            from services.app.domain.rfp_sse import (
+                build_rfp_ticket_created_payload,
+                publish_rfp_ticket_created,
+            )
+
+            publish_rfp_ticket_created(
+                build_rfp_ticket_created_payload(
+                    ticket_id=ticket_id,
+                    metadata=metadata,
+                    status="analyzing",
+                )
+            )
+        except Exception:  # noqa: BLE001 — never break intake for notify
+            logger.exception(
+                "rfp_sse publish failed ticket_id=%s", ticket_id
+            )
+
     return {
         "metadata": metadata,
         "workstreams": plan["workstreams"],
