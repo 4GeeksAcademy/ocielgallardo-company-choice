@@ -296,3 +296,49 @@ def test_token_chunk_payload_shape() -> None:
     assert set(payload.keys()) == {"session_id", "token", "sequence"}
     assert "patient" not in payload
     assert "ticket_id" not in payload
+
+
+@pytest.mark.parametrize("text", ["12", "OK", "?"])
+def test_ws_accepts_short_non_blank_messages(client: TestClient, text: str) -> None:
+    with client.websocket_connect("/agent/chat/ws?token=good-token") as ws:
+        sid = ws.receive_json()["data"]["session_id"]
+        ws.send_json({"event": "user_message", "data": {"session_id": sid, "text": text}})
+        events = []
+        for _ in range(12):
+            msg = ws.receive_json()
+            events.append(msg["event"])
+            if msg["event"] == "generation_completed":
+                break
+        assert events[0] == "user_message"
+        assert "generation_completed" in events
+    snap = chat_sessions.chat_store.snapshot_payload(sid)
+    assert [m["text"] for m in snap["messages"] if m["role"] == "user"] == [text]
+
+
+def test_ws_ignores_blank_messages(client: TestClient) -> None:
+    with client.websocket_connect("/agent/chat/ws?token=good-token") as ws:
+        sid = ws.receive_json()["data"]["session_id"]
+        ws.send_json({"event": "user_message", "data": {"session_id": sid, "text": "   "}})
+        ws.send_json({"event": "user_message", "data": {"session_id": sid, "text": "OK"}})
+        echo = ws.receive_json()
+        # The blank message produced nothing; the first event is the "OK" echo.
+        assert echo["event"] == "user_message"
+        assert echo["data"]["text"] == "OK"
+
+
+@pytest.mark.parametrize("question", ["12", "OK", "x" * 1000])
+def test_query_schema_accepts_any_non_blank_question(question: str) -> None:
+    from services.app.schemas import AgentQueryRequest, RagQueryRequest
+
+    assert RagQueryRequest(question=question).question == question
+    assert AgentQueryRequest(question=question).question == question
+
+
+@pytest.mark.parametrize("question", ["", "   ", "x" * 1001])
+def test_query_schema_rejects_blank_or_too_long(question: str) -> None:
+    from pydantic import ValidationError
+
+    from services.app.schemas import RagQueryRequest
+
+    with pytest.raises(ValidationError):
+        RagQueryRequest(question=question)

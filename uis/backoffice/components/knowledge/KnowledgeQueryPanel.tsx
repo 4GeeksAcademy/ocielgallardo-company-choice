@@ -379,7 +379,7 @@ export function KnowledgeQueryPanel() {
 
   function trySend(text: string) {
     const trimmed = text.trim();
-    if (trimmed.length < 3 || generating) {
+    if (trimmed.length === 0 || generating) {
       return;
     }
     if (wsStatus !== "connected") {
@@ -538,7 +538,7 @@ export function KnowledgeQueryPanel() {
             <Button
               type="button"
               onClick={() => trySend(question)}
-              disabled={question.trim().length < 3 || generating}
+              disabled={question.trim().length === 0 || generating}
             >
               Send correction
             </Button>
@@ -576,7 +576,7 @@ export function KnowledgeQueryPanel() {
           ) : (
             <button
               type="submit"
-              disabled={question.trim().length < 3}
+              disabled={question.trim().length === 0}
               className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
             >
               Send
