@@ -83,6 +83,7 @@ from data.pipelines.agent_tools import (
     InventoryToolInput,
     format_incident_answer,
     format_inventory_answer,
+    format_rfp_answer,
 )
 
 logger = logging.getLogger(__name__)
@@ -101,6 +102,34 @@ _INCIDENT_KEYWORDS_RE = re.compile(
     r"\b(?:open tickets?|tickets? abiertos?|incident manager|"
     r"gestor de incidentes|support ticket)\b",
     re.IGNORECASE,
+)
+# "latest / last / most recent ticket" (EN + ES) — no id needed.
+_LATEST_RE = re.compile(
+    r"\b(?:latest|last|most\s+recent|newest|recent|[uú]ltim[oa]s?|"
+    r"m[aá]s\s+recientes?)\b",
+    re.IGNORECASE,
+)
+_TICKET_NOUN_RE = re.compile(
+    r"\b(?:tickets?|incidents?|casos?|incidencias?|rfps?)\b", re.IGNORECASE
+)
+_RFP_RE = re.compile(r"\brfps?\b|\brequests?\s+for\s+proposals?\b", re.IGNORECASE)
+# Words that map a question onto an incident category / status filter.
+_CATEGORY_KEYWORDS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"\bbilling|\bfactura", re.IGNORECASE), "billing_error"),
+    # "IT" is matched case-sensitively so "is it open?" is not a category.
+    (re.compile(r"\bIT\b|\b[Ss]ystems?\b|\b[Ss]oftware\b|\b[Ss]istemas?\b"), "it_system"),
+    (re.compile(r"\bequipment|\bequipo|\bdevice", re.IGNORECASE), "clinical_equipment"),
+    (re.compile(r"\bcompliance|\bcumplimiento|\bbreach", re.IGNORECASE), "compliance_breach"),
+    (re.compile(r"\bpatient experience|\bexperiencia", re.IGNORECASE), "patient_experience"),
+    (re.compile(r"\bstaff\b", re.IGNORECASE), "staff_issue"),
+    (re.compile(r"\bfacilit|\binstalaci", re.IGNORECASE), "facility_issue"),
+    (re.compile(r"\breferral|\bderivaci", re.IGNORECASE), "referral_issue"),
+)
+_STATUS_KEYWORDS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"\bin[\s_-]progress\b|\ben curso\b", re.IGNORECASE), "in_progress"),
+    (re.compile(r"\bopen\b|\babiert[oa]s?\b", re.IGNORECASE), "open"),
+    (re.compile(r"\bresolved\b|\bclosed\b|\bresuelt[oa]s?\b", re.IGNORECASE), "resolved"),
+    (re.compile(r"\bdiscarded\b|\bdescartad[oa]s?\b", re.IGNORECASE), "discarded"),
 )
 _SKU_RE = re.compile(r"\b(HCR-[A-Z]+-\d+)\b", re.IGNORECASE)
 _INVENTORY_KEYWORDS_RE = re.compile(
@@ -267,6 +296,32 @@ def extract_ticket_id(question: str) -> int | None:
         return None
 
 
+def asks_for_latest_ticket(question: str) -> bool:
+    """True for "latest/last/most recent ticket|incident|RFP" questions."""
+    text = question or ""
+    return bool(_LATEST_RE.search(text)) and bool(_TICKET_NOUN_RE.search(text))
+
+
+def mentions_rfp(question: str) -> bool:
+    """True when the question is about RFP tickets (not incident tickets)."""
+    return bool(_RFP_RE.search(question or ""))
+
+
+def extract_incident_filters(question: str) -> dict[str, str]:
+    """Category / status filters named in a "latest ticket" question."""
+    text = question or ""
+    filters: dict[str, str] = {}
+    for pattern, category in _CATEGORY_KEYWORDS:
+        if pattern.search(text):
+            filters["category"] = category
+            break
+    for pattern, status in _STATUS_KEYWORDS:
+        if pattern.search(text):
+            filters["status"] = status
+            break
+    return filters
+
+
 def extract_sku(question: str) -> str | None:
     """Return the first HealthCore SKU mentioned in ``question``, if any."""
     match = _SKU_RE.search(question or "")
@@ -310,6 +365,7 @@ def has_policy_signal(question: str) -> bool:
 def _needs_incident_tool(text: str) -> bool:
     return (
         extract_ticket_id(text) is not None
+        or asks_for_latest_ticket(text)
         or bool(_TICKET_STATUS_RE.search(text))
         or bool(_INCIDENT_KEYWORDS_RE.search(text))
     )
@@ -587,18 +643,42 @@ def honest_node(state: AgentState) -> dict:
 
 
 def lookup_incident_node(state: AgentState) -> dict:
-    """Call the incidents tool over MCP (the only transport); never invent state.
+    """Call the incidents (or RFP) tool over MCP (the only transport).
+
+    - ``ticket 8`` -> ``get_incident_status``;
+    - ``latest RFP`` / an RFP question without an incident id ->
+      ``get_latest_rfp_ticket``;
+    - ``latest (billing) ticket`` -> ``get_latest_incident`` with the
+      category/status filters the question names.
 
     ``mcp_client`` always answers with a contract payload: transport/config
     failures surface as an honest ``unavailable`` result, which the routing
-    then sends to ``tool_fallback``.
+    then sends to ``tool_fallback``. Never invents state.
     """
     started = time.time()
     tool_payload: dict = {}
     sources = list(state.get("sources_used") or [])
+    question = state["question"]
+    ticket_id = extract_ticket_id(question)
+    mode = "detail" if ticket_id is not None else "list"
     try:
-        ticket_id = extract_ticket_id(state["question"])
-        payload = IncidentToolInput(ticket_id=ticket_id)
+        if ticket_id is None and mentions_rfp(question):
+            mode = "latest_rfp"
+            rfp_result = mcp_client.lookup_latest_rfp_via_mcp()
+            tool_payload = rfp_result.model_dump()
+            if "rfp" not in sources:
+                sources = [*sources, "rfp"]
+            answer = format_rfp_answer(rfp_result)
+            return {
+                "tool_result": tool_payload,
+                "sources_used": sources,
+                "answer": answer if rfp_result.ok else "",
+            }
+        latest = ticket_id is None and asks_for_latest_ticket(question)
+        filters = extract_incident_filters(question) if latest else {}
+        if latest:
+            mode = "latest"
+        payload = IncidentToolInput(ticket_id=ticket_id, latest=latest, **filters)
         result = mcp_client.lookup_incident_via_mcp(payload)
         tool_payload = result.model_dump()
         if "incidents" not in sources:
@@ -615,12 +695,13 @@ def lookup_incident_node(state: AgentState) -> dict:
             started,
             time.time(),
             {
-                "source_kind": "incidents",
+                "source_kind": "rfp" if mode == "latest_rfp" else "incidents",
                 "transport": "mcp",
+                "mode": mode,
                 "ok": bool(tool_payload.get("ok")),
                 "error": tool_payload.get("error"),
                 "n_incidents": len(tool_payload.get("incidents") or []),
-                "ticket_id": extract_ticket_id(state["question"]),
+                "ticket_id": ticket_id,
             },
         )
 
@@ -667,6 +748,14 @@ def _tool_facts_text(tool_result: dict, sources_used: list[str]) -> tuple[str, b
         InventoryToolOutput,
     )
 
+    if "rfp" in sources_used or "rfp_tickets" in (tool_result or {}):
+        from data.pipelines.agent_tools import RFP_TOOL_FALLBACK, RfpToolOutput
+
+        try:
+            rfp = RfpToolOutput.model_validate(tool_result or {})
+        except Exception:
+            return RFP_TOOL_FALLBACK, False
+        return format_rfp_answer(rfp), bool(rfp.ok)
     if "inventory" in sources_used or "products" in (tool_result or {}):
         try:
             result = InventoryToolOutput.model_validate(tool_result or {})

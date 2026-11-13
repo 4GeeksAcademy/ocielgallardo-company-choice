@@ -43,6 +43,9 @@ from data.pipelines.agent_tools import (
     INVENTORY_TOOL_AUTH_MESSAGE,
     INVENTORY_TOOL_FALLBACK,
     INVENTORY_TOOL_NEEDS_PRODUCT_MESSAGE,
+    RFP_TOOL_AUTH_MESSAGE,
+    RFP_TOOL_FALLBACK,
+    RfpToolOutput,
     IncidentToolInput,
     IncidentToolOutput,
     InventoryToolInput,
@@ -60,6 +63,8 @@ MCP_TOOL_TIMEOUT_SECONDS = 10.0
 TOOL_GET_INCIDENT_STATUS = "get_incident_status"
 TOOL_LIST_INCIDENTS = "list_incidents"
 TOOL_GET_INVENTORY_STOCK = "get_inventory_stock"
+TOOL_GET_LATEST_INCIDENT = "get_latest_incident"
+TOOL_GET_LATEST_RFP_TICKET = "get_latest_rfp_ticket"
 
 _loop: asyncio.AbstractEventLoop | None = None
 _loop_lock = threading.Lock()
@@ -218,20 +223,23 @@ def lookup_incident_via_mcp(
     failure, scope denials become ``auth``, and missing arguments become
     ``invalid_input`` without touching the network.
     """
+    filters = {
+        key: value
+        for key, value in {
+            "status": payload.status,
+            "origin": payload.origin,
+            "branch": payload.branch,
+            "category": payload.category,
+        }.items()
+        if value
+    }
     if payload.ticket_id is not None:
         tool_name = TOOL_GET_INCIDENT_STATUS
         arguments: dict[str, Any] = {"ticket_id": payload.ticket_id}
+    elif payload.latest:
+        tool_name = TOOL_GET_LATEST_INCIDENT
+        arguments = filters
     else:
-        filters = {
-            key: value
-            for key, value in {
-                "status": payload.status,
-                "origin": payload.origin,
-                "branch": payload.branch,
-                "category": payload.category,
-            }.items()
-            if value
-        }
         if not filters:
             logger.info("MCP %s skipped: no ticket id or filters", TOOL_LIST_INCIDENTS)
             return IncidentToolOutput(
@@ -319,4 +327,37 @@ def lookup_inventory_via_mcp(
         return InventoryToolOutput(
             ok=False, error="unavailable", message=INVENTORY_TOOL_FALLBACK
         )
+    return result
+
+
+def _parse_rfp(text: str | None) -> RfpToolOutput | None:
+    if not text:
+        return None
+    try:
+        return RfpToolOutput.model_validate(json.loads(text))
+    except (ValueError, TypeError) as exc:
+        logger.warning("MCP rfp payload not usable: %s", type(exc).__name__)
+        return None
+
+
+def lookup_latest_rfp_via_mcp(*, timeout_seconds: float | None = None) -> RfpToolOutput:
+    """Latest RFP ticket over MCP; never ``None`` (same failure taxonomy)."""
+    tool_name = TOOL_GET_LATEST_RFP_TICKET
+    if not server_url():
+        _log_unavailable(tool_name, "MCP_SERVER_URL not configured")
+        return RfpToolOutput(ok=False, error="unavailable", message=RFP_TOOL_FALLBACK)
+
+    timeout = timeout_seconds or tool_timeout_seconds()
+    try:
+        text = _run(_call_tool(tool_name, {}), timeout)
+    except Exception as exc:
+        if "insufficient_scope" in str(exc):
+            _log_unavailable(tool_name, "scope denial")
+            return RfpToolOutput(ok=False, error="auth", message=RFP_TOOL_AUTH_MESSAGE)
+        _log_unavailable(tool_name, f"{type(exc).__name__}: {exc}")
+        return RfpToolOutput(ok=False, error="unavailable", message=RFP_TOOL_FALLBACK)
+    result = _parse_rfp(text)
+    if result is None:
+        _log_unavailable(tool_name, "no usable contract payload")
+        return RfpToolOutput(ok=False, error="unavailable", message=RFP_TOOL_FALLBACK)
     return result

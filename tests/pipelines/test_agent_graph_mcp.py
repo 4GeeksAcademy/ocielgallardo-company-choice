@@ -161,3 +161,62 @@ def test_mcp_disabled_still_answers_honestly(monkeypatch) -> None:
         "lookup_incident",
         "tool_fallback",
     ]
+
+
+# --- "latest ticket" / "latest RFP" (no id needed) ---
+
+
+def test_latest_ticket_question_asks_for_latest_incident_with_filters(
+    monkeypatch, mcp_configured
+) -> None:
+    seen: list[IncidentToolInput] = []
+
+    def _fake(payload, **kw):
+        seen.append(payload)
+        return _incident_output()
+
+    monkeypatch.setattr(mcp_client, "lookup_incident_via_mcp", _fake)
+
+    result = run_agent("What is the status of the latest open billing ticket?")
+    trace = get_trace(result["trace_id"])
+
+    assert seen[0].latest is True
+    assert seen[0].ticket_id is None
+    assert seen[0].category == "billing_error"
+    assert seen[0].status == "open"
+    assert "Ticket #2" in result["answer"]
+    assert _span(trace, "lookup_incident")["output"]["mode"] == "latest"
+
+
+def test_latest_rfp_question_uses_rfp_tool(monkeypatch, mcp_configured) -> None:
+    from data.pipelines.agent_tools import RfpTicketRecord, RfpToolOutput
+
+    monkeypatch.setattr(
+        mcp_client,
+        "lookup_incident_via_mcp",
+        lambda payload, **kw: pytest.fail("RFP questions must not hit incidents"),
+    )
+    monkeypatch.setattr(
+        mcp_client,
+        "lookup_latest_rfp_via_mcp",
+        lambda **kw: RfpToolOutput(
+            ok=True,
+            rfp_tickets=[
+                RfpTicketRecord(
+                    ticket_id="abc12345-6789",
+                    status="drafting",
+                    created_at="2026-02-01T00:00:00",
+                    updated_at="2026-02-03T00:00:00",
+                    client_name="Acme Health",
+                )
+            ],
+        ),
+    )
+
+    result = run_agent("What is the status of the latest RFP ticket?")
+    trace = get_trace(result["trace_id"])
+
+    assert result["answer"].startswith("The latest RFP ticket is abc12345")
+    assert "Its current status is drafting." in result["answer"]
+    assert "rfp" in trace["sources_used"]
+    assert _span(trace, "lookup_incident")["output"]["source_kind"] == "rfp"
