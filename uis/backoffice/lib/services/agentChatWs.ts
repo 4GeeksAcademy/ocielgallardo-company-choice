@@ -12,7 +12,24 @@ export type ChatWsStatus =
   | "connecting"
   | "connected"
   | "reconnecting"
-  | "disconnected";
+  | "disconnected"
+  /** 4401 (or no token): session missing/expired — terminal, no retry. */
+  | "unauthorized"
+  /** 4403: authenticated but not admin/manager — terminal, no retry. */
+  | "forbidden";
+
+/** Close codes sent by the backend (services/app/routers/agent.py). */
+export const WS_CLOSE_UNAUTHORIZED = 4401;
+export const WS_CLOSE_FORBIDDEN = 4403;
+
+/** Terminal status for a close code, or null when a reconnect makes sense. */
+export function terminalStatusForCloseCode(
+  code: number
+): "unauthorized" | "forbidden" | null {
+  if (code === WS_CLOSE_UNAUTHORIZED) return "unauthorized";
+  if (code === WS_CLOSE_FORBIDDEN) return "forbidden";
+  return null;
+}
 
 export interface ChatMessageView {
   message_id?: string;
@@ -117,7 +134,8 @@ export function createAgentChatSocket(options: {
     if (stopped) return;
     const token = getAccessToken();
     if (!token) {
-      handlers.onStatus?.("disconnected");
+      stopped = true;
+      handlers.onStatus?.("unauthorized");
       return;
     }
     handlers.onStatus?.(attempt > 0 ? "reconnecting" : "connecting");
@@ -169,10 +187,17 @@ export function createAgentChatSocket(options: {
       }
     };
 
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
       socket = null;
       if (stopped) {
         handlers.onStatus?.("disconnected");
+        return;
+      }
+      // Auth/role rejections are final: retrying would loop forever.
+      const terminal = terminalStatusForCloseCode(ev.code);
+      if (terminal) {
+        stopped = true;
+        handlers.onStatus?.(terminal);
         return;
       }
       handlers.onStatus?.("reconnecting");
@@ -193,12 +218,16 @@ export function createAgentChatSocket(options: {
 
   return {
     close: () => {
+      const alreadyStopped = stopped;
       stopped = true;
       if (reconnectTimer != null) {
         window.clearTimeout(reconnectTimer);
       }
       socket?.close();
-      handlers.onStatus?.("disconnected");
+      // Keep a terminal unauthorized/forbidden status visible.
+      if (!alreadyStopped) {
+        handlers.onStatus?.("disconnected");
+      }
     },
     sendUserMessage,
     sendInterrupt,

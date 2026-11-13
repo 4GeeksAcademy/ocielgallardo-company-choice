@@ -7,6 +7,7 @@ import {
   type ChatMessageView,
   type ChatWsStatus,
 } from "@/lib/services/agentChatWs";
+import { clearSessionAndRedirectToLogin } from "@/lib/services/healthcoreClient";
 
 function statusLabel(status: ChatWsStatus): string {
   switch (status) {
@@ -18,6 +19,10 @@ function statusLabel(status: ChatWsStatus): string {
       return "Reconnecting chat…";
     case "disconnected":
       return "Chat disconnected";
+    case "unauthorized":
+      return "Session expired";
+    case "forbidden":
+      return "No access";
     default:
       return status;
   }
@@ -183,6 +188,34 @@ export function KnowledgeQueryPanel() {
     }
     setQuestion("");
     sendChatMessage(trimmed);
+  }
+
+  if (wsStatus === "forbidden") {
+    return (
+      <div
+        role="alert"
+        className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+      >
+        <p className="font-semibold">You don&apos;t have access to Knowledge.</p>
+        <p className="mt-1">
+          Ask an admin or manager to grant you access.
+        </p>
+      </div>
+    );
+  }
+
+  if (wsStatus === "unauthorized") {
+    return (
+      <div
+        role="alert"
+        className="space-y-3 rounded-md border border-slate-300 bg-slate-50 p-4 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-50"
+      >
+        <p className="font-semibold">Your session has expired. Please sign in again.</p>
+        <Button type="button" onClick={clearSessionAndRedirectToLogin}>
+          Sign in
+        </Button>
+      </div>
+    );
   }
 
   return (
