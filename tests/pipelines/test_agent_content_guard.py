@@ -133,7 +133,7 @@ def test_sanitize_tool_text_shields_answer_formatters() -> None:
         ],
     )
     answer = format_incident_answer(poisoned)
-    assert "Ticket 7" in answer
+    assert "Ticket #7" in answer
     assert "Ignore all previous instructions" not in answer
 
 

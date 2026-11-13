@@ -137,15 +137,92 @@ def format_incident_answer(result: IncidentToolOutput) -> str:
     if not result.incidents:
         return INCIDENT_NOT_FOUND_MESSAGE
 
-    lines: list[str] = []
-    for item in result.incidents:
-        title = agent_content_guard.sanitize_tool_text(item.title)
-        lines.append(
-            f"Ticket {item.id}: status={item.status}, category={item.category}, "
-            f"origin={item.origin}, branch={item.branch}, "
-            f"title={title!r}, updated_at={item.updated_at}."
-        )
-    return " ".join(lines)
+    return " ".join(describe_incident(item) for item in result.incidents)
+
+
+# --- Natural-language rendering (deterministic, no LLM, no invented fields) ---
+
+_STATUS_PHRASES = {
+    "open": "open",
+    "in_progress": "in progress",
+    "resolved": "resolved",
+    "discarded": "discarded",
+}
+_ORIGIN_PHRASES = {
+    "customer": "reported by a customer",
+    "branch": "reported by branch staff",
+    "internal": "raised internally",
+}
+_CATEGORY_PHRASES = {
+    "clinical_equipment": "clinical equipment issue",
+    "it_system": "IT system issue",
+    "billing_error": "billing error",
+    "compliance_breach": "compliance breach",
+    "patient_experience": "patient experience issue",
+    "staff_issue": "staff issue",
+    "facility_issue": "facility issue",
+    "referral_issue": "referral issue",
+    "other": "general issue",
+}
+_BRANCH_NAMES = {"london_city": "London City", "london_west": "London West"}
+_UNIT_PLURALS = {"box": "boxes", "unit": "units", "pack": "packs", "vial": "vials"}
+
+
+def _humanize_key(value: str) -> str:
+    """``billing_error`` -> ``billing error`` (enum keys read as words)."""
+    return " ".join(str(value or "").replace("_", " ").split())
+
+
+def _branch_name(value: str) -> str:
+    if value in _BRANCH_NAMES:
+        return _BRANCH_NAMES[value]
+    return " ".join(word.capitalize() for word in _humanize_key(value).split())
+
+
+def _human_date(value: str) -> str:
+    """ISO timestamp -> ``Jan 20, 2024``; unknown shapes are returned as-is."""
+    from datetime import datetime
+
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return raw
+    return f"{parsed:%b} {parsed.day}, {parsed.year}"
+
+
+def _article(word: str) -> str:
+    return "an" if word[:1].lower() in "aeiou" else "a"
+
+
+def describe_incident(item: IncidentRecord) -> str:
+    """One incident as plain English sentences (content-guarded title)."""
+    from data.pipelines import agent_content_guard
+
+    title = agent_content_guard.sanitize_tool_text(item.title).strip()
+    status = _STATUS_PHRASES.get(item.status, _humanize_key(item.status))
+    head = f"Ticket #{item.id}"
+    if title:
+        head += f" (\u201c{title}\u201d)"
+    sentences = [f"{head} is currently {status}."]
+    category = _CATEGORY_PHRASES.get(item.category, _humanize_key(item.category))
+    parts: list[str] = []
+    if category:
+        parts.append(f"It is {_article(category)} {category}")
+    origin = _ORIGIN_PHRASES.get(item.origin, "")
+    if origin:
+        parts.append(origin if parts else f"It was {origin}")
+    if item.branch:
+        branch = f"at the {_branch_name(item.branch)} branch"
+        parts.append(branch if parts else f"It is logged {branch}")
+    if parts:
+        sentences.append(" ".join(parts) + ".")
+    updated = _human_date(item.updated_at)
+    if updated:
+        sentences.append(f"It was last updated on {updated}.")
+    return " ".join(sentences)
 
 
 # --- Inventory stock contracts (single responsibility, same rules) ---
@@ -216,11 +293,30 @@ def format_inventory_answer(result: InventoryToolOutput) -> str:
     if not result.products:
         return INVENTORY_NOT_FOUND_MESSAGE
 
-    lines: list[str] = []
-    for item in result.products:
-        name = agent_content_guard.sanitize_tool_text(item.name)
-        lines.append(
-            f"{name} (SKU {item.sku}): current_stock={item.current_stock} "
-            f"{item.unit}, category={item.category}, country={item.country}."
-        )
-    return " ".join(lines)
+    return " ".join(describe_stock(item) for item in result.products)
+
+
+def _quantity(count: int, unit: str) -> str:
+    unit = (unit or "").strip().lower()
+    if not unit:
+        return f"{count:,}"
+    if count == 1:
+        return f"{count:,} {unit}"
+    return f"{count:,} {_UNIT_PLURALS.get(unit, unit + 's')}"
+
+
+def describe_stock(item: InventoryRecord) -> str:
+    """One inventory row as a plain English sentence (content-guarded name)."""
+    from data.pipelines import agent_content_guard
+
+    name = agent_content_guard.sanitize_tool_text(item.name).strip()
+    country = (item.country or "").strip()
+    where = f" in the {country}" if country in ("US", "UK") else (
+        f" in {country}" if country else ""
+    )
+    if item.current_stock <= 0:
+        return f"{name} (SKU {item.sku}) is out of stock{where}."
+    return (
+        f"We currently have {_quantity(item.current_stock, item.unit)} of "
+        f"{name} (SKU {item.sku}) in stock{where}."
+    )
