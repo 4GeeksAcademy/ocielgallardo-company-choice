@@ -273,14 +273,33 @@ def extract_sku(question: str) -> str | None:
     return match.group(1).upper() if match else None
 
 
+# Filler words (EN/ES) dropped from stock questions so only the product terms
+# reach the inventory tool ("How many gloves do we have in stock?" -> "gloves").
+_INVENTORY_STOPWORDS = frozenset(
+    """
+    a an the of in on at for to is are was be do does did we you i our us my
+    have has any how many much what which there left available units unit
+    please can could tell me show check level levels current currently right now
+    el la los las un una unos unas de del al en con para por es son hay que
+    qué cual cuál cuales cuáles cuanto cuánto cuanta cuánta cuantos cuántos
+    cuantas cuántas tenemos tiene tienen queda quedan nos me dime muestra
+    nivel niveles actual ahora disponible disponibles unidades unidad y o
+    """.split()
+)
+
+
 def extract_inventory_name_query(question: str) -> str | None:
-    """Best-effort product name fragment for stock questions without a SKU."""
+    """Best-effort product name terms for stock questions without a SKU."""
     if extract_sku(question or ""):
         return None
     cleaned = _INVENTORY_KEYWORDS_RE.sub(" ", question or "")
-    cleaned = re.sub(r"[¿?¡!.,;:]", " ", cleaned)
-    cleaned = re.sub(r"\s+", " ", cleaned).strip()
-    return cleaned or None
+    cleaned = re.sub(r"[¿?¡!.,;:\"'()]", " ", cleaned)
+    words = [
+        word
+        for word in cleaned.split()
+        if word.lower() not in _INVENTORY_STOPWORDS
+    ]
+    return " ".join(words) or None
 
 
 def has_policy_signal(question: str) -> bool:
