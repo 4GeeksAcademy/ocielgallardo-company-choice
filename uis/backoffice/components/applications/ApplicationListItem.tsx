@@ -19,7 +19,7 @@ export function ApplicationListItem({
       onClick={() => onSelect(application.id)}
       className={`block w-full rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
         isSelected
-          ? "border-blue-300 bg-blue-50/70 shadow-sm"
+          ? "border-blue-300 dark:border-blue-700 bg-blue-50/70 dark:bg-blue-950/40 shadow-sm"
           : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
       }`}
     >

@@ -17,7 +17,9 @@ from data.pipelines import mcp_client
 from data.pipelines.agent_tools import (
     INCIDENT_TOOL_AUTH_MESSAGE,
     INCIDENT_TOOL_FALLBACK,
+    INCIDENT_TOOL_NEEDS_ID_MESSAGE,
     INVENTORY_TOOL_FALLBACK,
+    INVENTORY_TOOL_NEEDS_PRODUCT_MESSAGE,
     IncidentToolInput,
     InventoryToolInput,
 )
@@ -196,6 +198,7 @@ def test_filters_route_to_list_tool_and_empty_filters_skip_mcp(
     assert calls == []
     assert empty.ok is False
     assert empty.error == "invalid_input"
+    assert empty.message == INCIDENT_TOOL_NEEDS_ID_MESSAGE
 
 
 def test_inventory_arguments_are_forwarded_and_empty_skipped(
@@ -216,6 +219,7 @@ def test_inventory_arguments_are_forwarded_and_empty_skipped(
     assert calls == []
     assert empty.ok is False
     assert empty.error == "invalid_input"
+    assert empty.message == INVENTORY_TOOL_NEEDS_PRODUCT_MESSAGE
 
 
 # --- Failure honesty: contract payload on every path ---
@@ -324,3 +328,27 @@ def test_sync_bridge_runs_coroutines_on_its_own_loop() -> None:
         return 42
 
     assert mcp_client._run(_value(), 5.0) == 42
+
+
+def test_missing_service_token_skips_mcp_and_logs_cause(
+    monkeypatch, mcp_url, caplog
+) -> None:
+    """Without a service token the MCP server is never contacted (root cause
+    seen in Docker: the client was not registered in the container's store)."""
+    monkeypatch.setattr(mcp_client, "get_service_token", lambda **_: None)
+
+    def _no_client(*_args, **_kwargs):
+        raise AssertionError("MCP client must not be built without a token")
+
+    monkeypatch.setattr(mcp_client, "MultiServerMCPClient", _no_client)
+
+    with caplog.at_level("WARNING"):
+        result = mcp_client.lookup_inventory_via_mcp(
+            InventoryToolInput(name_query="guantes")
+        )
+
+    assert result.ok is False
+    assert result.error == "unavailable"
+    assert result.message == INVENTORY_TOOL_FALLBACK
+    assert "no agent service token" in caplog.text
+    assert "AGENT_TOOL_CLIENT_SECRET" in caplog.text

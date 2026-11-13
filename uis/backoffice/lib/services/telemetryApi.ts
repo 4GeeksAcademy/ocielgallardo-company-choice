@@ -20,7 +20,6 @@ export async function fetchTelemetryReport(params?: {
   const suffix = query.toString() ? `?${query.toString()}` : "";
   return healthcoreRequest<TelemetryReport>(`/telemetry/report${suffix}`, {
     method: "GET",
-    auth: false,
   });
 }
 

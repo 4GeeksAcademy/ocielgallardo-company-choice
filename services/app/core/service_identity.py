@@ -22,9 +22,11 @@ Secrets are stored bcrypt-hashed in the TinyDB ``service_clients`` table
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from jose import jwt
 from tinydb import Query
@@ -40,6 +42,21 @@ from services.app.core.security import (
 )
 
 DEFAULT_SERVICE_SCOPES: tuple[str, ...] = ("incidents:read", "inventory:read")
+# The MCP server writes incidents on behalf of its tools (create/transition).
+MCP_BACKEND_SCOPES: tuple[str, ...] = (
+    "incidents:read",
+    "incidents:write",
+    "inventory:read",
+)
+# Service identities that can be registered from env at API startup:
+# (credential prefix, scopes for a fresh registration).
+ENV_SERVICE_IDENTITIES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("AGENT_TOOL", DEFAULT_SERVICE_SCOPES),
+    ("MCP_BACKEND", MCP_BACKEND_SCOPES),
+)
+BOOTSTRAP_FROM_ENV_VAR = "SERVICE_CLIENTS_FROM_ENV"
+
+logger = logging.getLogger(__name__)
 SERVICE_TOKEN_EXPIRE_MINUTES = int(os.getenv("SERVICE_TOKEN_EXPIRE_MINUTES", "15"))
 
 _client_query = Query()
@@ -100,6 +117,73 @@ def get_service_client(client_id: str) -> dict | None:
     """Return the registered client document or None."""
     rows = service_clients_table.search(_client_query.client_id == client_id)
     return rows[0] if rows else None
+
+
+def _env_credential(name: str) -> str:
+    """Credential from ``<name>_FILE`` (mounted secret) or the plain env var."""
+    file_path = os.getenv(f"{name}_FILE", "").strip()
+    if file_path:
+        try:
+            return Path(file_path).read_text(encoding="utf-8").strip()
+        except OSError:
+            logger.error("Could not read %s_FILE; falling back to env", name)
+    return os.getenv(name, "").strip()
+
+
+def _secret_matches(client: dict, client_secret: str) -> bool:
+    try:
+        return bool(
+            pwd_context.verify(client_secret, str(client.get("secret_hash", "")))
+        )
+    except (TypeError, ValueError):
+        return False
+
+
+def bootstrap_enabled() -> bool:
+    """True when the API should register service clients from env at startup."""
+    return os.getenv(BOOTSTRAP_FROM_ENV_VAR, "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+
+def bootstrap_service_clients_from_env() -> list[str]:
+    """Register the agent/MCP service identities from env (Docker bootstrap).
+
+    In Docker the auth store (TinyDB) lives inside the backend container, so a
+    client seeded on the host with ``scripts/seed_service_client.py`` does not
+    exist there and every ``POST /auth/token`` is rejected — the agent then
+    never reaches the MCP server. With ``SERVICE_CLIENTS_FROM_ENV=true`` the API
+    registers ``<PREFIX>_CLIENT_ID`` / ``<PREFIX>_CLIENT_SECRET`` (or
+    ``..._FILE``) at startup. Idempotent: a client whose stored hash already
+    matches the env secret is left untouched (scopes included). Secrets are
+    never logged. Returns the client ids that were (re)registered.
+    """
+    registered: list[str] = []
+    for prefix, scopes in ENV_SERVICE_IDENTITIES:
+        client_id = _env_credential(f"{prefix}_CLIENT_ID")
+        client_secret = _env_credential(f"{prefix}_CLIENT_SECRET")
+        if not client_id or not client_secret:
+            logger.warning(
+                "Service client %s not bootstrapped: %s_CLIENT_ID / "
+                "%s_CLIENT_SECRET not set",
+                prefix,
+                prefix,
+                prefix,
+            )
+            continue
+        existing = get_service_client(client_id)
+        if existing is not None and _secret_matches(existing, client_secret):
+            continue
+        register_service_client(client_id, client_secret, scopes)
+        registered.append(client_id)
+        logger.info(
+            "Service client %r registered from env (scopes: %s)",
+            client_id,
+            " ".join(scopes),
+        )
+    return registered
 
 
 def create_service_token(
@@ -178,11 +262,15 @@ def service_principal_from_claims(payload: dict) -> ServicePrincipal:
 
 __all__ = [
     "DEFAULT_SERVICE_SCOPES",
+    "ENV_SERVICE_IDENTITIES",
+    "MCP_BACKEND_SCOPES",
     "SERVICE_TOKEN_EXPIRE_MINUTES",
     "SERVICE_TOKEN_TYPE",
     "ServicePrincipal",
     "ServiceTokenError",
     "ServiceTokenGrant",
+    "bootstrap_enabled",
+    "bootstrap_service_clients_from_env",
     "create_service_token",
     "get_service_client",
     "grant_client_credentials",

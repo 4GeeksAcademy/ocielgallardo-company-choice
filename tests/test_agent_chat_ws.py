@@ -19,7 +19,7 @@ sys.modules.setdefault("langchain_mcp_adapters", MagicMock())
 sys.modules.setdefault("langchain_mcp_adapters.client", MagicMock())
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocketDisconnect
 from fastapi.testclient import TestClient
 
 from services.app.domain import chat_sessions  # noqa: E402
@@ -85,18 +85,20 @@ def client(app):
 
 
 def test_ws_rejects_missing_token(client: TestClient) -> None:
-    with pytest.raises(Exception):
-        with client.websocket_connect("/agent/chat/ws"):
-            pass
-    with pytest.raises(Exception):
-        with client.websocket_connect("/agent/chat/ws?token=bad-token"):
-            pass
+    # The backoffice stops reconnecting and asks to sign in on exactly 4401.
+    for path in ("/agent/chat/ws", "/agent/chat/ws?token=bad-token"):
+        with pytest.raises(WebSocketDisconnect) as exc:
+            with client.websocket_connect(path):
+                pass
+        assert exc.value.code == 4401
 
 
 def test_ws_rejects_non_staff_role(client: TestClient) -> None:
-    with pytest.raises(Exception):
+    # The backoffice shows "no access" (no retry loop) on exactly 4403.
+    with pytest.raises(WebSocketDisconnect) as exc:
         with client.websocket_connect("/agent/chat/ws?token=guest-token"):
             pass
+    assert exc.value.code == 4403
 
 
 def test_ws_snapshot_and_token_stream(client: TestClient) -> None:

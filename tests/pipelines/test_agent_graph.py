@@ -552,3 +552,19 @@ def test_run_agent_hybrid_tool_fail_still_answers_policy(monkeypatch) -> None:
     assert "Policy text." in result["answer"]
     assert INCIDENT_NOT_FOUND_MESSAGE in result["answer"]
     assert "status=open" not in result["answer"]
+
+
+@pytest.mark.parametrize(
+    ("question", "expected"),
+    [
+        ("How many gloves do we have in stock?", "gloves"),
+        ("¿Cuánto stock de guantes tenemos?", "guantes"),
+        ("Do we have stock of nitrile gloves?", "nitrile gloves"),
+        ("¿Hay stock de mascarilla quirúrgica?", "mascarilla quirúrgica"),
+        ("stock", None),
+    ],
+)
+def test_inventory_name_query_keeps_only_product_terms(question, expected) -> None:
+    from data.pipelines.agent_graph import extract_inventory_name_query
+
+    assert extract_inventory_name_query(question) == expected

@@ -173,8 +173,8 @@ export function CandidateDetailWorkspace({
             aria-live="polite"
             className={`rounded-lg border px-4 py-3 text-sm ${
               actionFeedback.type === "success"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-800"
+                ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200"
+                : "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200"
             }`}
           >
             {actionFeedback.message}

@@ -85,9 +85,9 @@ export function IncidentCsvUpload({
         }}
         className={`rounded-xl border-2 border-dashed px-4 py-8 text-center transition ${
           disabled
-            ? "cursor-not-allowed border-slate-200 dark:border-slate-700 bg-slate-100 opacity-70"
+            ? "cursor-not-allowed border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 opacity-70"
             : isDragging
-              ? "cursor-pointer border-blue-400 bg-blue-50"
+              ? "cursor-pointer border-blue-400 bg-blue-50 dark:bg-blue-950/40"
               : "cursor-pointer border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:border-blue-300 hover:bg-slate-50 dark:hover:bg-slate-800"
         }`}
       >

@@ -409,8 +409,14 @@ def build_server() -> FastMCP:
                 sku_upper = sku.strip().upper()
                 products = [item for item in products if item.sku.upper() == sku_upper]
             if name_query:
-                needle = name_query.strip().lower()
-                products = [item for item in products if needle in item.name.lower()]
+                # Every term must appear in the name (order-insensitive), so
+                # "nitrilo guantes" still matches "Guantes de nitrilo".
+                terms = name_query.lower().split()
+                products = [
+                    item
+                    for item in products
+                    if all(term in item.name.lower() for term in terms)
+                ]
         except backend_client.BackendError as exc:
             return _inventory_error(exc)
         if not products:

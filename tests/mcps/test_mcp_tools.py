@@ -352,6 +352,29 @@ def test_inventory_name_query_is_substring_and_not_found_is_honest(
     assert miss["error"] == "not_found"
 
 
+def test_inventory_name_query_matches_every_term_in_any_order(
+    app_client, monkeypatch
+) -> None:
+    async def _fake() -> list[dict]:
+        return [{**PRODUCT_ROW, "name": "Guantes de nitrilo (caja de 100)"}]
+
+    monkeypatch.setattr(backend_client, "get_products", _fake)
+
+    hit = tool_payload(
+        call_tool(
+            app_client, "get_inventory_stock", {"name_query": "nitrilo guantes"}, READ_TOKEN
+        )
+    )
+    assert [item["id"] for item in hit["products"]] == [PRODUCT_ROW["id"]]
+
+    miss = tool_payload(
+        call_tool(
+            app_client, "get_inventory_stock", {"name_query": "guantes latex"}, READ_TOKEN
+        )
+    )
+    assert miss["error"] == "not_found"
+
+
 def test_inventory_tool_without_arguments_is_invalid_input(app_client, monkeypatch) -> None:
     async def _unexpected(*args, **kwargs):
         raise AssertionError("argument-less inventory call must not reach the backend")
