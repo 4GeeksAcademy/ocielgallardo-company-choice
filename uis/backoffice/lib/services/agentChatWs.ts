@@ -95,7 +95,13 @@ export function createAgentChatSocket(options: {
   handlers: AgentChatWsHandlers;
   baseDelayMs?: number;
   maxDelayMs?: number;
-}): { close: () => void; sendUserMessage: (text: string) => void; sendInterrupt: (newInput: string) => void; getSessionId: () => string | null } {
+}): {
+  close: () => void;
+  sendUserMessage: (text: string) => void;
+  sendInterrupt: (newInput: string) => void;
+  sendStop: () => void;
+  getSessionId: () => string | null;
+} {
   const {
     handlers,
     baseDelayMs = 1000,
@@ -129,6 +135,13 @@ export function createAgentChatSocket(options: {
       new_input: newInput,
     });
   };
+
+  /**
+   * Cancel the generation in flight. Reuses the backend `interrupt_requested`
+   * event with an empty `new_input`: the server cancels the run, keeps the
+   * partial text and emits `generation_interrupted` (no new turn is started).
+   */
+  const sendStop = () => sendInterrupt("");
 
   const connect = () => {
     if (stopped) return;
@@ -231,6 +244,7 @@ export function createAgentChatSocket(options: {
     },
     sendUserMessage,
     sendInterrupt,
+    sendStop,
     getSessionId,
   };
 }
