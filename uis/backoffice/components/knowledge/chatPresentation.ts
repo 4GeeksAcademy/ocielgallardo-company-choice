@@ -76,10 +76,25 @@ const TOOL_FAILURE_MARKERS = [
   "credentials were rejected",
   "i could not find that ticket",
   "i could not find that product",
+  "i could not confirm the status of that rfp",
+  "i could not confirm the rfp status",
 ];
+
+/**
+ * Answers to several numbered questions ("**1.** …\n\n**2.** …") are built
+ * part by part by the agent: one failed part must not turn the whole reply
+ * into a warning bubble.
+ */
+export function isMultiPartAnswer(text: string): boolean {
+  const value = text || "";
+  return /^\*\*1\.\*\*\s/.test(value) && /\n\*\*2\.\*\*\s/.test(value);
+}
 
 /** Classify an assistant answer: tool fallbacks become warning bubbles. */
 export function classifyAssistantText(text: string): BubbleKind {
+  if (isMultiPartAnswer(text)) {
+    return "normal";
+  }
   const lowered = (text || "").toLowerCase();
   if (
     NEEDS_DETAIL_MARKERS.some((m) => lowered.includes(m)) ||
