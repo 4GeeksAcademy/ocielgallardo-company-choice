@@ -33,6 +33,11 @@ INCIDENT_NOT_FOUND_MESSAGE = (
     "Please verify the ticket id and try again."
 )
 
+INCIDENT_TOOL_NEEDS_ID_MESSAGE = (
+    "Which ticket do you mean? Please include its number "
+    "(for example, \"status of ticket 12\") so I can look it up."
+)
+
 INCIDENT_TOOL_AUTH_MESSAGE = (
     "I could not confirm the status of that ticket because the service "
     "credentials were rejected. Please try again shortly."
@@ -46,6 +51,11 @@ INVENTORY_TOOL_FALLBACK = (
 INVENTORY_NOT_FOUND_MESSAGE = (
     "I could not find that product in the inventory. "
     "Please verify the SKU or product name and try again."
+)
+
+INVENTORY_TOOL_NEEDS_PRODUCT_MESSAGE = (
+    "Which product do you mean? Please include its name or SKU "
+    "(for example, \"stock of nitrile gloves\" or \"HCR-PPE-001\")."
 )
 
 INVENTORY_TOOL_AUTH_MESSAGE = (

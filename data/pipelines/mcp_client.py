@@ -15,7 +15,8 @@ Return contract (never ``None``): every call answers with the shared
   ``unavailable`` failure;
 - a scope denial from the server (``insufficient_scope``) → explicit ``auth``
   failure;
-- a call with no usable arguments → ``invalid_input`` (no network attempt).
+- a call with no usable arguments → ``invalid_input`` (no network attempt)
+  with a message asking for the ticket number / product name.
 
 The token minted per call carries ``aud = MCP_RESOURCE_URL`` (RFC 8707), which
 the MCP resource server requires.
@@ -38,8 +39,10 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from data.pipelines.agent_tools import (
     INCIDENT_TOOL_AUTH_MESSAGE,
     INCIDENT_TOOL_FALLBACK,
+    INCIDENT_TOOL_NEEDS_ID_MESSAGE,
     INVENTORY_TOOL_AUTH_MESSAGE,
     INVENTORY_TOOL_FALLBACK,
+    INVENTORY_TOOL_NEEDS_PRODUCT_MESSAGE,
     IncidentToolInput,
     IncidentToolOutput,
     InventoryToolInput,
@@ -230,8 +233,11 @@ def lookup_incident_via_mcp(
             if value
         }
         if not filters:
+            logger.info("MCP %s skipped: no ticket id or filters", TOOL_LIST_INCIDENTS)
             return IncidentToolOutput(
-                ok=False, error="invalid_input", message=INCIDENT_TOOL_FALLBACK
+                ok=False,
+                error="invalid_input",
+                message=INCIDENT_TOOL_NEEDS_ID_MESSAGE,
             )
         tool_name = TOOL_LIST_INCIDENTS
         arguments = filters
@@ -280,8 +286,11 @@ def lookup_inventory_via_mcp(
         if value
     }
     if not arguments:
+        logger.info("MCP %s skipped: no SKU or product name", TOOL_GET_INVENTORY_STOCK)
         return InventoryToolOutput(
-            ok=False, error="invalid_input", message=INVENTORY_TOOL_FALLBACK
+            ok=False,
+            error="invalid_input",
+            message=INVENTORY_TOOL_NEEDS_PRODUCT_MESSAGE,
         )
 
     tool_name = TOOL_GET_INVENTORY_STOCK

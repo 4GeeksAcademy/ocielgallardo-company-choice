@@ -17,7 +17,9 @@ from data.pipelines import mcp_client
 from data.pipelines.agent_tools import (
     INCIDENT_TOOL_AUTH_MESSAGE,
     INCIDENT_TOOL_FALLBACK,
+    INCIDENT_TOOL_NEEDS_ID_MESSAGE,
     INVENTORY_TOOL_FALLBACK,
+    INVENTORY_TOOL_NEEDS_PRODUCT_MESSAGE,
     IncidentToolInput,
     InventoryToolInput,
 )
@@ -196,6 +198,7 @@ def test_filters_route_to_list_tool_and_empty_filters_skip_mcp(
     assert calls == []
     assert empty.ok is False
     assert empty.error == "invalid_input"
+    assert empty.message == INCIDENT_TOOL_NEEDS_ID_MESSAGE
 
 
 def test_inventory_arguments_are_forwarded_and_empty_skipped(
@@ -216,6 +219,7 @@ def test_inventory_arguments_are_forwarded_and_empty_skipped(
     assert calls == []
     assert empty.ok is False
     assert empty.error == "invalid_input"
+    assert empty.message == INVENTORY_TOOL_NEEDS_PRODUCT_MESSAGE
 
 
 # --- Failure honesty: contract payload on every path ---
