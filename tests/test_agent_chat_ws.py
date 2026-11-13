@@ -208,6 +208,56 @@ def test_ws_interrupt_aborts_generation(client: TestClient, monkeypatch) -> None
         assert any("UK GDPR" in t for t in user_texts)
 
 
+def test_ws_stop_with_empty_input_cancels_without_new_turn(
+    client: TestClient, monkeypatch
+) -> None:
+    """The backoffice Stop button sends interrupt_requested with new_input=""."""
+    import threading
+    import time
+
+    started = threading.Event()
+
+    def _slow_stream(question, *, thread_id, on_token, cancel_check):
+        on_token("Under ")
+        started.set()
+        for _ in range(50):
+            if cancel_check():
+                from data.pipelines.rag import GenerationInterrupted
+
+                raise GenerationInterrupted("cancelled")
+            time.sleep(0.05)
+            on_token("HIPAA ")
+        return {"answer": "Under HIPAA ...", "trace_id": thread_id}
+
+    monkeypatch.setattr(agent_module, "run_agent_stream", _slow_stream)
+
+    with client.websocket_connect("/agent/chat/ws?token=good-token") as ws:
+        sid = ws.receive_json()["data"]["session_id"]
+        ws.send_json(
+            {
+                "event": "user_message",
+                "data": {"session_id": sid, "text": "Tell me about HIPAA rules"},
+            }
+        )
+        assert started.wait(timeout=5)
+        ws.send_json(
+            {"event": "interrupt_requested", "data": {"session_id": sid, "new_input": ""}}
+        )
+        events = []
+        for _ in range(80):
+            msg = ws.receive_json()
+            events.append(msg["event"])
+            if msg["event"] == "generation_interrupted":
+                break
+        assert "generation_interrupted" in events
+        assert "generation_completed" not in events
+
+    snap = chat_sessions.chat_store.snapshot_payload(sid)
+    user_texts = [m["text"] for m in snap["messages"] if m["role"] == "user"]
+    assert user_texts == ["Tell me about HIPAA rules"]
+    assert chat_sessions.chat_store.get_generation(sid) is None
+
+
 def test_ws_reconnect_restores_history(client: TestClient) -> None:
     with client.websocket_connect("/agent/chat/ws?token=good-token") as ws:
         first = ws.receive_json()
