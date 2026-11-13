@@ -94,15 +94,23 @@ services:
       LLM_API_URL: ${LLM_API_URL:-https://api.groq.com/openai/v1}
       LLM_MODEL: ${LLM_MODEL:-}
       RAG_COLLECTION: ${RAG_COLLECTION:-healthcore_knowledge}
+      # The agent graph runs inside this container, so 127.0.0.1 is the API.
       AGENT_TOOL_API_URL: ${AGENT_TOOL_API_URL:-http://127.0.0.1:8000}
-      AGENT_TOOL_CLIENT_ID: ${AGENT_TOOL_CLIENT_ID:-}
+      AGENT_TOOL_CLIENT_ID: ${AGENT_TOOL_CLIENT_ID:-langgraph-agent}
       AGENT_TOOL_CLIENT_SECRET: ${AGENT_TOOL_CLIENT_SECRET:-}
       AGENT_TOOL_CLIENT_SECRET_FILE: ${AGENT_TOOL_CLIENT_SECRET_FILE:-}
       SERVICE_TOKEN_EXPIRE_MINUTES: ${SERVICE_TOKEN_EXPIRE_MINUTES:-15}
       # MCP is the agent's only path to the incidents/inventory server (hito 25);
       # a failing hop surfaces an honest `unavailable` answer, never a fallback.
       MCP_SERVER_URL: http://mcp:8100/mcp
+      # Token `aud` the agent mints; must equal the mcp service's value below.
+      MCP_RESOURCE_URL: ${MCP_RESOURCE_URL:-http://localhost:8100/mcp}
       MCP_TOOL_TIMEOUT_SECONDS: ${MCP_TOOL_TIMEOUT_SECONDS:-10}
+      # The auth store (TinyDB) lives in this container, so clients seeded on
+      # the host do not exist here: register the agent (AGENT_TOOL_*) and MCP
+      # (MCP_BACKEND_*) service identities from .env at startup. Without this
+      # every /auth/token grant is rejected and the agent never calls MCP.
+      SERVICE_CLIENTS_FROM_ENV: ${SERVICE_CLIENTS_FROM_ENV:-true}
       # Agent memory (hito 26): Redis-backed episodic store, separate from RAG
       # (`agent:memory:*` keys only; the Qdrant *_knowledge collection stays read-only).
       AGENT_MEMORY_BACKEND: ${AGENT_MEMORY_BACKEND:-redis}
@@ -112,6 +120,9 @@ services:
     # on the API sees interrupts created by rfp.approval_run (or sync start).
     volumes:
       - rfp_langgraph_checkpoints:/app/data/process/rfp
+      # Users, roles, service clients and the RS256 signing key survive
+      # container rebuilds (data/process/auth is excluded from the image).
+      - auth_data:/app/data/process/auth
     healthcheck:
       test:
         [
@@ -156,6 +167,7 @@ services:
       # to the public Codespaces URL for the MCP Playground validation.
       MCP_RESOURCE_URL: ${MCP_RESOURCE_URL:-http://localhost:8100/mcp}
       MCP_BACKEND_URL: http://backend:8000
+      MCP_BACKEND_CLIENT_ID: ${MCP_BACKEND_CLIENT_ID:-mcp-server}
     command:
       [
         "uvicorn",
@@ -243,6 +255,7 @@ services:
 volumes:
   qdrant_storage:
   rfp_langgraph_checkpoints:
+  auth_data:
 
 networks:
   healthcore_net:

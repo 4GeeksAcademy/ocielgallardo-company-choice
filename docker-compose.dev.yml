@@ -37,6 +37,8 @@ services:
       --reload
     volumes:
       - ./:/app
+      # Dev keeps the host auth store (overrides the base auth_data volume).
+      - ./data/process/auth:/app/data/process/auth
 
   mcp:
     # Base compose builds the MCP service; the overlay only adds hot reload.
