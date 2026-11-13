@@ -94,8 +94,17 @@ def _connection() -> dict[str, Any] | None:
     """
     token = get_service_token(audience=resource_url())
     if not token:
-        logger.warning("MCP transport unavailable: no agent service token")
+        # No network call to the MCP server happens on this path; the token
+        # provider has already logged why the grant failed.
+        logger.warning(
+            "MCP call to %s skipped: no agent service token (check "
+            "AGENT_TOOL_CLIENT_ID / AGENT_TOOL_CLIENT_SECRET and that the client "
+            "is registered in the API auth store; Docker: "
+            "SERVICE_CLIENTS_FROM_ENV=true)",
+            server_url(),
+        )
         return None
+    logger.info("MCP call -> %s (aud=%s)", server_url(), resource_url())
     return {
         "transport": "streamable_http",
         "url": server_url(),

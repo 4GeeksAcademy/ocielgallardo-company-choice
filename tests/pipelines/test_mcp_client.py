@@ -324,3 +324,27 @@ def test_sync_bridge_runs_coroutines_on_its_own_loop() -> None:
         return 42
 
     assert mcp_client._run(_value(), 5.0) == 42
+
+
+def test_missing_service_token_skips_mcp_and_logs_cause(
+    monkeypatch, mcp_url, caplog
+) -> None:
+    """Without a service token the MCP server is never contacted (root cause
+    seen in Docker: the client was not registered in the container's store)."""
+    monkeypatch.setattr(mcp_client, "get_service_token", lambda **_: None)
+
+    def _no_client(*_args, **_kwargs):
+        raise AssertionError("MCP client must not be built without a token")
+
+    monkeypatch.setattr(mcp_client, "MultiServerMCPClient", _no_client)
+
+    with caplog.at_level("WARNING"):
+        result = mcp_client.lookup_inventory_via_mcp(
+            InventoryToolInput(name_query="guantes")
+        )
+
+    assert result.ok is False
+    assert result.error == "unavailable"
+    assert result.message == INVENTORY_TOOL_FALLBACK
+    assert "no agent service token" in caplog.text
+    assert "AGENT_TOOL_CLIENT_SECRET" in caplog.text
