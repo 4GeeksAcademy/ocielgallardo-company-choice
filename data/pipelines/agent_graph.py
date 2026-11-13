@@ -1109,8 +1109,17 @@ def _propose_memory(
     }
 
 
-def run_agent(question: str, session_id: str | None = None) -> dict:
-    """Run the compiled graph for ``question`` and return the final state + trace id.
+def _run_agent_once(
+    question: str,
+    session_id: str | None = None,
+    *,
+    memory_enabled: bool = True,
+) -> dict:
+    """Run the compiled graph for one question and return the final state + trace id.
+
+    ``memory_enabled=False`` (used for the parts of a multi-question message)
+    skips the pending-proposal resolution and the new-proposal step, so one
+    numbered list never resolves or raises several memory proposals at once.
 
     ``session_id`` scopes the memory conversation (one pending proposal per
     session). Memory failures never break the answer: every memory step is
@@ -1166,7 +1175,9 @@ def run_agent(question: str, session_id: str | None = None) -> dict:
         resolution: dict = {"action": "none"}
         try:
             agent_memory.maybe_sweep()
-            if pre_jailbreak:
+            if not memory_enabled:
+                pass
+            elif pre_jailbreak:
                 resolution = _force_reject_pending(session_id)
             else:
                 resolution = _resolve_pending_memory(session_id, question)
@@ -1221,7 +1232,7 @@ def run_agent(question: str, session_id: str | None = None) -> dict:
         # Scope refusals never propose memory: there is nothing worth
         # remembering from a jailbreak or an off-domain personal request.
         proposal_summary: dict = {"action": "none"}
-        if scope_decision not in ("jailbreak", "personal_task"):
+        if memory_enabled and scope_decision not in ("jailbreak", "personal_task"):
             try:
                 proposal_summary = _propose_memory(
                     session_id,
@@ -1327,6 +1338,205 @@ def run_agent(question: str, session_id: str | None = None) -> dict:
 
 
 
+# --- Follow-up clarifications ("Which ticket?" -> "8") ---
+
+_CLARIFICATION_TTL_SECONDS = 15 * 60
+_MAX_CLARIFICATIONS = 1000
+# session_id -> {"kind": "ticket" | "product", "at": epoch seconds}
+_PENDING_CLARIFICATIONS: OrderedDict[str, dict] = OrderedDict()
+_BARE_TICKET_REPLY_RE = re.compile(
+    r"^\s*(?:(?:it'?s|the|ticket|incident|number|no\.?|n[uú]mero|caso|el)\s+)*"
+    r"#?\s*(\d{1,7})\s*[.!]?\s*$",
+    re.IGNORECASE,
+)
+_MAX_PRODUCT_REPLY_WORDS = 5
+
+
+def _clarification_kind(answer: str) -> str | None:
+    """Which detail the agent just asked for (ticket id / product), if any."""
+    from data.pipelines.agent_tools import (
+        INCIDENT_TOOL_NEEDS_ID_MESSAGE,
+        INVENTORY_TOOL_NEEDS_PRODUCT_MESSAGE,
+    )
+
+    text = (answer or "").strip()
+    if text.startswith(INCIDENT_TOOL_NEEDS_ID_MESSAGE):
+        return "ticket"
+    if text.startswith(INVENTORY_TOOL_NEEDS_PRODUCT_MESSAGE):
+        return "product"
+    return None
+
+
+def _remember_clarification(session_id: str, answer: str) -> None:
+    """Store (or clear) the one-shot follow-up expectation for a session."""
+    kind = _clarification_kind(answer)
+    _PENDING_CLARIFICATIONS.pop(session_id, None)
+    if kind is None:
+        return
+    _PENDING_CLARIFICATIONS[session_id] = {"kind": kind, "at": time.time()}
+    while len(_PENDING_CLARIFICATIONS) > _MAX_CLARIFICATIONS:
+        _PENDING_CLARIFICATIONS.popitem(last=False)
+
+
+def resolve_follow_up(session_id: str, message: str) -> str:
+    """Rewrite a bare follow-up ("8") into a full question using the last turn.
+
+    Only applies right after the agent asked "Which ticket/product do you
+    mean?" in the same session, within a short TTL, and only when the reply
+    is clearly the missing detail (a bare number / a short product name that
+    does not route anywhere else on its own). Otherwise the message is
+    returned unchanged. The expectation is one-shot: it is consumed here.
+    """
+    pending = _PENDING_CLARIFICATIONS.pop(session_id, None)
+    text = (message or "").strip()
+    if not pending or not text:
+        return message
+    if time.time() - float(pending.get("at", 0)) > _CLARIFICATION_TTL_SECONDS:
+        return message
+    if pending.get("kind") == "ticket":
+        match = _BARE_TICKET_REPLY_RE.match(text)
+        if match:
+            return f"What is the status of ticket {int(match.group(1))}?"
+        return message
+    if pending.get("kind") == "product":
+        words = re.sub(r"[¿?¡!.,;:]", " ", text).split()
+        if (
+            0 < len(words) <= _MAX_PRODUCT_REPLY_WORDS
+            and classify_route(text) == "rag"
+            and not has_policy_signal(text)
+        ):
+            return f"What is the current stock of {' '.join(words)}?"
+    return message
+
+
+# --- Several numbered questions in one message ---
+
+_NUMBERED_ITEM_RE = re.compile(r"(?:^|(?<=\s))(\d{1,2})[.)]\s+")
+_MAX_SUB_QUESTIONS = 6
+MULTI_PART_FAILURE_MESSAGE = (
+    "I could not answer this part right now. Please ask it again on its own."
+)
+
+
+def split_numbered_questions(text: str) -> list[str]:
+    """``"1. A 2. B"`` / one item per line -> ``["A", "B"]``; else ``[]``.
+
+    Items must be numbered 1, 2, 3 … in order; at least two are needed.
+    Text after the last marker belongs to the last item.
+    """
+    markers: list[re.Match[str]] = []
+    expected = 1
+    for match in _NUMBERED_ITEM_RE.finditer(text or ""):
+        if int(match.group(1)) == expected:
+            markers.append(match)
+            expected += 1
+    if len(markers) < 2:
+        return []
+    parts: list[str] = []
+    for index, match in enumerate(markers):
+        end = markers[index + 1].start() if index + 1 < len(markers) else len(text)
+        part = " ".join(text[match.end() : end].split())
+        if part:
+            parts.append(part)
+    if len(parts) < 2:
+        return []
+    return parts[:_MAX_SUB_QUESTIONS]
+
+
+def _is_guarded_message(question: str) -> bool:
+    """Jailbreak / PHI-exfil messages keep the single-run refusal path."""
+    from data.pipelines.agent_guardrails import is_phi_exfil_attempt
+
+    return bool(agent_scope_guard.detect_jailbreak(question)) or bool(
+        is_phi_exfil_attempt(question)
+    )
+
+
+def _run_multi(question: str, parts: list[str], session_id: str) -> dict:
+    """Answer each numbered question separately; one failure never hides the rest."""
+    from data.pipelines.rag import GenerationInterrupted
+
+    started = time.time()
+    answers: list[str] = []
+    sources_used: list[str] = []
+    part_traces: list[dict] = []
+    for index, part in enumerate(parts, start=1):
+        try:
+            result = _run_agent_once(part, session_id, memory_enabled=False)
+            answer = str(result.get("answer") or "").strip()
+            part_traces.append(
+                {"trace_id": result.get("trace_id"), "route": result.get("route")}
+            )
+            for source in result.get("sources_used") or []:
+                if source not in sources_used:
+                    sources_used.append(source)
+        except GenerationInterrupted:
+            raise
+        except Exception:
+            logger.exception("agent_graph multi-question part %s failed", index)
+            answer = MULTI_PART_FAILURE_MESSAGE
+            part_traces.append({"trace_id": None, "route": "error"})
+        answers.append(f"**{index}.** {answer or MULTI_PART_FAILURE_MESSAGE}")
+    combined = "\n\n".join(answers)
+    finished = time.time()
+    trace_id = uuid.uuid4().hex
+    _store_trace(
+        {
+            "trace_id": trace_id,
+            "thread_id": trace_id,
+            "question_chars": len(question or ""),
+            "session_id": session_id,
+            "started_at": started,
+            "finished_at": finished,
+            "duration_ms": round((finished - started) * 1000, 2),
+            "status": "success",
+            "route": "multi",
+            "sources_used": sources_used,
+            "parts": part_traces,
+            "spans": [],
+            "error": None,
+        }
+    )
+    return {
+        "question": question,
+        "context": [],
+        "answer": combined,
+        "route": "multi",
+        "tool_result": {},
+        "sources_used": sources_used,
+        "session_id": session_id,
+        "memory_context": [],
+        "proposal": {},
+        "trace_id": trace_id,
+        "parts": part_traces,
+        "memory_proposal_pending": False,
+    }
+
+
+def run_agent(question: str, session_id: str | None = None) -> dict:
+    """Public entry point: follow-ups, numbered lists, then the graph.
+
+    - A bare reply to "Which ticket/product do you mean?" is rewritten with
+      the previous turn (``resolve_follow_up``).
+    - A message with several numbered questions is answered part by part
+      (``split_numbered_questions``), unless it trips the jailbreak / PHI
+      screens — those keep the single-run refusal path unchanged.
+    - Everything else runs the graph once (``_run_agent_once``).
+    """
+    session = (session_id or "").strip() or DEFAULT_MEMORY_SESSION
+    if _is_guarded_message(question):
+        _PENDING_CLARIFICATIONS.pop(session, None)
+        return _run_agent_once(question, session)
+    parts = split_numbered_questions(question)
+    if parts:
+        _PENDING_CLARIFICATIONS.pop(session, None)
+        return _run_multi(question, parts, session)
+    effective = resolve_follow_up(session, question)
+    result = _run_agent_once(effective, session)
+    _remember_clarification(session, str(result.get("answer") or ""))
+    return result
+
+
 def run_agent_stream(
     question: str,
     *,
@@ -1354,7 +1564,17 @@ def run_agent_stream(
         parts.append(tok)
         on_token(tok)
 
-    hooks_token = set_stream_hooks(_on_token, cancel_check)
+    def _cancel_only(_tok: str) -> None:
+        if cancel_check():
+            raise GenerationInterrupted("chat generation cancelled")
+
+    # Numbered multi-question messages are answered part by part; streaming
+    # each part's tokens would interleave them, so the combined answer is
+    # emitted once at the end instead (cancellation still applies).
+    is_multi = bool(split_numbered_questions(question)) and not _is_guarded_message(
+        question
+    )
+    hooks_token = set_stream_hooks(_cancel_only if is_multi else _on_token, cancel_check)
     try:
         result = run_agent(question, session_id=thread_id)
         answer = (result.get("answer") or "").strip()
