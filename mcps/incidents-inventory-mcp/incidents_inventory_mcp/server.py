@@ -7,6 +7,8 @@ Tool                            Required scope
 ==============================  ========================
 ``get_incident_status``         ``incidents:read``
 ``list_incidents``              ``incidents:read``
+``get_latest_incident``         ``incidents:read``
+``get_latest_rfp_ticket``       ``rfp:read``
 ``create_incident``             ``incidents:write``
 ``update_incident_status``      ``incidents:write``
 ``get_inventory_stock``         ``inventory:read``
@@ -60,7 +62,13 @@ from data.pipelines.agent_tools import (
     IncidentToolOutput,
     InventoryRecord,
     InventoryToolOutput,
+    RFP_NOT_FOUND_MESSAGE,
+    RFP_TOOL_AUTH_MESSAGE,
+    RFP_TOOL_FALLBACK,
+    RfpToolOutput,
     _record_from_api,
+    _rfp_from_api,
+    latest_by_timestamp,
     _supply_from_api,
 )
 
@@ -139,6 +147,15 @@ def _transport_security() -> TransportSecuritySettings:
         allowed_hosts=_csv_env(ALLOWED_HOSTS_VAR, DEFAULT_ALLOWED_HOSTS),
         allowed_origins=_csv_env(ALLOWED_ORIGINS_VAR, DEFAULT_ALLOWED_ORIGINS),
     )
+
+
+RFP_ERROR_MESSAGES = {
+    "not_found": RFP_NOT_FOUND_MESSAGE,
+    "auth": RFP_TOOL_AUTH_MESSAGE,
+    "timeout": RFP_TOOL_FALLBACK,
+    "unavailable": RFP_TOOL_FALLBACK,
+    "invalid_input": RFP_TOOL_FALLBACK,
+}
 
 
 def _incident_failure(error: str, message: str) -> IncidentToolOutput:
@@ -304,6 +321,68 @@ def build_server() -> FastMCP:
         except backend_client.BackendError as exc:
             return _incident_error(exc)
         return IncidentToolOutput(ok=True, incidents=[_record_from_api(row) for row in rows])
+
+    @mcp.tool(
+        name="get_latest_incident",
+        description=(
+            "Return the most recently updated incident, optionally narrowed by "
+            "status, origin, branch or category (exact keys). Requires the "
+            "incidents:read scope."
+        ),
+        structured_output=True,
+    )
+    @_audit("get_latest_incident")
+    async def get_latest_incident(
+        status: Annotated[
+            str | None,
+            Field(description="Incident status: open, in_progress, resolved, discarded."),
+        ] = None,
+        origin: Annotated[
+            str | None,
+            Field(description="Incident origin: customer, branch, internal."),
+        ] = None,
+        branch: Annotated[
+            str | None,
+            Field(description="Branch key, e.g. austin_north, london_city."),
+        ] = None,
+        category: Annotated[
+            str | None,
+            Field(description="Category key, e.g. it_system, billing_error."),
+        ] = None,
+    ) -> IncidentToolOutput:
+        permissions.require_scopes("incidents:read")
+        params = _incident_filter_params(status, origin, branch, category)
+        try:
+            rows = await backend_client.get_incidents(params or None)
+            latest = latest_by_timestamp(rows)
+            if latest is None:
+                return _incident_failure("not_found", INCIDENT_NOT_FOUND_MESSAGE)
+            if not latest.get("updated_at"):
+                # Older list projections carry no timestamps: read the detail.
+                latest = await backend_client.get_incident(int(latest["id"]))
+        except backend_client.BackendError as exc:
+            return _incident_error(exc)
+        return IncidentToolOutput(ok=True, incidents=[_record_from_api(latest)])
+
+    @mcp.tool(
+        name="get_latest_rfp_ticket",
+        description=(
+            "Return the most recently updated RFP ticket (status and dates) "
+            "from the RFP intake pipeline. Read-only. Requires the rfp:read scope."
+        ),
+        structured_output=True,
+    )
+    @_audit("get_latest_rfp_ticket")
+    async def get_latest_rfp_ticket() -> RfpToolOutput:
+        permissions.require_scopes("rfp:read")
+        try:
+            rows = await backend_client.get_rfp_tickets()
+        except backend_client.BackendError as exc:
+            return RfpToolOutput(ok=False, error=exc.kind, message=RFP_ERROR_MESSAGES[exc.kind])
+        latest = latest_by_timestamp(rows)
+        if latest is None:
+            return RfpToolOutput(ok=False, error="not_found", message=RFP_NOT_FOUND_MESSAGE)
+        return RfpToolOutput(ok=True, rfp_tickets=[_rfp_from_api(latest)])
 
     @mcp.tool(
         name="create_incident",

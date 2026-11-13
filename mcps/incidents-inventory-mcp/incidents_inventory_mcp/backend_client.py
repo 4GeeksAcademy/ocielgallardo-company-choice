@@ -43,6 +43,7 @@ ENDPOINTS: dict[str, tuple[str, str]] = {
     "incident_status_update": ("PATCH", "/api/incidents/{ticket_id}/status"),
     "products_list": ("GET", "/inventory/products"),
     "product_detail": ("GET", "/inventory/products/{supply_id}"),
+    "rfp_tickets_list": ("GET", "/rfp/tickets"),
 }
 
 READ_ONLY_PREFIXES = ("/inventory/",)
@@ -189,3 +190,9 @@ async def get_product(supply_id: int) -> dict:
     if not isinstance(payload, dict):
         raise BackendError("unavailable", "the backend answered an unexpected shape")
     return payload
+
+
+async def get_rfp_tickets() -> list[dict]:
+    """``GET /rfp/tickets`` (read-only; requires ``rfp:read``)."""
+    payload = await request("rfp_tickets_list")
+    return payload if isinstance(payload, list) else []

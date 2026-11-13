@@ -90,7 +90,7 @@ class _AppFixture:
         monkeypatch.setattr(deps, "get_user_by_id", _fake_user_getter)
         self.client = TestClient(_make_app())
 
-    def register(self, scopes=("incidents:read", "inventory:read")) -> None:
+    def register(self, scopes=service_identity.DEFAULT_SERVICE_SCOPES) -> None:
         service_identity.register_service_client(CLIENT_ID, CLIENT_SECRET, scopes)
 
     def grant(self) -> dict:
@@ -532,3 +532,46 @@ def test_bootstrap_flag_parsing(monkeypatch):
     assert service_identity.bootstrap_enabled() is True
     monkeypatch.setenv("SERVICE_CLIENTS_FROM_ENV", "0")
     assert service_identity.bootstrap_enabled() is False
+
+
+def test_bootstrap_upgrades_a_legacy_default_grant_to_rfp_read(monkeypatch):
+    _app(monkeypatch)
+    _bootstrap_env(monkeypatch, mcp=False)
+    # Registered by an older release with the former defaults (no rfp:read).
+    service_identity.register_service_client(
+        CLIENT_ID, CLIENT_SECRET, ("incidents:read", "inventory:read")
+    )
+
+    assert service_identity.bootstrap_service_clients_from_env() == [CLIENT_ID]
+    assert "rfp:read" in service_identity.get_service_client(CLIENT_ID)["scopes"]
+    assert service_identity.grant_client_credentials(CLIENT_ID, CLIENT_SECRET)
+    # Idempotent afterwards.
+    assert service_identity.bootstrap_service_clients_from_env() == []
+
+
+def _rfp_client(fixture: _AppFixture, monkeypatch) -> TestClient:
+    from services.app.routers import rfp as rfp_module
+
+    monkeypatch.setattr(rfp_module, "_require_db", lambda: None)
+    monkeypatch.setattr(rfp_module.rfp_service, "list_tickets", lambda session: [])
+    app = _make_app()
+    app.include_router(rfp_module.router)
+    app.dependency_overrides[rfp_module.get_db] = lambda: None
+    return TestClient(app)
+
+
+def test_rfp_ticket_list_needs_rfp_read_for_service_tokens(monkeypatch) -> None:
+    fixture = _app(monkeypatch)
+    fixture.register(scopes=("incidents:read", "inventory:read"))
+    client = _rfp_client(fixture, monkeypatch)
+
+    denied = client.get("/rfp/tickets", headers=fixture.service_headers)
+    assert denied.status_code == 403
+
+    fixture.register()  # current defaults include rfp:read
+    allowed = client.get("/rfp/tickets", headers=fixture.service_headers)
+    assert allowed.status_code == 200
+    assert allowed.json() == []
+
+    human = client.get("/rfp/tickets", headers=fixture.human_headers)
+    assert human.status_code == 200

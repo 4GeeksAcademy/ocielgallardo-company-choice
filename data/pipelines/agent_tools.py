@@ -43,6 +43,21 @@ INCIDENT_TOOL_AUTH_MESSAGE = (
     "credentials were rejected. Please try again shortly."
 )
 
+RFP_TOOL_FALLBACK = (
+    "I could not confirm the status of that RFP right now. "
+    "Please check the RFP module directly or try again shortly."
+)
+
+RFP_NOT_FOUND_MESSAGE = (
+    "I could not find any RFP tickets yet. "
+    "New RFPs appear once a document is uploaded in the RFP module."
+)
+
+RFP_TOOL_AUTH_MESSAGE = (
+    "I could not confirm the RFP status because the service credentials "
+    "were rejected. Please try again shortly."
+)
+
 INVENTORY_TOOL_FALLBACK = (
     "I could not confirm inventory stock right now. "
     "Please check the inventory module directly or try again shortly."
@@ -79,6 +94,10 @@ class IncidentToolInput(BaseModel):
     origin: str | None = None
     branch: str | None = None
     category: str | None = None
+    latest: bool = Field(
+        default=False,
+        description="Return only the most recently updated matching incident",
+    )
 
 
 class IncidentRecord(BaseModel):
@@ -320,3 +339,94 @@ def describe_stock(item: InventoryRecord) -> str:
         f"We currently have {_quantity(item.current_stock, item.unit)} of "
         f"{name} (SKU {item.sku}) in stock{where}."
     )
+
+
+# --- RFP tickets (read-only status of the RFP intake pipeline) ---
+
+
+class RfpTicketRecord(BaseModel):
+    """Fields of ``GET /rfp/tickets`` the agent may surface."""
+
+    ticket_id: str
+    status: str
+    created_at: str = ""
+    updated_at: str = ""
+    client_name: str | None = None
+    original_filename: str | None = None
+
+
+class RfpToolOutput(BaseModel):
+    """Typed RFP result: success payload or honest failure."""
+
+    ok: bool
+    rfp_tickets: list[RfpTicketRecord] = Field(default_factory=list)
+    error: (
+        Literal["not_found", "timeout", "unavailable", "invalid_input", "auth"]
+        | None
+    ) = None
+    message: str | None = None
+
+
+def _rfp_from_api(payload: dict) -> RfpTicketRecord:
+    return RfpTicketRecord(
+        ticket_id=str(payload["ticket_id"]),
+        status=str(payload.get("status", "")),
+        created_at=str(payload.get("created_at", "") or ""),
+        updated_at=str(payload.get("updated_at", "") or ""),
+        client_name=(str(payload["client_name"]) if payload.get("client_name") else None),
+        original_filename=(
+            str(payload["original_filename"]) if payload.get("original_filename") else None
+        ),
+    )
+
+
+def latest_by_timestamp(rows: list[dict]) -> dict | None:
+    """Most recent row by ``updated_at`` (then ``created_at``, then id)."""
+    if not rows:
+        return None
+
+    def _key(row: dict) -> tuple[str, str, str]:
+        ident = row.get("id", row.get("ticket_id", ""))
+        ident_key = f"{int(ident):012d}" if str(ident).isdigit() else str(ident)
+        return (
+            str(row.get("updated_at") or ""),
+            str(row.get("created_at") or ""),
+            ident_key,
+        )
+
+    return max(rows, key=_key)
+
+
+def describe_rfp_ticket(item: RfpTicketRecord) -> str:
+    """The latest RFP ticket as plain English (content-guarded free text)."""
+    from data.pipelines import agent_content_guard
+
+    label_parts = [
+        agent_content_guard.sanitize_tool_text(part).strip()
+        for part in (item.client_name, item.original_filename)
+        if part
+    ]
+    label = " \u2014 ".join(part for part in label_parts if part)
+    head = f"The latest RFP ticket is {item.ticket_id[:8]}"
+    if label:
+        head += f" (\u201c{label}\u201d)"
+    status = _humanize_key(item.status) or "unknown"
+    sentences = [f"{head}. Its current status is {status}."]
+    created = _human_date(item.created_at)
+    updated = _human_date(item.updated_at)
+    if created:
+        sentences.append(f"It was created on {created}.")
+    if updated and updated != created:
+        sentences.append(f"It was last updated on {updated}.")
+    return " ".join(sentences)
+
+
+def format_rfp_answer(result: RfpToolOutput) -> str:
+    """Coordinator-facing answer for the latest RFP ticket (never invented)."""
+    from data.pipelines import agent_content_guard
+
+    if not result.ok:
+        return agent_content_guard.sanitize_tool_text(result.message or RFP_TOOL_FALLBACK)
+    if not result.rfp_tickets:
+        return RFP_NOT_FOUND_MESSAGE
+    return describe_rfp_ticket(result.rfp_tickets[0])

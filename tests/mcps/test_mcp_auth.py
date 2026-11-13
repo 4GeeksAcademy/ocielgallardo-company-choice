@@ -37,7 +37,7 @@ from incidents_inventory_mcp.permissions import (
     require_scopes,
 )
 
-EXPECTED_SCOPES = {"incidents:read", "incidents:write", "inventory:read"}
+EXPECTED_SCOPES = {"incidents:read", "incidents:write", "inventory:read", "rfp:read"}
 
 
 def _www_authenticate(response) -> str:
