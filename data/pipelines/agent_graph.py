@@ -284,7 +284,7 @@ _INVENTORY_STOPWORDS = frozenset(
     qué cual cuál cuales cuáles cuanto cuánto cuanta cuánta cuantos cuántos
     cuantas cuántas tenemos tiene tienen queda quedan nos me dime muestra
     nivel niveles actual ahora disponible disponibles unidades unidad y o
-    """.split()
+    """.split()  # noqa: SIM905 - word list kept readable
 )
 
 
