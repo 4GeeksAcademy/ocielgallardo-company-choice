@@ -442,3 +442,93 @@ def test_api_log_marks_unauthenticated_requests(monkeypatch, caplog) -> None:
 
 def test_secret_key_is_available_for_jwt_ops() -> None:
     assert SECRET_KEY
+
+
+# --- Env bootstrap (Docker: auth store lives inside the backend container) ---
+
+_MCP_ID = "mcp-server"
+_MCP_SECRET = "unit-test-mcp-secret-not-real"
+
+
+def _bootstrap_env(monkeypatch, *, agent=True, mcp=True) -> None:
+    for name in (
+        "AGENT_TOOL_CLIENT_ID",
+        "AGENT_TOOL_CLIENT_SECRET",
+        "AGENT_TOOL_CLIENT_SECRET_FILE",
+        "AGENT_TOOL_CLIENT_ID_FILE",
+        "MCP_BACKEND_CLIENT_ID",
+        "MCP_BACKEND_CLIENT_SECRET",
+        "MCP_BACKEND_CLIENT_SECRET_FILE",
+        "MCP_BACKEND_CLIENT_ID_FILE",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    if agent:
+        monkeypatch.setenv("AGENT_TOOL_CLIENT_ID", CLIENT_ID)
+        monkeypatch.setenv("AGENT_TOOL_CLIENT_SECRET", CLIENT_SECRET)
+    if mcp:
+        monkeypatch.setenv("MCP_BACKEND_CLIENT_ID", _MCP_ID)
+        monkeypatch.setenv("MCP_BACKEND_CLIENT_SECRET", _MCP_SECRET)
+
+
+def test_bootstrap_registers_agent_and_mcp_clients_from_env(monkeypatch):
+    fixture = _app(monkeypatch)
+    _bootstrap_env(monkeypatch)
+
+    registered = service_identity.bootstrap_service_clients_from_env()
+
+    assert registered == [CLIENT_ID, _MCP_ID]
+    agent = service_identity.get_service_client(CLIENT_ID)
+    mcp = service_identity.get_service_client(_MCP_ID)
+    assert agent["scopes"] == sorted(service_identity.DEFAULT_SERVICE_SCOPES)
+    assert mcp["scopes"] == sorted(service_identity.MCP_BACKEND_SCOPES)
+    assert CLIENT_SECRET not in str(agent)
+    # The registered agent identity can now mint a token (the MCP hop's input).
+    body = fixture.grant()
+    assert body["access_token"]
+
+
+def test_bootstrap_is_idempotent_and_keeps_matching_clients(monkeypatch):
+    _app(monkeypatch)
+    _bootstrap_env(monkeypatch)
+    service_identity.register_service_client(
+        CLIENT_ID, CLIENT_SECRET, ("incidents:read",)
+    )
+
+    registered = service_identity.bootstrap_service_clients_from_env()
+
+    # Agent hash already matches the env secret: untouched (custom scopes kept).
+    assert registered == [_MCP_ID]
+    assert service_identity.get_service_client(CLIENT_ID)["scopes"] == [
+        "incidents:read"
+    ]
+    assert service_identity.bootstrap_service_clients_from_env() == []
+
+
+def test_bootstrap_rotates_when_env_secret_changes(monkeypatch):
+    _app(monkeypatch)
+    _bootstrap_env(monkeypatch, mcp=False)
+    service_identity.register_service_client(CLIENT_ID, "old-secret-value")
+
+    assert service_identity.bootstrap_service_clients_from_env() == [CLIENT_ID]
+    assert service_identity.grant_client_credentials(CLIENT_ID, CLIENT_SECRET)
+    assert service_identity.grant_client_credentials(CLIENT_ID, "old-secret-value") is None
+
+
+def test_bootstrap_skips_identities_without_credentials(monkeypatch, caplog):
+    _app(monkeypatch)
+    _bootstrap_env(monkeypatch, agent=False, mcp=False)
+
+    with caplog.at_level(logging.WARNING):
+        assert service_identity.bootstrap_service_clients_from_env() == []
+
+    assert service_identity.get_service_client(CLIENT_ID) is None
+    assert "AGENT_TOOL_CLIENT_ID" in caplog.text
+
+
+def test_bootstrap_flag_parsing(monkeypatch):
+    monkeypatch.delenv("SERVICE_CLIENTS_FROM_ENV", raising=False)
+    assert service_identity.bootstrap_enabled() is False
+    monkeypatch.setenv("SERVICE_CLIENTS_FROM_ENV", "true")
+    assert service_identity.bootstrap_enabled() is True
+    monkeypatch.setenv("SERVICE_CLIENTS_FROM_ENV", "0")
+    assert service_identity.bootstrap_enabled() is False

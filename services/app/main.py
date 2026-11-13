@@ -29,7 +29,18 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(messag
 async def lifespan(_app: FastAPI):
     from services.app.core.database import init_inventory_db, is_inventory_db_configured
     from services.app.core.inventory_seed import seed_inventory
+    from services.app.core.service_identity import (
+        bootstrap_enabled,
+        bootstrap_service_clients_from_env,
+    )
 
+    if bootstrap_enabled():
+        try:
+            bootstrap_service_clients_from_env()
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "Service client bootstrap from env failed"
+            )
     if is_inventory_db_configured():
         init_inventory_db()
         seed_inventory()
