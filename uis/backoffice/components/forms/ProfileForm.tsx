@@ -84,7 +84,7 @@ export function ProfileForm({ me, onSaved }: ProfileFormProps) {
         </p>
       )}
       {success && (
-        <p className="text-sm text-green-700" role="status">
+        <p className="text-sm text-green-700 dark:text-green-400" role="status">
           {success}
         </p>
       )}

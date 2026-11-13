@@ -31,7 +31,7 @@ export default function IncidentsPage() {
         <div className="flex flex-wrap gap-2 pt-1 text-sm">
           <Link
             href="/incidents/new"
-            className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 font-medium text-blue-800 hover:bg-blue-100"
+            className="rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 px-3 py-1.5 font-medium text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/40"
           >
             Register incident
           </Link>

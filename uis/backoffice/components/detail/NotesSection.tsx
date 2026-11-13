@@ -110,7 +110,7 @@ export function NotesSection({
                 </div>
                 <Button
                   variant="ghost"
-                  className="shrink-0 px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 hover:text-red-700"
+                  className="shrink-0 px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-700 dark:hover:text-red-300"
                   disabled={deletingId === note.id}
                   onClick={() => handleDelete(note.id)}
                 >

@@ -215,7 +215,7 @@ export function InboundOrderForm() {
       {loadError && (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800"
+          className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800 dark:text-red-200"
         >
           <p>{loadError}</p>
           <Button
@@ -232,7 +232,7 @@ export function InboundOrderForm() {
       {successMessage && (
         <div
           role="status"
-          className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200"
         >
           {successMessage}
         </div>
@@ -241,7 +241,7 @@ export function InboundOrderForm() {
       {submitError && (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800"
+          className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800 dark:text-red-200"
         >
           {submitError}
         </div>

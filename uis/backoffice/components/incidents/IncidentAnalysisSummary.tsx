@@ -76,9 +76,9 @@ export function IncidentAnalysisSummaryView({
               {summary.total}
             </dd>
           </div>
-          <div className="rounded-lg bg-emerald-50 px-3 py-2">
+          <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2">
             <dt className="text-xs text-emerald-700 dark:text-emerald-400">Valid</dt>
-            <dd className="text-2xl font-semibold tabular-nums text-emerald-900">
+            <dd className="text-2xl font-semibold tabular-nums text-emerald-900 dark:text-emerald-100">
               {summary.valid}
             </dd>
           </div>
@@ -110,7 +110,7 @@ export function IncidentAnalysisSummaryView({
           className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-4 shadow-sm sm:p-5"
           aria-live="polite"
         >
-          <h2 className="text-sm font-semibold text-amber-900">
+          <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-100">
             Invalid records breakdown
           </h2>
           <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
@@ -128,7 +128,7 @@ export function IncidentAnalysisSummaryView({
           </ul>
         </section>
       ) : (
-        <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+        <p className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200">
           No invalid records in this file.
         </p>
       )}

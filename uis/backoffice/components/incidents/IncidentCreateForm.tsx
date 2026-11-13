@@ -137,7 +137,7 @@ export function IncidentCreateForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       <div
-        className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-950"
+        className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-950 dark:text-amber-100"
         role="note"
       >
         <p className="font-semibold">Patient data warning (required)</p>
@@ -183,8 +183,8 @@ export function IncidentCreateForm() {
               description: event.target.value,
             }))
           }
-          className={`w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 ${
-            errors.description ? "border-red-500" : "border-slate-200 dark:border-slate-700"
+          className={`w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 ${
+            errors.description ? "border-red-500" : "border-slate-200 dark:border-slate-600"
           }`}
           required
         />
@@ -246,7 +246,7 @@ export function IncidentCreateForm() {
       <div
         className={
           branchHighlighted
-            ? "rounded-lg border-2 border-blue-500 bg-blue-50 p-3"
+            ? "rounded-lg border-2 border-blue-500 bg-blue-50 dark:bg-blue-950/40 p-3"
             : undefined
         }
       >
@@ -267,7 +267,7 @@ export function IncidentCreateForm() {
           ]}
         />
         {branchHighlighted ? (
-          <p className="mt-2 text-xs font-medium text-blue-800">
+          <p className="mt-2 text-xs font-medium text-blue-800 dark:text-blue-200">
             Origin is Branch — confirm you are reporting from the correct clinic.
           </p>
         ) : (

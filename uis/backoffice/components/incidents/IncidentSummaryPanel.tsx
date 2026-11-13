@@ -81,7 +81,7 @@ export function IncidentSummaryPanel() {
   if (status === "error") {
     return (
       <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-6">
-        <p className="text-sm text-amber-900" role="alert">
+        <p className="text-sm text-amber-900 dark:text-amber-100" role="alert">
           {error}
         </p>
         <Button className="mt-4" type="button" onClick={() => void load()}>

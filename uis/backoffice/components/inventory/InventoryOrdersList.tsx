@@ -16,8 +16,8 @@ import { ORDER_TYPE_LABELS } from "@/types/inventory";
 type OrderTypeFilter = "all" | OrderType;
 
 const ORDER_TYPE_BADGE_CLASSES: Record<OrderType, string> = {
-  inbound: "bg-emerald-50 text-emerald-700 dark:text-emerald-400 ring-emerald-600/20",
-  outbound: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 ring-amber-600/20",
+  inbound: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 ring-emerald-600/20",
+  outbound: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 ring-amber-600/20",
 };
 
 function formatCreatedAt(value: string): string {
