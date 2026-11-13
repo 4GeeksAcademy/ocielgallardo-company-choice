@@ -49,6 +49,7 @@ from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import Field
 
+from data.pipelines import inventory_search
 from data.pipelines.agent_tools import (
     INCIDENT_NOT_FOUND_MESSAGE,
     INCIDENT_TOOL_AUTH_MESSAGE,
@@ -392,7 +393,12 @@ def build_server() -> FastMCP:
         ] = None,
         name_query: Annotated[
             str | None,
-            Field(description="Case-insensitive substring of the product name."),
+            Field(
+                description=(
+                    "Product name terms (English or Spanish), e.g. 'surgical "
+                    "gloves' or 'guantes de nitrilo'."
+                )
+            ),
         ] = None,
     ) -> InventoryToolOutput:
         permissions.require_scopes("inventory:read")
@@ -409,14 +415,10 @@ def build_server() -> FastMCP:
                 sku_upper = sku.strip().upper()
                 products = [item for item in products if item.sku.upper() == sku_upper]
             if name_query:
-                # Every term must appear in the name (order-insensitive), so
-                # "nitrilo guantes" still matches "Guantes de nitrilo".
-                terms = name_query.lower().split()
-                products = [
-                    item
-                    for item in products
-                    if all(term in item.name.lower() for term in terms)
-                ]
+                # Order-insensitive, accent-folded and EN -> ES aware:
+                # "surgical gloves" and "nitrilo guantes" both find
+                # "Guantes de nitrilo"; unknown terms still fail honestly.
+                products = inventory_search.filter_products(products, name_query)
         except backend_client.BackendError as exc:
             return _inventory_error(exc)
         if not products:
