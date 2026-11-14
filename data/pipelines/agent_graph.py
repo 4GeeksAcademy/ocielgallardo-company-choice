@@ -197,6 +197,80 @@ _SAVENOTE_EN = "\n\nSaved to my memory."
 _REJECTNOTE_ES = "\n\nEntendido, no lo guardaré."
 _REJECTNOTE_EN = "\n\nUnderstood — I won't store it."
 
+# Clean, standalone replies to "Do you want me to remember this?". When the
+# user's message is only that decision, the agent answers with one of these
+# and does NOT run the question through the graph (no generic greeting).
+MEMORY_SAVED_EN = "Got it, I saved that for next time."
+MEMORY_SAVED_ES = "Entendido, lo he guardado para la próxima vez."
+MEMORY_EDITED_EN = "Got it, I saved your corrected version for next time."
+MEMORY_EDITED_ES = "Entendido, he guardado tu versión corregida para la próxima vez."
+MEMORY_REJECTED_EN = "Understood, I won't save it."
+MEMORY_REJECTED_ES = "Entendido, no lo guardaré."
+MEMORY_ASK_CORRECTION_EN = (
+    "Sure, tell me the correct version and I'll save that instead."
+)
+MEMORY_ASK_CORRECTION_ES = (
+    "Claro, dime la versión correcta y guardaré esa en su lugar."
+)
+
+_MEMORY_REPLY_STRIP_RE = re.compile(r"[¡!¿?.,;:—–\-\"()]+")
+_MEMORY_APPROVE_KEYS = frozenset(
+    "yes yeah yep yup sure ok okay save remember store keep "
+    "sí si vale claro guárdalo guardalo guarda guárdala recuérdalo recuerdalo "
+    "recuerda".split()  # noqa: SIM905 - word list kept readable
+)
+_MEMORY_REJECT_KEYS = frozenset(
+    "no nope don't dont not never forget olvídalo olvidalo".split()  # noqa: SIM905
+)
+_MEMORY_FILLER = frozenset(
+    "please thanks thank you that it this for next time the a do please "
+    "go ahead lo eso esto para la próxima proxima vez por favor gracias "
+    "store save remember keep guardes recuerdes need i".split()  # noqa: SIM905
+)
+_MEMORY_CORRECT_RE = re.compile(
+    r"^\s*(?:(?:please|por favor)\s*,?\s*)?"
+    r"(?:correct\s+(?:me|it|that)|i(?:'d| would)?\s+(?:like|want)\s+to\s+correct"
+    r"(?:\s+(?:it|that))?|let\s+me\s+correct(?:\s+(?:it|that))?|"
+    r"corr[ií]geme|corr[ií]gelo|quiero\s+corregir(?:lo)?)"
+    r"\s*(?:,?\s*(?:please|por favor))?\s*[.!]?\s*$",
+    re.IGNORECASE,
+)
+
+
+def bare_memory_reply(message: str) -> str | None:
+    """``approve`` / ``reject`` / ``correct`` when the message is only that.
+
+    "Yes, save that for next time." -> approve; "No, don't store that." ->
+    reject; "correct me" -> correct. Anything carrying another request
+    ("yes, and what is the fee?") returns ``None`` and goes through the
+    normal classification + answer path.
+    """
+    text = (message or "").strip()
+    if not text or len(text) > 80:
+        return None
+    if _MEMORY_CORRECT_RE.match(text):
+        return "correct"
+    if "?" in text or "¿" in text:
+        return None
+    words = _MEMORY_REPLY_STRIP_RE.sub(" ", text.lower().replace("’", "'")).split()
+    if not words:
+        return None
+    vocabulary = _MEMORY_APPROVE_KEYS | _MEMORY_REJECT_KEYS | _MEMORY_FILLER
+    if any(word not in vocabulary for word in words):
+        return None
+    has_reject = any(word in _MEMORY_REJECT_KEYS for word in words)
+    has_approve = any(word in _MEMORY_APPROVE_KEYS for word in words)
+    if has_reject:
+        # "no, don't save it" is a rejection; "yes … no" is ambiguous.
+        if any(word in {"yes", "yeah", "yep", "yup", "sure", "sí", "si", "vale", "claro"}
+               for word in words):
+            return None
+        return "reject"
+    if has_approve:
+        return "approve"
+    return None
+
+
 _ES_MARKERS = (
     " el ",
     " la ",
@@ -944,9 +1018,33 @@ def _resolve_pending_memory(session_id: str, question: str) -> dict:
     if pending is None:
         return {"action": "none"}
 
-    decision = memory_proposer.classify_decision(pending.model_dump(), question)
+    spanish = _is_spanish(question)
+    bare = bare_memory_reply(question)
+    if bare == "correct":
+        # "correct me": keep the proposal open and ask for the right version;
+        # the next message is classified as the edit.
+        return {
+            "action": "awaiting_correction",
+            "proposal_id": pending.id,
+            "standalone_answer": (
+                MEMORY_ASK_CORRECTION_ES if spanish else MEMORY_ASK_CORRECTION_EN
+            ),
+        }
+    if bare in ("approve", "reject"):
+        decision = {"label": bare, "edited_fact": None}
+    else:
+        decision = memory_proposer.classify_decision(pending.model_dump(), question)
     label = decision.get("label") or "unrelated"
     edited_fact = decision.get("edited_fact")
+    if label == "edit" and not edited_fact and bare is None and "?" not in question:
+        # The user wants to correct the fact but has not said how yet.
+        return {
+            "action": "awaiting_correction",
+            "proposal_id": pending.id,
+            "standalone_answer": (
+                MEMORY_ASK_CORRECTION_ES if spanish else MEMORY_ASK_CORRECTION_EN
+            ),
+        }
     base = {
         "session_id": session_id,
         "proposal_id": pending.id,
@@ -1041,7 +1139,27 @@ def _resolve_pending_memory(session_id: str, question: str) -> dict:
         )
 
     store.clear_pending(session_id)
-    return {"action": action, "note": note, "proposal_id": pending.id}
+    standalone: str | None = None
+    # A bare decision ("Yes, save that for next time.") or a correction is
+    # the whole message: answer with a clean confirmation instead of also
+    # running it through the graph (which produced a generic greeting).
+    if bare is not None or (action == "edited" and "?" not in question):
+        standalone = {
+            "approved": MEMORY_SAVED_ES if spanish else MEMORY_SAVED_EN,
+            "edited": MEMORY_EDITED_ES if spanish else MEMORY_EDITED_EN,
+            "rejected": MEMORY_REJECTED_ES if spanish else MEMORY_REJECTED_EN,
+            "rejected_phi": (
+                memory_phi_guard.PHI_REFUSAL_ES
+                if spanish
+                else memory_phi_guard.PHI_REFUSAL_EN
+            ).strip(),
+        }.get(action)
+    return {
+        "action": action,
+        "note": None if standalone else note,
+        "proposal_id": pending.id,
+        "standalone_answer": standalone,
+    }
 
 
 def _propose_memory(
@@ -1131,6 +1249,54 @@ def _propose_memory(
     }
 
 
+def _memory_reply_result(
+    question: str,
+    session_id: str,
+    trace: dict,
+    started: float,
+    resolution: dict,
+    answer: str,
+) -> dict:
+    """Final state for a message that only answered the memory question."""
+    finished = time.time()
+    action = resolution.get("action", "none")
+    trace.update(
+        {
+            "finished_at": finished,
+            "duration_ms": round((finished - started) * 1000, 2),
+            "status": "success",
+            "route": "memory_reply",
+            "scope": {"decision": "domain", "reasons": []},
+            "memory": {
+                "n_memory_facts": 0,
+                "resolution": action,
+                "proposal": "none",
+            },
+        }
+    )
+    logger.info(
+        "agent_graph run %s answered the memory question (%s)",
+        trace["trace_id"],
+        action,
+    )
+    return {
+        "question": question,
+        "context": [],
+        "answer": answer,
+        "route": "memory_reply",
+        "tool_result": {},
+        "sources_used": [],
+        "session_id": session_id,
+        "memory_context": [],
+        "proposal": {},
+        "scope_decision": "domain",
+        "scope_reasons": [],
+        "trace_id": trace["trace_id"],
+        # Still waiting for the corrected fact: keep the quick replies on.
+        "memory_proposal_pending": action == "awaiting_correction",
+    }
+
+
 def _run_agent_once(
     question: str,
     session_id: str | None = None,
@@ -1206,6 +1372,12 @@ def _run_agent_once(
         except Exception:
             logger.exception("memory: pending resolution failed")
             resolution = {"action": "error"}
+
+        standalone = resolution.get("standalone_answer")
+        if standalone:
+            return _memory_reply_result(
+                question, session_id, trace, started, resolution, str(standalone)
+            )
 
         # 2) Load approved facts relevant to this question (explicit store read).
         # Skipped for jailbreak attempts: injection text must not receive
@@ -1432,6 +1604,9 @@ def resolve_follow_up(session_id: str, message: str) -> str:
     pending = _PENDING_CLARIFICATIONS.pop(session_id, None)
     text = (message or "").strip()
     if not pending or not text:
+        return message
+    if bare_memory_reply(text) is not None:
+        # "Save it" / "no" answer a memory question, not "which product?".
         return message
     if time.time() - float(pending.get("at", 0)) > _CLARIFICATION_TTL_SECONDS:
         return message
