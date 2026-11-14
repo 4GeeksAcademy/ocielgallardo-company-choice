@@ -71,6 +71,26 @@ EN_ES_SYNONYMS: dict[str, tuple[str, ...]] = {
     "boxes": ("caja",),
     "pack": ("pack",),
     "packs": ("pack",),
+    # Supplies HealthCore staff commonly ask about. Some have no product in
+    # the current catalogue (syringes, needles, gauze …): the synonym keeps
+    # the search honest — a Spanish-named product appears as soon as it is
+    # added, and until then the query fails with "not found".
+    "syringe": ("jeringa",),
+    "syringes": ("jeringa",),
+    "needle": ("aguja",),
+    "needles": ("aguja",),
+    "gauze": ("gasa",),
+    "gauzes": ("gasa",),
+    "swab": ("hisopo", "torunda"),
+    "swabs": ("hisopo", "torunda"),
+    "thermometer": ("termometro",),
+    "thermometers": ("termometro",),
+    "vaccine": ("vacuna",),
+    "vaccines": ("vacuna",),
+    "gown": ("bata",),
+    "gowns": ("bata",),
+    "streptococcal": ("estreptococo",),
+    "nitril": ("nitrilo",),
 }
 
 # Descriptive words that rank results but are never required on their own
@@ -79,6 +99,10 @@ SOFT_TERMS: frozenset[str] = frozenset(
     {
         "surgical",
         "medical",
+        # "face masks" / "facial masks": the catalogue only says "mascarilla".
+        "face",
+        "facial",
+        "protective",
         "disposable",
         "sterile",
         "box",
@@ -102,6 +126,7 @@ SOFT_TERMS: frozenset[str] = frozenset(
         "esteril",
         "caja",
         "cajas",
+        "faciales",
     }
 )
 
