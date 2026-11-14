@@ -135,6 +135,39 @@ _FUZZY_CUTOFF = 0.85
 _WORD_RE = re.compile(r"[a-z0-9][a-z0-9-]*")
 
 
+# Product nouns that, together with a quantity word ("how many", "cuántos",
+# "quedan", "hay"), mark a stock question even without the word "stock".
+# Generic words (box, pack, test, solution, wound …) are left out on purpose.
+_PRODUCT_NOUNS_EN: frozenset[str] = frozenset(
+    {
+        "glove", "nitrile", "mask", "facemask", "bandage", "dressing",
+        "plaster", "band-aid", "bandaid", "strep", "streptococcus", "glucose",
+        "glucometer", "strip", "saline", "syringe", "needle", "gauze", "swab",
+        "thermometer", "vaccine", "gown",
+    }
+)
+_PRODUCT_STEMS_ES: tuple[str, ...] = (
+    "guante", "nitrilo", "mascarilla", "aposito", "estreptococo", "glucemia",
+    "tiras", "reactiva", "salina", "jeringa", "aguja", "gasa", "hisopo",
+    "torunda", "termometro", "vacuna",
+)
+
+
+def mentions_product_noun(text: str) -> bool:
+    """True when ``text`` names a supply HealthCore stocks (EN or ES).
+
+    Used to recognise stock questions phrased without "stock"/"inventory"
+    ("¿Cuántos guantes de nitrilo quedan?", "How many gloves are left?").
+    """
+    for term in query_terms(text):
+        singular = term.removesuffix("s")
+        if term in _PRODUCT_NOUNS_EN or singular in _PRODUCT_NOUNS_EN:
+            return True
+        if any(term.startswith(stem) for stem in _PRODUCT_STEMS_ES):
+            return True
+    return False
+
+
 def fold(text: str) -> str:
     """Lower-case and strip accents ("Quirúrgica" -> "quirurgica")."""
     decomposed = unicodedata.normalize("NFKD", text or "")

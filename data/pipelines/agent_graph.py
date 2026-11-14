@@ -71,6 +71,7 @@ from data.pipelines import (
     agent_content_guard,
     agent_memory,
     agent_scope_guard,
+    inventory_search,
     mcp_client,
     memory_phi_guard,
     memory_proposer,
@@ -135,6 +136,14 @@ _SKU_RE = re.compile(r"\b(HCR-[A-Z]+-\d+)\b", re.IGNORECASE)
 _INVENTORY_KEYWORDS_RE = re.compile(
     r"\b(?:stock|inventory|inventario|suministro|supply|supplies|"
     r"do we have|tenemos stock|hay stock|cu[aá]nto stock)\b",
+    re.IGNORECASE,
+)
+# Quantity phrasing (EN + ES) that marks a stock question when it also names
+# a supply we stock: "¿Cuántos guantes de nitrilo quedan?", "How many gloves
+# are left?". Kept separate from the keywords above so "¿Cuántos días hay
+# para cancelar?" never reaches the inventory tool.
+_STOCK_QUANTITY_RE = re.compile(
+    r"\b(?:cu[aá]nt[oa]s?|quedan?|hay|how\s+many|how\s+much|left|remaining)\b",
     re.IGNORECASE,
 )
 # Policy/procedure phrasing that, combined with a live tool signal, is hybrid.
@@ -333,7 +342,7 @@ def extract_sku(question: str) -> str | None:
 _INVENTORY_STOPWORDS = frozenset(
     """
     a an the of in on at for to is are was be do does did we you i our us my
-    have has any how many much what which there left available units unit
+    have has any how many much what which there left remaining available units unit
     please can could tell me show check level levels current currently right now
     el la los las un una unos unas de del al en con para por es son hay que
     qué cual cuál cuales cuáles cuanto cuánto cuanta cuánta cuantos cuántos
@@ -371,8 +380,21 @@ def _needs_incident_tool(text: str) -> bool:
     )
 
 
+def asks_stock_by_quantity(text: str) -> bool:
+    """"How many / cuántos / quedan / hay" + a supply noun, without policy words."""
+    return (
+        bool(_STOCK_QUANTITY_RE.search(text or ""))
+        and inventory_search.mentions_product_noun(text or "")
+        and not has_policy_signal(text or "")
+    )
+
+
 def _needs_inventory_tool(text: str) -> bool:
-    return extract_sku(text) is not None or bool(_INVENTORY_KEYWORDS_RE.search(text))
+    return (
+        extract_sku(text) is not None
+        or bool(_INVENTORY_KEYWORDS_RE.search(text))
+        or asks_stock_by_quantity(text)
+    )
 
 
 def classify_route(
@@ -1352,17 +1374,36 @@ _BARE_TICKET_REPLY_RE = re.compile(
 _MAX_PRODUCT_REPLY_WORDS = 5
 
 
+# Short acknowledgements are never a product name, even right after
+# "Which product do you mean?" / "I could not find that product".
+_ACK_REPLY_RE = re.compile(
+    r"^\s*(?:ok(?:ay)?|thanks?(?: you)?|thank you|thx|cool|great|fine|sure|"
+    r"yes|yeah|yep|no|nope|never ?mind|hi|hello|hey|bye|gracias|vale|"
+    r"s[ií]|de acuerdo|hola|adi[oó]s|perfecto)\b",
+    re.IGNORECASE,
+)
+
+
 def _clarification_kind(answer: str) -> str | None:
-    """Which detail the agent just asked for (ticket id / product), if any."""
+    """Which detail the agent just asked for (ticket id / product), if any.
+
+    A "not found" answer counts too: the user usually replies with a
+    corrected ticket number or product name ("syringes", "8"), which must be
+    retried against the same tool instead of going to the knowledge base.
+    """
     from data.pipelines.agent_tools import (
+        INCIDENT_NOT_FOUND_MESSAGE,
         INCIDENT_TOOL_NEEDS_ID_MESSAGE,
+        INVENTORY_NOT_FOUND_MESSAGE,
         INVENTORY_TOOL_NEEDS_PRODUCT_MESSAGE,
     )
 
     text = (answer or "").strip()
-    if text.startswith(INCIDENT_TOOL_NEEDS_ID_MESSAGE):
+    if text.startswith((INCIDENT_TOOL_NEEDS_ID_MESSAGE, INCIDENT_NOT_FOUND_MESSAGE)):
         return "ticket"
-    if text.startswith(INVENTORY_TOOL_NEEDS_PRODUCT_MESSAGE):
+    if text.startswith(
+        (INVENTORY_TOOL_NEEDS_PRODUCT_MESSAGE, INVENTORY_NOT_FOUND_MESSAGE)
+    ):
         return "product"
     return None
 
@@ -1382,7 +1423,8 @@ def resolve_follow_up(session_id: str, message: str) -> str:
     """Rewrite a bare follow-up ("8") into a full question using the last turn.
 
     Only applies right after the agent asked "Which ticket/product do you
-    mean?" in the same session, within a short TTL, and only when the reply
+    mean?" (or answered "I could not find that ticket/product") in the same
+    session, within a short TTL, and only when the reply
     is clearly the missing detail (a bare number / a short product name that
     does not route anywhere else on its own). Otherwise the message is
     returned unchanged. The expectation is one-shot: it is consumed here.
@@ -1404,6 +1446,7 @@ def resolve_follow_up(session_id: str, message: str) -> str:
             0 < len(words) <= _MAX_PRODUCT_REPLY_WORDS
             and classify_route(text) == "rag"
             and not has_policy_signal(text)
+            and not _ACK_REPLY_RE.match(text)
         ):
             return f"What is the current stock of {' '.join(words)}?"
     return message
