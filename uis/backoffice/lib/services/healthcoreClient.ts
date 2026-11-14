@@ -1,3 +1,12 @@
+import {
+  buildLoginHref,
+  getSessionState,
+  isPublicPath,
+  isTokenExpired,
+  LOGIN_PATH,
+  type SessionState,
+} from "@/lib/auth/session";
+
 export const HEALTHCORE_API_BASE_URL =
   process.env.NEXT_PUBLIC_HEALTHCORE_API_URL ?? "http://127.0.0.1:8000";
 
@@ -14,6 +23,7 @@ export class HealthcoreApiError extends Error {
   }
 }
 
+/** Raw token from localStorage (may be expired). Prefer `getValidAccessToken`. */
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") {
     return null;
@@ -21,33 +31,75 @@ export function getAccessToken(): string | null {
   return localStorage.getItem(AUTH_TOKEN_KEY);
 }
 
+/** The stored token when it is present and not past its `exp`; otherwise null. */
+export function getValidAccessToken(): string | null {
+  const token = getAccessToken();
+  if (!token || isTokenExpired(token, Date.now())) {
+    return null;
+  }
+  return token;
+}
+
+/** Current session state: "valid", "expired" (stale/malformed token) or "none". */
+export function readSessionState(): SessionState {
+  return getSessionState(getAccessToken(), Date.now());
+}
+
+/**
+ * Fired on the window whenever this tab sets or clears the token. The native
+ * `storage` event only reaches *other* tabs, so the auth guard listens to both.
+ */
+export const AUTH_CHANGE_EVENT = "healthcore:auth-change";
+
+function notifyAuthChange(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
+  }
+}
+
 export function setAccessToken(token: string): void {
   localStorage.setItem(AUTH_TOKEN_KEY, token);
+  notifyAuthChange();
 }
 
 export function clearAccessToken(): void {
-  localStorage.removeItem(AUTH_TOKEN_KEY);
-}
-
-export function redirectToLogin(): void {
   if (typeof window === "undefined") {
     return;
   }
-  const path = window.location.pathname;
-  if (
-    path === "/login" ||
-    path === "/register" ||
-    path === "/forgot-password" ||
-    path === "/reset-password"
-  ) {
-    return;
-  }
-  window.location.assign("/login");
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  notifyAuthChange();
 }
 
+function currentPathWithQuery(): string {
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+}
+
+/**
+ * Hard-navigate to `/login?next=<current route>`; with `expired` the login page
+ * shows "Your session expired, please sign in again." No-op on public pages.
+ */
+export function redirectToLogin(options: { expired?: boolean } = {}): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (isPublicPath(window.location.pathname)) {
+    return;
+  }
+  window.location.assign(buildLoginHref(currentPathWithQuery(), options));
+}
+
+/** Session expired or rejected (any 401): drop the token and go to login. */
 export function clearSessionAndRedirectToLogin(): void {
   clearAccessToken();
-  redirectToLogin();
+  redirectToLogin({ expired: true });
+}
+
+/** Explicit logout: drop the token and go to a clean login page. */
+export function signOut(): void {
+  clearAccessToken();
+  if (typeof window !== "undefined") {
+    window.location.assign(LOGIN_PATH);
+  }
 }
 
 export function extractDetail(body: unknown, fallback: string): string {
@@ -111,6 +163,21 @@ export function getFieldErrors(
   return Object.keys(errors).length > 0 ? errors : undefined;
 }
 
+const SESSION_EXPIRED_ERROR = "Session expired or invalid.";
+
+/**
+ * Token for an authenticated call. A missing or expired token never reaches
+ * the API: the session is cleared and the user is sent to login right away.
+ */
+function requireValidToken(): string {
+  const token = getValidAccessToken();
+  if (!token) {
+    clearSessionAndRedirectToLogin();
+    throw new HealthcoreApiError(SESSION_EXPIRED_ERROR, 401);
+  }
+  return token;
+}
+
 interface HealthcoreRequestOptions extends RequestInit {
   /** When false, do not attach Bearer token (login/register). Default true. */
   auth?: boolean;
@@ -130,10 +197,7 @@ export async function healthcoreRequest<T>(
   }
 
   if (auth) {
-    const token = getAccessToken();
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
+    headers.set("Authorization", `Bearer ${requireValidToken()}`);
   }
 
   const startMs = performance.now();
@@ -167,7 +231,7 @@ export async function healthcoreRequest<T>(
       });
     }
     clearSessionAndRedirectToLogin();
-    throw new HealthcoreApiError("Session expired or invalid.", 401);
+    throw new HealthcoreApiError(SESSION_EXPIRED_ERROR, 401);
   }
 
   if (response.status === 204) {
@@ -232,10 +296,7 @@ export async function healthcoreRequestBlob(
   const headers = new Headers(initHeaders);
 
   if (auth) {
-    const token = getAccessToken();
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
+    headers.set("Authorization", `Bearer ${requireValidToken()}`);
   }
 
   const response = await fetch(`${HEALTHCORE_API_BASE_URL}${path}`, {
@@ -245,7 +306,7 @@ export async function healthcoreRequestBlob(
 
   if (response.status === 401 && auth) {
     clearSessionAndRedirectToLogin();
-    throw new HealthcoreApiError("Session expired or invalid.", 401);
+    throw new HealthcoreApiError(SESSION_EXPIRED_ERROR, 401);
   }
 
   if (!response.ok) {

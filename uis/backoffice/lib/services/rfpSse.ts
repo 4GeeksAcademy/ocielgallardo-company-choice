@@ -10,7 +10,7 @@
 
 import {
   clearSessionAndRedirectToLogin,
-  getAccessToken,
+  getValidAccessToken,
   HEALTHCORE_API_BASE_URL,
 } from "@/lib/services/healthcoreClient";
 import type { RfpTicketSummary } from "@/lib/services/rfpApi";
@@ -129,7 +129,7 @@ async function openStreamOnce(
   onStatus?: (status: RfpSseConnectionStatus) => void,
   opts?: { recovering: boolean; onRecovered?: () => void }
 ): Promise<void> {
-  const token = getAccessToken();
+  const token = getValidAccessToken();
   if (!token) {
     clearSessionAndRedirectToLogin();
     throw new Error("Missing access token");
