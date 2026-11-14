@@ -208,6 +208,56 @@ def test_ws_interrupt_aborts_generation(client: TestClient, monkeypatch) -> None
         assert any("UK GDPR" in t for t in user_texts)
 
 
+def test_ws_stop_with_empty_input_cancels_without_new_turn(
+    client: TestClient, monkeypatch
+) -> None:
+    """The backoffice Stop button sends interrupt_requested with new_input=""."""
+    import threading
+    import time
+
+    started = threading.Event()
+
+    def _slow_stream(question, *, thread_id, on_token, cancel_check):
+        on_token("Under ")
+        started.set()
+        for _ in range(50):
+            if cancel_check():
+                from data.pipelines.rag import GenerationInterrupted
+
+                raise GenerationInterrupted("cancelled")
+            time.sleep(0.05)
+            on_token("HIPAA ")
+        return {"answer": "Under HIPAA ...", "trace_id": thread_id}
+
+    monkeypatch.setattr(agent_module, "run_agent_stream", _slow_stream)
+
+    with client.websocket_connect("/agent/chat/ws?token=good-token") as ws:
+        sid = ws.receive_json()["data"]["session_id"]
+        ws.send_json(
+            {
+                "event": "user_message",
+                "data": {"session_id": sid, "text": "Tell me about HIPAA rules"},
+            }
+        )
+        assert started.wait(timeout=5)
+        ws.send_json(
+            {"event": "interrupt_requested", "data": {"session_id": sid, "new_input": ""}}
+        )
+        events = []
+        for _ in range(80):
+            msg = ws.receive_json()
+            events.append(msg["event"])
+            if msg["event"] == "generation_interrupted":
+                break
+        assert "generation_interrupted" in events
+        assert "generation_completed" not in events
+
+    snap = chat_sessions.chat_store.snapshot_payload(sid)
+    user_texts = [m["text"] for m in snap["messages"] if m["role"] == "user"]
+    assert user_texts == ["Tell me about HIPAA rules"]
+    assert chat_sessions.chat_store.get_generation(sid) is None
+
+
 def test_ws_reconnect_restores_history(client: TestClient) -> None:
     with client.websocket_connect("/agent/chat/ws?token=good-token") as ws:
         first = ws.receive_json()
@@ -246,3 +296,49 @@ def test_token_chunk_payload_shape() -> None:
     assert set(payload.keys()) == {"session_id", "token", "sequence"}
     assert "patient" not in payload
     assert "ticket_id" not in payload
+
+
+@pytest.mark.parametrize("text", ["12", "OK", "?"])
+def test_ws_accepts_short_non_blank_messages(client: TestClient, text: str) -> None:
+    with client.websocket_connect("/agent/chat/ws?token=good-token") as ws:
+        sid = ws.receive_json()["data"]["session_id"]
+        ws.send_json({"event": "user_message", "data": {"session_id": sid, "text": text}})
+        events = []
+        for _ in range(12):
+            msg = ws.receive_json()
+            events.append(msg["event"])
+            if msg["event"] == "generation_completed":
+                break
+        assert events[0] == "user_message"
+        assert "generation_completed" in events
+    snap = chat_sessions.chat_store.snapshot_payload(sid)
+    assert [m["text"] for m in snap["messages"] if m["role"] == "user"] == [text]
+
+
+def test_ws_ignores_blank_messages(client: TestClient) -> None:
+    with client.websocket_connect("/agent/chat/ws?token=good-token") as ws:
+        sid = ws.receive_json()["data"]["session_id"]
+        ws.send_json({"event": "user_message", "data": {"session_id": sid, "text": "   "}})
+        ws.send_json({"event": "user_message", "data": {"session_id": sid, "text": "OK"}})
+        echo = ws.receive_json()
+        # The blank message produced nothing; the first event is the "OK" echo.
+        assert echo["event"] == "user_message"
+        assert echo["data"]["text"] == "OK"
+
+
+@pytest.mark.parametrize("question", ["12", "OK", "x" * 1000])
+def test_query_schema_accepts_any_non_blank_question(question: str) -> None:
+    from services.app.schemas import AgentQueryRequest, RagQueryRequest
+
+    assert RagQueryRequest(question=question).question == question
+    assert AgentQueryRequest(question=question).question == question
+
+
+@pytest.mark.parametrize("question", ["", "   ", "x" * 1001])
+def test_query_schema_rejects_blank_or_too_long(question: str) -> None:
+    from pydantic import ValidationError
+
+    from services.app.schemas import RagQueryRequest
+
+    with pytest.raises(ValidationError):
+        RagQueryRequest(question=question)
