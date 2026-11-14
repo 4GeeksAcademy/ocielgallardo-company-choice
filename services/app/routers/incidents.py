@@ -24,8 +24,12 @@ from services.app.models.incident import (
     IncidentSummary,
 )
 from services.app.models.user import UserPublic
+from services.incidents_analysis.csv_reader import IncidentCsvError
 
 router = APIRouter(prefix="/api/incidents", tags=["incidents"])
+
+MAX_INCIDENT_CSV_BYTES = 5 * 1024 * 1024
+_CSV_READ_CHUNK_SIZE = 64 * 1024
 
 
 def _validation_http_exception(exc: IncidentValidationError) -> HTTPException:
@@ -33,6 +37,27 @@ def _validation_http_exception(exc: IncidentValidationError) -> HTTPException:
         status_code=400,
         detail=[error.as_dict() for error in exc.errors],
     )
+
+
+async def read_upload_with_limit(
+    file: UploadFile,
+    max_bytes: int = MAX_INCIDENT_CSV_BYTES,
+) -> bytes:
+    """Read an upload in chunks and reject it once it exceeds ``max_bytes``."""
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(_CSV_READ_CHUNK_SIZE)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail="The CSV file exceeds the 5 MB size limit.",
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 @router.post("/analyze", response_model=IncidentAnalysisSummary)
@@ -43,8 +68,11 @@ async def analyze(
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="CSV file required")
 
-    content = await file.read()
-    return analyze_csv_bytes(content)
+    content = await read_upload_with_limit(file)
+    try:
+        return analyze_csv_bytes(content)
+    except IncidentCsvError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/results/export")
