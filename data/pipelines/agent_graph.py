@@ -215,17 +215,20 @@ MEMORY_ASK_CORRECTION_ES = (
 
 _MEMORY_REPLY_STRIP_RE = re.compile(r"[¡!¿?.,;:—–\-\"()]+")
 _MEMORY_APPROVE_KEYS = frozenset(
-    "yes yeah yep yup sure ok okay save remember store keep "
-    "sí si vale claro guárdalo guardalo guarda guárdala recuérdalo recuerdalo "
-    "recuerda".split()  # noqa: SIM905 - word list kept readable
+    """
+    yes yeah yep yup sure ok okay save remember store keep
+    sí si vale claro guárdalo guardalo guarda guárdala recuérdalo recuerdalo recuerda
+    """.split()  # noqa: SIM905 - word list kept readable
 )
 _MEMORY_REJECT_KEYS = frozenset(
     "no nope don't dont not never forget olvídalo olvidalo".split()  # noqa: SIM905
 )
 _MEMORY_FILLER = frozenset(
-    "please thanks thank you that it this for next time the a do please "
-    "go ahead lo eso esto para la próxima proxima vez por favor gracias "
-    "store save remember keep guardes recuerdes need i".split()  # noqa: SIM905
+    """
+    please thanks thank you that it this for next time the a do go ahead
+    lo eso esto para la próxima proxima vez por favor gracias
+    store save remember keep guardes recuerdes need i
+    """.split()  # noqa: SIM905 - word list kept readable
 )
 _MEMORY_CORRECT_RE = re.compile(
     r"^\s*(?:(?:please|por favor)\s*,?\s*)?"
