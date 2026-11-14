@@ -13,7 +13,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "HealthCore Backoffice",
   description:
-    "Internal workspace for HealthCore operations, pipeline management, and analytics demos.",
+    "HealthCore staff backoffice. Sign in required.",
 };
 
 export default function RootLayout({
