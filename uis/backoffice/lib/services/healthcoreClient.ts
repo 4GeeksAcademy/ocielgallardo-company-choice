@@ -90,7 +90,16 @@ export function redirectToLogin(options: { expired?: boolean } = {}): void {
 
 /** Session expired or rejected (any 401): drop the token and go to login. */
 export function clearSessionAndRedirectToLogin(): void {
-  clearAccessToken();
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (isPublicPath(window.location.pathname)) {
+    clearAccessToken();
+    return;
+  }
+  // Remove the token without AUTH_CHANGE_EVENT: the guard would otherwise race
+  // this hard redirect with its own soft one and drop `reason=expired`.
+  localStorage.removeItem(AUTH_TOKEN_KEY);
   redirectToLogin({ expired: true });
 }
 
