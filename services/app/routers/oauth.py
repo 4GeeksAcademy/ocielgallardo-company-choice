@@ -27,6 +27,7 @@ SCOPES_SUPPORTED: tuple[str, ...] = (
     "incidents:read",
     "incidents:write",
     "inventory:read",
+    "rfp:read",
 )
 
 

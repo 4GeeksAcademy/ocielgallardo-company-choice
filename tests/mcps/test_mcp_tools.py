@@ -55,6 +55,8 @@ def _names(payload: dict) -> set[str]:
 EXPECTED_TOOL_NAMES = {
     "get_incident_status",
     "list_incidents",
+    "get_latest_incident",
+    "get_latest_rfp_ticket",
     "create_incident",
     "update_incident_status",
     "get_inventory_stock",
@@ -348,8 +350,10 @@ def test_inventory_name_query_is_substring_and_not_found_is_honest(
     miss = tool_payload(
         call_tool(app_client, "get_inventory_stock", {"name_query": "mask"}, READ_TOKEN)
     )
-    assert miss["ok"] is False
-    assert miss["error"] == "not_found"
+    assert miss["ok"] is True
+    assert miss["products"] == []
+    assert miss["queried_name"] == "mask"
+    assert [item["sku"] for item in miss["catalogue"]] == ["HCR-PPE-001"]
 
 
 def test_inventory_name_query_matches_every_term_in_any_order(
@@ -372,7 +376,26 @@ def test_inventory_name_query_matches_every_term_in_any_order(
             app_client, "get_inventory_stock", {"name_query": "guantes latex"}, READ_TOKEN
         )
     )
-    assert miss["error"] == "not_found"
+    assert miss["ok"] is True
+    assert miss["products"] == []
+    assert miss["queried_name"] == "guantes latex"
+    assert miss["catalogue"]
+
+
+
+def test_inventory_list_all_returns_the_catalogue(app_client, monkeypatch) -> None:
+    async def _fake() -> list[dict]:
+        return [dict(PRODUCT_ROW), {**PRODUCT_ROW, "id": 4, "sku": "HCR-PPE-999", "name": "Mask"}]
+
+    monkeypatch.setattr(backend_client, "get_products", _fake)
+
+    payload = tool_payload(
+        call_tool(app_client, "get_inventory_stock", {"list_all": True}, READ_TOKEN)
+    )
+
+    assert payload["ok"] is True
+    assert payload["products"] == []
+    assert [item["sku"] for item in payload["catalogue"]] == ["HCR-PPE-001", "HCR-PPE-999"]
 
 
 def test_inventory_tool_without_arguments_is_invalid_input(app_client, monkeypatch) -> None:
@@ -444,3 +467,97 @@ def test_tool_failures_are_reported_as_contract_payloads_not_protocol_errors(
 
     assert payload["result"].get("isError") is not True
     assert json.loads(payload["result"]["content"][0]["text"])["error"] == "unavailable"
+
+
+def test_inventory_name_query_understands_english_terms(app_client, monkeypatch) -> None:
+    async def _fake() -> list[dict]:
+        return [
+            {**PRODUCT_ROW, "name": "Guantes de nitrilo (caja de 100)"},
+            {**PRODUCT_ROW, "id": 4, "name": "Mascarilla quirúrgica (pack de 50)"},
+        ]
+
+    monkeypatch.setattr(backend_client, "get_products", _fake)
+
+    hit = tool_payload(
+        call_tool(
+            app_client, "get_inventory_stock", {"name_query": "surgical gloves"}, READ_TOKEN
+        )
+    )
+    assert [item["id"] for item in hit["products"]] == [PRODUCT_ROW["id"]]
+
+    miss = tool_payload(
+        call_tool(
+            app_client, "get_inventory_stock", {"name_query": "dental implants"}, READ_TOKEN
+        )
+    )
+    assert miss["ok"] is True
+    assert miss["products"] == []
+    assert miss["queried_name"] == "dental implants"
+    assert len(miss["catalogue"]) == 2
+
+
+# --- Latest incident / latest RFP ticket ---
+
+
+def test_get_latest_incident_picks_most_recently_updated(app_client, monkeypatch) -> None:
+    captured: dict = {}
+
+    async def _fake(params=None) -> list[dict]:
+        captured["params"] = params
+        return [
+            {**INCIDENT_ROW, "id": 3, "updated_at": "2026-03-01T00:00:00"},
+            {**INCIDENT_ROW, "id": 9, "updated_at": "2026-05-01T00:00:00"},
+            {**INCIDENT_ROW, "id": 5, "updated_at": "2026-04-01T00:00:00"},
+        ]
+
+    monkeypatch.setattr(backend_client, "get_incidents", _fake)
+
+    payload = tool_payload(
+        call_tool(app_client, "get_latest_incident", {"category": "billing_error"}, READ_TOKEN)
+    )
+
+    assert captured["params"] == {"category": "billing_error"}
+    assert [item["id"] for item in payload["incidents"]] == [9]
+
+
+def test_get_latest_incident_without_rows_is_not_found(app_client, monkeypatch) -> None:
+    async def _fake(params=None) -> list[dict]:
+        return []
+
+    monkeypatch.setattr(backend_client, "get_incidents", _fake)
+
+    payload = tool_payload(call_tool(app_client, "get_latest_incident", {}, READ_TOKEN))
+
+    assert payload["ok"] is False
+    assert payload["error"] == "not_found"
+
+
+RFP_TOKEN = mint_token(["rfp:read"])
+
+
+def test_get_latest_rfp_ticket_requires_rfp_read(app_client, monkeypatch) -> None:
+    async def _unexpected():
+        raise AssertionError("backend must not be called without rfp:read")
+
+    monkeypatch.setattr(backend_client, "get_rfp_tickets", _unexpected)
+
+    response = call_tool(app_client, "get_latest_rfp_ticket", {}, READ_TOKEN)
+
+    assert "insufficient_scope" in str(response)
+
+
+def test_get_latest_rfp_ticket_returns_newest(app_client, monkeypatch) -> None:
+    async def _fake() -> list[dict]:
+        return [
+            {"ticket_id": "aaa", "status": "analyzing", "created_at": "2026-01-01T00:00:00",
+             "updated_at": "2026-01-02T00:00:00"},
+            {"ticket_id": "bbb", "status": "drafting", "created_at": "2026-02-01T00:00:00",
+             "updated_at": "2026-02-03T00:00:00", "client_name": "Acme"},
+        ]
+
+    monkeypatch.setattr(backend_client, "get_rfp_tickets", _fake)
+
+    payload = tool_payload(call_tool(app_client, "get_latest_rfp_ticket", {}, RFP_TOKEN))
+
+    assert payload["ok"] is True
+    assert [item["ticket_id"] for item in payload["rfp_tickets"]] == ["bbb"]

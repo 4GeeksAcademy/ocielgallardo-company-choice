@@ -7,7 +7,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from sqlmodel import Session
 
 from services.app.core.database import get_db, is_inventory_db_configured
-from services.app.core.deps import get_current_user
+from services.app.core.deps import get_current_user, require_scope
+from services.app.core.service_identity import ServicePrincipal
 from services.app.domain import rfp_service
 from services.app.domain.rfp_sse import iter_rfp_sse_events
 from services.app.models.user import UserPublic
@@ -130,7 +131,9 @@ async def stream_rfp_events(
 
 @router.get("/tickets", response_model=list[RfpTicketSummary])
 def list_rfp_tickets(
-    current_user: UserPublic = Depends(get_current_user),
+    # Humans keep their access; service principals need ``rfp:read`` (the
+    # Knowledge agent reads the latest RFP status through the MCP server).
+    current_user: UserPublic | ServicePrincipal = Depends(require_scope("rfp:read")),
     session: Session = Depends(get_db),
 ) -> list[RfpTicketSummary]:
     _ = current_user

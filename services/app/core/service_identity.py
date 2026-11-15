@@ -41,12 +41,13 @@ from services.app.core.security import (
     pwd_context,
 )
 
-DEFAULT_SERVICE_SCOPES: tuple[str, ...] = ("incidents:read", "inventory:read")
+DEFAULT_SERVICE_SCOPES: tuple[str, ...] = ("incidents:read", "inventory:read", "rfp:read")
 # The MCP server writes incidents on behalf of its tools (create/transition).
 MCP_BACKEND_SCOPES: tuple[str, ...] = (
     "incidents:read",
     "incidents:write",
     "inventory:read",
+    "rfp:read",
 )
 # Service identities that can be registered from env at API startup:
 # (credential prefix, scopes for a fresh registration).
@@ -55,6 +56,19 @@ ENV_SERVICE_IDENTITIES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("MCP_BACKEND", MCP_BACKEND_SCOPES),
 )
 BOOTSTRAP_FROM_ENV_VAR = "SERVICE_CLIENTS_FROM_ENV"
+# Former default grants (before ``rfp:read``). A client still holding exactly
+# one of these was registered with the old defaults, not narrowed on purpose.
+LEGACY_DEFAULT_SCOPE_SETS: tuple[frozenset[str], ...] = (
+    frozenset({"incidents:read", "inventory:read"}),
+    frozenset({"incidents:read", "incidents:write", "inventory:read"}),
+)
+
+
+def _is_legacy_default_grant(client: dict, target_scopes: tuple[str, ...]) -> bool:
+    """True when ``client`` holds an old default grant that ``target`` extends."""
+    current = frozenset(client.get("scopes") or ())
+    target = frozenset(target_scopes)
+    return current != target and current < target and current in LEGACY_DEFAULT_SCOPE_SETS
 
 logger = logging.getLogger(__name__)
 SERVICE_TOKEN_EXPIRE_MINUTES = int(os.getenv("SERVICE_TOKEN_EXPIRE_MINUTES", "15"))
@@ -157,7 +171,10 @@ def bootstrap_service_clients_from_env() -> list[str]:
     never reaches the MCP server. With ``SERVICE_CLIENTS_FROM_ENV=true`` the API
     registers ``<PREFIX>_CLIENT_ID`` / ``<PREFIX>_CLIENT_SECRET`` (or
     ``..._FILE``) at startup. Idempotent: a client whose stored hash already
-    matches the env secret is left untouched (scopes included). Secrets are
+    matches the env secret is left untouched (custom scopes included), except
+    when its grant is exactly a *previous* default set: that grant is upgraded
+    to the current defaults (e.g. the new ``rfp:read``) so a persisted auth
+    volume does not keep a stale default forever. Secrets are
     never logged. Returns the client ids that were (re)registered.
     """
     registered: list[str] = []
@@ -174,7 +191,11 @@ def bootstrap_service_clients_from_env() -> list[str]:
             )
             continue
         existing = get_service_client(client_id)
-        if existing is not None and _secret_matches(existing, client_secret):
+        if (
+            existing is not None
+            and _secret_matches(existing, client_secret)
+            and not _is_legacy_default_grant(existing, scopes)
+        ):
             continue
         register_service_client(client_id, client_secret, scopes)
         registered.append(client_id)

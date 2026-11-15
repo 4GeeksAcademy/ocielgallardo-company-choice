@@ -15,6 +15,8 @@ ni nuevas reglas de negocio.
 |-------------|-----------|-------|-------|
 | `get_incident_status` | `ticket_id` | `incidents:read` | Un incidente por id |
 | `list_incidents` | `status`, `origin`, `branch`, `category` (al menos uno) | `incidents:read` | Filtros exactos |
+| `get_latest_incident` | `status`, `origin`, `branch`, `category` opcionales | `incidents:read` | Incidencia actualizada más reciente |
+| `get_latest_rfp_ticket` | — | `rfp:read` | Ticket RFP más reciente (solo lectura) |
 | `create_incident` | `title`, `description`, `category`, `origin`, `branch` | `incidents:write` | La API valida los enums |
 | `update_incident_status` | `ticket_id`, `status` | `incidents:write` | La API valida la transición |
 | `get_inventory_stock` | `supply_id` o `sku` o `name_query` | `inventory:read` | Consultas de stock (solo lectura) |
@@ -110,7 +112,7 @@ Registrar/rotar la identidad del servidor (imprime el secreto una vez):
 ```bash
 PYTHONPATH=. uv run python scripts/seed_service_client.py \
     --client-id mcp-server --env-prefix MCP_BACKEND \
-    --scopes incidents:read incidents:write inventory:read
+    --scopes incidents:read incidents:write inventory:read rfp:read
 ```
 
 Compose (misma imagen que la backend, URLs de red interna):

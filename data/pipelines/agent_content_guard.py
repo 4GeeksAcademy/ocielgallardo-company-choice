@@ -246,13 +246,21 @@ def detect_internal_leak(answer: str | None) -> list[str]:
     return reasons
 
 
-def validate_output(answer: str | None) -> OutputVerdict:
+def validate_output(
+    answer: str | None, *, skip_reasons: tuple[str, ...] | list[str] = ()
+) -> OutputVerdict:
     """Screen the final answer: structure, internal leaks, PHI-like content.
 
     Fail-closed: any hit replaces the answer with a safe bilingual fallback
     (never echoing the rejected text, because the rejected text may itself
     be PHI or a leaked secret). Activation is counted and logged with its
     ``failure_type``.
+
+    ``skip_reasons`` drops specific PHI codes (used for deterministic
+    inventory/stock replies, which name supplies as catalogue data rather
+    than clinical advice). ``clinical_content`` is also ignored when the
+    answer is a stock or catalogue sentence from the inventory tool.
+    Other PHI codes (DOB, MRN, patient name, …) still fail closed.
     """
     text = (answer or "").strip()
     if not text:
@@ -285,16 +293,24 @@ def validate_output(answer: str | None) -> OutputVerdict:
         )
 
     phi_verdict = memory_phi_guard.scan(text)
-    if not phi_verdict.allowed:
+    reasons = list(phi_verdict.reasons)
+    skipped = {code for code in skip_reasons if code}
+    if "clinical_content" in reasons:
+        from data.pipelines.agent_tools import is_deterministic_inventory_answer
+
+        if "clinical_content" in skipped or is_deterministic_inventory_answer(text):
+            reasons = [code for code in reasons if code != "clinical_content"]
+    reasons = [code for code in reasons if code not in skipped]
+    if reasons:
         record_activation("output_rejected", FAILURE_CONTENT)
         logger.warning(
             "guardrail output_rejected failure_type=%s reasons=%s",
             FAILURE_CONTENT,
-            phi_verdict.reasons,
+            reasons,
         )
         return OutputVerdict(
             allowed=False,
-            reasons=list(phi_verdict.reasons),
+            reasons=reasons,
             safe_answer=OUTPUT_FALLBACK_EN,
             failure_type=FAILURE_CONTENT,
         )

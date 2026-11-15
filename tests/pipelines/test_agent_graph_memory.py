@@ -206,7 +206,9 @@ def test_approved_cycle_is_remembered_later(store, generate, decision, monkeypat
     # Turn 2 — the user approves; the fact is consolidated into the store.
     decision["label"] = "approve"
     second = run_agent("Yes, save that for next time.", session_id=session)
-    assert "Saved to my memory." in second["answer"]
+    # Only a clean confirmation: no generic greeting bolted in front.
+    assert second["answer"] == agent_graph.MEMORY_SAVED_EN
+    assert second["route"] == "memory_reply"
     assert store.get_pending(session) is None
     assert [entry.fact for entry in store.list_entries()] == [MANCHESTER_PROPOSAL["fact"]]
     assert any(
@@ -243,7 +245,7 @@ def test_rejected_cycle_leaves_memory_unchanged(store, generate, decision) -> No
     decision["label"] = "reject"
     second = run_agent("No, don't store that.", session_id=session)
 
-    assert second["answer"].endswith(agent_graph._REJECTNOTE_EN)
+    assert second["answer"] == agent_graph.MEMORY_REJECTED_EN
     assert store.get_pending(session) is None
     assert store.list_entries() == []
     rejected = [
@@ -290,7 +292,7 @@ def test_edit_stores_the_corrected_fact(store, generate, decision) -> None:
     )
     second = run_agent("Almost — it changed in October, not last quarter.", session_id=session)
 
-    assert "Saved to my memory." in second["answer"]
+    assert second["answer"] == agent_graph.MEMORY_EDITED_EN
     assert [entry.fact for entry in store.list_entries()] == [
         "Manchester referrals go through the coordinator since October"
     ]
@@ -403,7 +405,7 @@ def test_spanish_interaction_gets_spanish_memory_prompts(store, generate, decisi
 
     decision["label"] = "approve"
     second = run_agent("Sí, guárdalo para la próxima.", session_id=session)
-    assert "Guardado en mi memoria." in second["answer"]
+    assert second["answer"] == agent_graph.MEMORY_SAVED_ES
 
 
 def test_tool_path_self_evaluates_with_one_structured_call(

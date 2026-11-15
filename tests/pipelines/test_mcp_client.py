@@ -352,3 +352,47 @@ def test_missing_service_token_skips_mcp_and_logs_cause(
     assert result.message == INVENTORY_TOOL_FALLBACK
     assert "no agent service token" in caplog.text
     assert "AGENT_TOOL_CLIENT_SECRET" in caplog.text
+
+
+def test_latest_flag_routes_to_latest_tool_even_without_filters(monkeypatch, mcp_url) -> None:
+    calls = _capture(monkeypatch, _incident_ok())
+
+    result = mcp_client.lookup_incident_via_mcp(IncidentToolInput(latest=True))
+    mcp_client.lookup_incident_via_mcp(
+        IncidentToolInput(latest=True, category="billing_error")
+    )
+
+    assert calls == [
+        (mcp_client.TOOL_GET_LATEST_INCIDENT, {}),
+        (mcp_client.TOOL_GET_LATEST_INCIDENT, {"category": "billing_error"}),
+    ]
+    assert result.ok is True
+
+
+def test_latest_rfp_lookup_parses_contract_and_maps_scope_denial(monkeypatch, mcp_url) -> None:
+    import json
+
+    payload = json.dumps(
+        {
+            "ok": True,
+            "rfp_tickets": [
+                {"ticket_id": "abc12345-0000", "status": "drafting",
+                 "created_at": "2026-02-01T00:00:00", "updated_at": "2026-02-03T00:00:00"}
+            ],
+            "error": None,
+            "message": None,
+        }
+    )
+    calls = _capture(monkeypatch, payload)
+    result = mcp_client.lookup_latest_rfp_via_mcp()
+    assert calls == [(mcp_client.TOOL_GET_LATEST_RFP_TICKET, {})]
+    assert result.ok is True
+    assert result.rfp_tickets[0].status == "drafting"
+
+    async def _denied(tool_name, arguments):
+        raise RuntimeError("insufficient_scope: rfp:read")
+
+    monkeypatch.setattr(mcp_client, "_call_tool", _denied)
+    denied = mcp_client.lookup_latest_rfp_via_mcp()
+    assert denied.ok is False
+    assert denied.error == "auth"

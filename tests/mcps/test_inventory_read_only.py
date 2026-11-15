@@ -32,6 +32,7 @@ EXPECTED_ENDPOINTS = {
     "incident_status_update": ("PATCH", "/api/incidents/{ticket_id}/status"),
     "products_list": ("GET", "/inventory/products"),
     "product_detail": ("GET", "/inventory/products/{supply_id}"),
+    "rfp_tickets_list": ("GET", "/rfp/tickets"),
 }
 
 

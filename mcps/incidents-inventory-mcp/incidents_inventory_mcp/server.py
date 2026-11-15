@@ -7,6 +7,8 @@ Tool                            Required scope
 ==============================  ========================
 ``get_incident_status``         ``incidents:read``
 ``list_incidents``              ``incidents:read``
+``get_latest_incident``         ``incidents:read``
+``get_latest_rfp_ticket``       ``rfp:read``
 ``create_incident``             ``incidents:write``
 ``update_incident_status``      ``incidents:write``
 ``get_inventory_stock``         ``inventory:read``
@@ -49,6 +51,7 @@ from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import Field
 
+from data.pipelines import inventory_search
 from data.pipelines.agent_tools import (
     INCIDENT_NOT_FOUND_MESSAGE,
     INCIDENT_TOOL_AUTH_MESSAGE,
@@ -59,7 +62,13 @@ from data.pipelines.agent_tools import (
     IncidentToolOutput,
     InventoryRecord,
     InventoryToolOutput,
+    RFP_NOT_FOUND_MESSAGE,
+    RFP_TOOL_AUTH_MESSAGE,
+    RFP_TOOL_FALLBACK,
+    RfpToolOutput,
     _record_from_api,
+    _rfp_from_api,
+    latest_by_timestamp,
     _supply_from_api,
 )
 
@@ -138,6 +147,15 @@ def _transport_security() -> TransportSecuritySettings:
         allowed_hosts=_csv_env(ALLOWED_HOSTS_VAR, DEFAULT_ALLOWED_HOSTS),
         allowed_origins=_csv_env(ALLOWED_ORIGINS_VAR, DEFAULT_ALLOWED_ORIGINS),
     )
+
+
+RFP_ERROR_MESSAGES = {
+    "not_found": RFP_NOT_FOUND_MESSAGE,
+    "auth": RFP_TOOL_AUTH_MESSAGE,
+    "timeout": RFP_TOOL_FALLBACK,
+    "unavailable": RFP_TOOL_FALLBACK,
+    "invalid_input": RFP_TOOL_FALLBACK,
+}
 
 
 def _incident_failure(error: str, message: str) -> IncidentToolOutput:
@@ -305,6 +323,68 @@ def build_server() -> FastMCP:
         return IncidentToolOutput(ok=True, incidents=[_record_from_api(row) for row in rows])
 
     @mcp.tool(
+        name="get_latest_incident",
+        description=(
+            "Return the most recently updated incident, optionally narrowed by "
+            "status, origin, branch or category (exact keys). Requires the "
+            "incidents:read scope."
+        ),
+        structured_output=True,
+    )
+    @_audit("get_latest_incident")
+    async def get_latest_incident(
+        status: Annotated[
+            str | None,
+            Field(description="Incident status: open, in_progress, resolved, discarded."),
+        ] = None,
+        origin: Annotated[
+            str | None,
+            Field(description="Incident origin: customer, branch, internal."),
+        ] = None,
+        branch: Annotated[
+            str | None,
+            Field(description="Branch key, e.g. austin_north, london_city."),
+        ] = None,
+        category: Annotated[
+            str | None,
+            Field(description="Category key, e.g. it_system, billing_error."),
+        ] = None,
+    ) -> IncidentToolOutput:
+        permissions.require_scopes("incidents:read")
+        params = _incident_filter_params(status, origin, branch, category)
+        try:
+            rows = await backend_client.get_incidents(params or None)
+            latest = latest_by_timestamp(rows)
+            if latest is None:
+                return _incident_failure("not_found", INCIDENT_NOT_FOUND_MESSAGE)
+            if not latest.get("updated_at"):
+                # Older list projections carry no timestamps: read the detail.
+                latest = await backend_client.get_incident(int(latest["id"]))
+        except backend_client.BackendError as exc:
+            return _incident_error(exc)
+        return IncidentToolOutput(ok=True, incidents=[_record_from_api(latest)])
+
+    @mcp.tool(
+        name="get_latest_rfp_ticket",
+        description=(
+            "Return the most recently updated RFP ticket (status and dates) "
+            "from the RFP intake pipeline. Read-only. Requires the rfp:read scope."
+        ),
+        structured_output=True,
+    )
+    @_audit("get_latest_rfp_ticket")
+    async def get_latest_rfp_ticket() -> RfpToolOutput:
+        permissions.require_scopes("rfp:read")
+        try:
+            rows = await backend_client.get_rfp_tickets()
+        except backend_client.BackendError as exc:
+            return RfpToolOutput(ok=False, error=exc.kind, message=RFP_ERROR_MESSAGES[exc.kind])
+        latest = latest_by_timestamp(rows)
+        if latest is None:
+            return RfpToolOutput(ok=False, error="not_found", message=RFP_NOT_FOUND_MESSAGE)
+        return RfpToolOutput(ok=True, rfp_tickets=[_rfp_from_api(latest)])
+
+    @mcp.tool(
         name="create_incident",
         description=(
             "Open a new incident in the incident manager. category, origin and "
@@ -376,9 +456,11 @@ def build_server() -> FastMCP:
     @mcp.tool(
         name="get_inventory_stock",
         description=(
-            "Read current stock for a product by id, exact SKU or name substring. "
-            "Read-only: stock levels cannot be changed through this server. "
-            "Requires the inventory:read scope."
+            "Read current stock for a product by id, exact SKU or name, or "
+            "list the full catalogue. A name or SKU that is not in inventory "
+            "returns the current catalogue (not a tool failure). Read-only: "
+            "stock levels cannot be changed through this server. Requires "
+            "the inventory:read scope."
         ),
         structured_output=True,
     )
@@ -392,35 +474,55 @@ def build_server() -> FastMCP:
         ] = None,
         name_query: Annotated[
             str | None,
-            Field(description="Case-insensitive substring of the product name."),
+            Field(
+                description=(
+                    "Product name terms (English or Spanish), e.g. 'surgical "
+                    "gloves' or 'guantes de nitrilo'."
+                )
+            ),
         ] = None,
+        list_all: Annotated[
+            bool,
+            Field(
+                description=(
+                    "If true, return the full product catalogue (name and SKU) "
+                    "instead of matching a single product."
+                )
+            ),
+        ] = False,
     ) -> InventoryToolOutput:
         permissions.require_scopes("inventory:read")
-        if supply_id is None and not sku and not name_query:
+        if supply_id is None and not sku and not name_query and not list_all:
             return _inventory_failure("invalid_input", INVENTORY_TOOL_FALLBACK)
         try:
-            if supply_id is not None:
+            if supply_id is not None and not list_all:
                 payload = await backend_client.get_product(supply_id)
                 return InventoryToolOutput(ok=True, products=[_supply_from_api(payload)])
 
             rows = await backend_client.get_products()
-            products: list[InventoryRecord] = [_supply_from_api(row) for row in rows]
+            catalogue: list[InventoryRecord] = [_supply_from_api(row) for row in rows]
+            if list_all:
+                return InventoryToolOutput(ok=True, products=[], catalogue=catalogue)
+            products = list(catalogue)
+            queried_name = name_query or sku
             if sku:
                 sku_upper = sku.strip().upper()
                 products = [item for item in products if item.sku.upper() == sku_upper]
             if name_query:
-                # Every term must appear in the name (order-insensitive), so
-                # "nitrilo guantes" still matches "Guantes de nitrilo".
-                terms = name_query.lower().split()
-                products = [
-                    item
-                    for item in products
-                    if all(term in item.name.lower() for term in terms)
-                ]
+                # Order-insensitive, accent-folded and EN -> ES aware:
+                # "surgical gloves" and "nitrilo guantes" both find
+                # "Guantes de nitrilo"; unknown terms still fail honestly.
+                products = inventory_search.filter_products(products, name_query)
         except backend_client.BackendError as exc:
             return _inventory_error(exc)
         if not products:
-            return _inventory_failure("not_found", INVENTORY_NOT_FOUND_MESSAGE)
+            # Honest miss: the lookup worked; we just do not stock that item.
+            return InventoryToolOutput(
+                ok=True,
+                products=[],
+                catalogue=catalogue,
+                queried_name=queried_name,
+            )
         return InventoryToolOutput(ok=True, products=products)
 
     @mcp.tool(
