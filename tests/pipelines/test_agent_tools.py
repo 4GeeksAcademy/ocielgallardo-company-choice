@@ -36,6 +36,8 @@ from data.pipelines.agent_tools import (  # noqa: E402
     InventoryToolOutput,
     format_incident_answer,
     format_inventory_answer,
+    format_not_stocked_answer,
+    inventory_lookup_complete,
 )
 
 
@@ -89,9 +91,10 @@ def test_incident_success_formats_deterministically() -> None:
 
     answer = format_incident_answer(out)
     assert out.ok is True
-    assert "Ticket 2" in answer
-    assert "status=open" in answer
-    assert "updated_at=2024-01-17T00:00:00Z" in answer
+    assert "Ticket #2" in answer
+    assert "is currently open" in answer
+    assert "last updated on Jan 17, 2024" in answer
+    assert "status=" not in answer and "updated_at=" not in answer
 
 
 def test_incident_failure_returns_own_message() -> None:
@@ -133,7 +136,8 @@ def test_inventory_success_formats_deterministically() -> None:
     answer = format_inventory_answer(out)
     assert out.ok is True
     assert "SKU HCR-PPE-001" in answer
-    assert "current_stock=1289" in answer
+    assert "We currently have 1,289 boxes of" in answer
+    assert "current_stock=" not in answer
 
 
 def test_inventory_failure_returns_own_message() -> None:
@@ -143,11 +147,44 @@ def test_inventory_failure_returns_own_message() -> None:
     assert format_inventory_answer(out) == INVENTORY_TOOL_FALLBACK
 
 
-def test_inventory_empty_payload_is_not_found() -> None:
-    assert (
-        format_inventory_answer(InventoryToolOutput(ok=True, products=[]))
-        == INVENTORY_NOT_FOUND_MESSAGE
+def test_inventory_empty_payload_is_a_normal_not_stocked_answer() -> None:
+    answer = format_inventory_answer(InventoryToolOutput(ok=True, products=[]))
+    assert answer == format_not_stocked_answer(None)
+    assert answer.startswith("We don't currently have that product in stock.")
+    assert "I could not find that product" not in answer
+    assert "SKU " not in answer
+    assert "Products currently in inventory" not in answer
+
+
+def test_inventory_miss_is_a_short_not_stocked_answer() -> None:
+    catalogue = [
+        InventoryRecord(
+            id=1, name="Guantes de nitrilo (caja de 100)", sku="HCR-PPE-001",
+            category="ppe", unit="box", country="US", current_stock=1289,
+        ),
+        InventoryRecord(
+            id=2, name="Mascarilla quirúrgica (pack de 50)", sku="HCR-PPE-002",
+            category="ppe", unit="pack", country="UK", current_stock=1108,
+        ),
+    ]
+    out = InventoryToolOutput(
+        ok=True, products=[], catalogue=catalogue, queried_name="syringes"
     )
+    answer = format_inventory_answer(out)
+    assert answer == (
+        "We don't currently have syringes in stock. "
+        "You can search the inventory page manually to be sure."
+    )
+    assert "Guantes de nitrilo" not in answer
+    assert "SKU " not in answer
+    assert "Products currently in inventory" not in answer
+    assert "I could not find" not in answer
+    assert format_not_stocked_answer("syringes", catalogue) == answer
+    assert inventory_lookup_complete(out) is True
+    # Legacy not_found payloads are also a complete, normal answer.
+    legacy = InventoryToolOutput(ok=False, error="not_found", queried_name="needles")
+    assert inventory_lookup_complete(legacy) is True
+    assert format_inventory_answer(legacy) == format_not_stocked_answer("needles")
 
 
 def test_inventory_messages_are_distinct() -> None:
@@ -203,3 +240,49 @@ def test_auth_comes_from_service_client_credentials_never_hardcoded() -> None:
     assert "AGENT_TOOL_API_URL" in provider_source
     # Pasted user JWT mechanism fully removed (agent-graph.md §9.1).
     assert "AGENT_TOOL_API_TOKEN" not in provider_source
+
+
+# --- Natural-language rendering of tool facts ---
+
+
+def test_describe_incident_reads_as_plain_english() -> None:
+    from data.pipelines.agent_tools import IncidentRecord, describe_incident
+
+    record = IncidentRecord(
+        id=8,
+        title="Duplicate charge for the same consultation detected",
+        description="",
+        category="billing_error",
+        status="open",
+        origin="customer",
+        branch="miami_brickell",
+        updated_at="2024-01-20T00:00:00Z",
+    )
+    assert describe_incident(record) == (
+        "Ticket #8 (\u201cDuplicate charge for the same consultation detected\u201d) "
+        "is currently open. It is a billing error reported by a customer at the "
+        "Miami Brickell branch. It was last updated on Jan 20, 2024."
+    )
+    in_progress = record.model_copy(
+        update={"status": "in_progress", "category": "it_system", "origin": "internal"}
+    )
+    text = describe_incident(in_progress)
+    assert "is currently in progress" in text
+    assert "an IT system issue raised internally" in text
+
+
+def test_describe_stock_pluralizes_units_and_handles_zero() -> None:
+    from data.pipelines.agent_tools import InventoryRecord, describe_stock
+
+    base = InventoryRecord(
+        id=1, name="Solución salina 0,9% 500ml", sku="HCR-MED-001",
+        category="medications", unit="vial", country="UK", current_stock=1,
+    )
+    assert describe_stock(base) == (
+        "We currently have 1 vial of Solución salina 0,9% 500ml (SKU HCR-MED-001) "
+        "in stock in the UK."
+    )
+    assert "2,500 vials" in describe_stock(base.model_copy(update={"current_stock": 2500}))
+    assert describe_stock(base.model_copy(update={"current_stock": 0})) == (
+        "Solución salina 0,9% 500ml (SKU HCR-MED-001) is out of stock in the UK."
+    )

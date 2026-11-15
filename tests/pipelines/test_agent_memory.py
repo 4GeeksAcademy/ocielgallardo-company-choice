@@ -109,6 +109,10 @@ class FakeRedis:
     def smembers(self, key: str) -> set[str]:
         return set(self.sets.get(key, set()))
 
+    def srem(self, key: str, member: str) -> None:
+        if key in self.sets:
+            self.sets[key].discard(member)
+
 
 @pytest.fixture(params=["memory", "redis"])
 def store(request) -> InMemoryMemoryStore | RedisMemoryStore:
@@ -250,6 +254,20 @@ def test_entries_and_audit_roundtrip(store) -> None:
     assert len(audit) == 1
     assert audit[0].action == ACTION_PROPOSED
     assert audit[0].fact == entry.fact
+
+
+def test_delete_entry_removes_the_fact(store) -> None:
+    first = make_entry(scope="austin", category="hours", fact="closes at 10pm on Fridays")
+    second = make_entry(scope="austin", category="hours", fact="opens at 8am on Mondays")
+    store.put_entry(first)
+    store.put_entry(second)
+
+    removed = store.delete_entry(first.id)
+
+    assert removed is not None
+    assert removed.id == first.id
+    assert [item.fact for item in store.list_entries()] == ["opens at 8am on Mondays"]
+    assert store.delete_entry("missing") is None
 
 
 def test_put_entry_merges_duplicates(store) -> None:

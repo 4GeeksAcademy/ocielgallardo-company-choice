@@ -4,7 +4,7 @@
  */
 
 import {
-  getAccessToken,
+  getValidAccessToken,
   HEALTHCORE_API_BASE_URL,
 } from "@/lib/services/healthcoreClient";
 
@@ -95,7 +95,13 @@ export function createAgentChatSocket(options: {
   handlers: AgentChatWsHandlers;
   baseDelayMs?: number;
   maxDelayMs?: number;
-}): { close: () => void; sendUserMessage: (text: string) => void; sendInterrupt: (newInput: string) => void; getSessionId: () => string | null } {
+}): {
+  close: () => void;
+  sendUserMessage: (text: string) => void;
+  sendInterrupt: (newInput: string) => void;
+  sendStop: () => void;
+  getSessionId: () => string | null;
+} {
   const {
     handlers,
     baseDelayMs = 1000,
@@ -130,9 +136,16 @@ export function createAgentChatSocket(options: {
     });
   };
 
+  /**
+   * Cancel the generation in flight. Reuses the backend `interrupt_requested`
+   * event with an empty `new_input`: the server cancels the run, keeps the
+   * partial text and emits `generation_interrupted` (no new turn is started).
+   */
+  const sendStop = () => sendInterrupt("");
+
   const connect = () => {
     if (stopped) return;
-    const token = getAccessToken();
+    const token = getValidAccessToken();
     if (!token) {
       stopped = true;
       handlers.onStatus?.("unauthorized");
@@ -231,6 +244,7 @@ export function createAgentChatSocket(options: {
     },
     sendUserMessage,
     sendInterrupt,
+    sendStop,
     getSessionId,
   };
 }

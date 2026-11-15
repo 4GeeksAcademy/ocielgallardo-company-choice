@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 SupplyCategory = Literal[
@@ -159,7 +159,16 @@ class TaskStatusResponse(BaseModel):
 class RagQueryRequest(BaseModel):
     """Coordinator question for the knowledge assistant."""
 
-    question: str = Field(min_length=3, max_length=1000)
+    # Any message with at least one non-space character ("12", "OK"); the
+    # WebSocket chat applies the same rule (routers/agent.py).
+    question: str = Field(min_length=1, max_length=1000)
+
+    @field_validator("question")
+    @classmethod
+    def _question_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("question must not be blank")
+        return value
 
 
 class AgentQueryRequest(RagQueryRequest):

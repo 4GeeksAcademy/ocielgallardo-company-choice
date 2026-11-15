@@ -490,7 +490,7 @@ def test_run_agent_stock_uses_inventory_mcp_tool(monkeypatch) -> None:
     result = run_agent("Do we have stock of HCR-PPE-001?")
     trace = get_trace(result["trace_id"])
 
-    assert "1289" in result["answer"]
+    assert "1,289 boxes" in result["answer"]
     assert result["sources_used"] == ["inventory"]
     assert [span["node"] for span in trace["spans"]] == [
         "receive",
@@ -531,9 +531,9 @@ def test_run_agent_hybrid_cites_tool_facts_deterministically(
         "synthesize_hybrid",
     ]
     # Deterministic tool block first, policy paragraph after.
-    assert "status=open" in result["answer"]
+    assert "is currently open" in result["answer"]
     assert "Policy: fee 50 USD." in result["answer"]
-    assert result["answer"].index("status=open") < result["answer"].index("Policy:")
+    assert result["answer"].index("is currently open") < result["answer"].index("Policy:")
 
 
 def test_run_agent_hybrid_tool_fail_still_answers_policy(monkeypatch) -> None:
@@ -551,7 +551,7 @@ def test_run_agent_hybrid_tool_fail_still_answers_policy(monkeypatch) -> None:
     assert result["route"] == "hybrid_incidents"
     assert "Policy text." in result["answer"]
     assert INCIDENT_NOT_FOUND_MESSAGE in result["answer"]
-    assert "status=open" not in result["answer"]
+    assert "is currently open" not in result["answer"]
 
 
 @pytest.mark.parametrize(

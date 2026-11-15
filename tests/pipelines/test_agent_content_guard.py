@@ -133,7 +133,7 @@ def test_sanitize_tool_text_shields_answer_formatters() -> None:
         ],
     )
     answer = format_incident_answer(poisoned)
-    assert "Ticket 7" in answer
+    assert "Ticket #7" in answer
     assert "Ignore all previous instructions" not in answer
 
 
@@ -181,6 +181,51 @@ def test_validate_output_blocks_phi_content() -> None:
     assert verdict.failure_type == guard.FAILURE_CONTENT
     assert "date_of_birth" in verdict.reasons
     assert "1985-03-12" not in verdict.safe_answer
+
+
+def test_validate_output_allows_short_not_stocked_and_diagnostic_product_stock() -> None:
+    from data.pipelines.agent_tools import (
+        InventoryRecord,
+        describe_stock,
+        format_not_stocked_answer,
+        is_deterministic_inventory_answer,
+    )
+
+    answer = format_not_stocked_answer("syringes")
+    assert answer == (
+        "We don't currently have syringes in stock. "
+        "You can search the inventory page manually to be sure."
+    )
+    assert is_deterministic_inventory_answer(answer) is True
+    verdict = guard.validate_output(answer)
+    assert verdict.allowed is True
+    assert verdict.safe_answer == answer
+
+    # A successful match may still name a diagnostics-category product.
+    stock = describe_stock(
+        InventoryRecord(
+            id=4, name="Test rápido de estreptococo", sku="HCR-DIAG-001",
+            category="diagnostics", unit="unit", country="US", current_stock=50,
+        )
+    )
+    assert is_deterministic_inventory_answer(stock) is True
+    stock_verdict = guard.validate_output(stock)
+    assert stock_verdict.allowed is True
+    assert stock_verdict.safe_answer == stock
+
+
+def test_validate_output_still_blocks_free_text_clinical_advice() -> None:
+    advice = (
+        "Based on those symptoms, the diagnosis is streptococcal pharyngitis. "
+        "I recommend starting antibiotics today."
+    )
+    verdict = guard.validate_output(advice)
+    assert verdict.allowed is False
+    assert verdict.failure_type == guard.FAILURE_CONTENT
+    assert "clinical_content" in verdict.reasons
+    assert verdict.safe_answer == guard.OUTPUT_FALLBACK_EN
+    assert "diagnosis" not in verdict.safe_answer
+    assert "symptoms" not in verdict.safe_answer
 
 
 # --- Observability: counters + CLI summary ---

@@ -263,7 +263,8 @@ async def compliance_chat_ws(
 
             if event == "user_message":
                 text = str(data.get("text") or "").strip()
-                if len(text) < 3:
+                # Same rule as AgentQueryRequest: any non-blank text counts.
+                if not text:
                     continue
                 chat_store.append_message(sid, role="user", text=text)
                 # Echo so other tabs / snapshot consumers see the turn.

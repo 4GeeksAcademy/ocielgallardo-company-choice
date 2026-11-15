@@ -14,6 +14,8 @@ business rules.
 |------|-----------|-------|-------|
 | `get_incident_status` | `ticket_id` | `incidents:read` | One incident by id |
 | `list_incidents` | `status`, `origin`, `branch`, `category` (at least one) | `incidents:read` | Exact-match filters |
+| `get_latest_incident` | optional `status`, `origin`, `branch`, `category` | `incidents:read` | Most recently updated incident |
+| `get_latest_rfp_ticket` | — | `rfp:read` | Most recently updated RFP ticket (read-only) |
 | `create_incident` | `title`, `description`, `category`, `origin`, `branch` | `incidents:write` | API validates the enums |
 | `update_incident_status` | `ticket_id`, `status` | `incidents:write` | API validates the transition |
 | `get_inventory_stock` | `supply_id` or `sku` or `name_query` | `inventory:read` | Read-only stock lookups |
@@ -109,7 +111,7 @@ Register/rotate the server identity (prints the secret once):
 ```bash
 PYTHONPATH=. uv run python scripts/seed_service_client.py \
     --client-id mcp-server --env-prefix MCP_BACKEND \
-    --scopes incidents:read incidents:write inventory:read
+    --scopes incidents:read incidents:write inventory:read rfp:read
 ```
 
 Compose (same image as the backend, in-network URLs):

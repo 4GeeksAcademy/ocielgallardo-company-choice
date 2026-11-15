@@ -54,6 +54,7 @@ SUPPORTED_SCOPES: tuple[str, ...] = (
     "incidents:read",
     "incidents:write",
     "inventory:read",
+    "rfp:read",
 )
 
 # Verified identity for the request being processed. Set by the MCP Auth

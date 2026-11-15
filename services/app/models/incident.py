@@ -77,6 +77,10 @@ class IncidentListItem(BaseModel):
     status: IncidentStatus
     origin: IncidentOrigin
     branch: IncidentBranch
+    # Optional on the list so tools can pick the latest ticket without N
+    # detail calls; the detail model below keeps them required.
+    created_at: datetime | str | None = None
+    updated_at: datetime | str | None = None
 
 
 class Incident(IncidentListItem):

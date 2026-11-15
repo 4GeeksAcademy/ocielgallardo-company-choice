@@ -397,7 +397,7 @@ def test_generator_stock_run_passes_tool_routing_eval(monkeypatch) -> None:
     trace = get_trace(result["trace_id"])
 
     assert eval_routes_to_tool_not_rag(trace, tool="inventory") is None
-    assert "1289" in result["answer"]
+    assert "1,289 boxes" in result["answer"]
 
 
 def test_generator_policy_run_passes_rag_routing_eval(monkeypatch) -> None:
@@ -432,7 +432,7 @@ def test_generator_hybrid_run_passes_both_sources_eval(monkeypatch) -> None:
     trace = get_trace(result["trace_id"])
 
     assert eval_routes_to_hybrid_tool_and_rag(trace) is None
-    assert "status=open" in result["answer"]
+    assert "is currently open" in result["answer"]
     assert "Policy: fee 50 USD." in result["answer"]
 
 
