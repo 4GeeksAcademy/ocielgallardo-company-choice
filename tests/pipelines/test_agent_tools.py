@@ -34,7 +34,6 @@ from data.pipelines.agent_tools import (  # noqa: E402
     InventoryRecord,
     InventoryToolInput,
     InventoryToolOutput,
-    format_catalogue_listing,
     format_incident_answer,
     format_inventory_answer,
     format_not_stocked_answer,
@@ -150,11 +149,14 @@ def test_inventory_failure_returns_own_message() -> None:
 
 def test_inventory_empty_payload_is_a_normal_not_stocked_answer() -> None:
     answer = format_inventory_answer(InventoryToolOutput(ok=True, products=[]))
-    assert answer.startswith("We don't stock that product.")
+    assert answer == format_not_stocked_answer(None)
+    assert answer.startswith("We don't currently have that product in stock.")
     assert "I could not find that product" not in answer
+    assert "SKU " not in answer
+    assert "Products currently in inventory" not in answer
 
 
-def test_inventory_miss_lists_the_current_catalogue() -> None:
+def test_inventory_miss_is_a_short_not_stocked_answer() -> None:
     catalogue = [
         InventoryRecord(
             id=1, name="Guantes de nitrilo (caja de 100)", sku="HCR-PPE-001",
@@ -169,17 +171,20 @@ def test_inventory_miss_lists_the_current_catalogue() -> None:
         ok=True, products=[], catalogue=catalogue, queried_name="syringes"
     )
     answer = format_inventory_answer(out)
-    assert answer.startswith("We don't stock syringes.")
-    assert "Guantes de nitrilo (caja de 100) (SKU HCR-PPE-001)" in answer
-    assert "Mascarilla quirúrgica (pack de 50) (SKU HCR-PPE-002)" in answer
+    assert answer == (
+        "We don't currently have syringes in stock. "
+        "You can search the inventory page manually."
+    )
+    assert "Guantes de nitrilo" not in answer
+    assert "SKU " not in answer
+    assert "Products currently in inventory" not in answer
     assert "I could not find" not in answer
     assert format_not_stocked_answer("syringes", catalogue) == answer
-    assert format_catalogue_listing(catalogue).startswith("Products currently in inventory:")
     assert inventory_lookup_complete(out) is True
     # Legacy not_found payloads are also a complete, normal answer.
     legacy = InventoryToolOutput(ok=False, error="not_found", queried_name="needles")
     assert inventory_lookup_complete(legacy) is True
-    assert format_inventory_answer(legacy).startswith("We don't stock needles.")
+    assert format_inventory_answer(legacy) == format_not_stocked_answer("needles")
 
 
 def test_inventory_messages_are_distinct() -> None:

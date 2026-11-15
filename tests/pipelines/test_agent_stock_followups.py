@@ -96,15 +96,19 @@ def test_face_masks_question_answers_with_the_surgical_mask(inventory, no_rag) -
     assert no_rag == []
 
 
-def test_syringes_are_not_in_the_catalogue_and_list_what_is_stocked(
+def test_syringes_are_not_in_the_catalogue_and_get_a_short_reply(
     inventory, no_rag
 ) -> None:
     result = run_agent("How much stock of syringes?", session_id="s1")
     assert inventory[-1].name_query == "syringes"
-    assert result["answer"] == format_not_stocked_answer("syringes", CATALOGUE)
-    assert result["answer"].startswith("We don't stock syringes.")
-    assert "SKU HCR-PPE-001" in result["answer"]
-    assert "SKU HCR-PPE-002" in result["answer"]
+    assert result["answer"] == format_not_stocked_answer("syringes")
+    assert result["answer"] == (
+        "We don't currently have syringes in stock. "
+        "You can search the inventory page manually."
+    )
+    assert "SKU " not in result["answer"]
+    assert "Products currently in inventory" not in result["answer"]
+    assert "Guantes de nitrilo" not in result["answer"]
     assert "I could not find that product" not in result["answer"]
     assert "Could not complete this" not in result["answer"]
     assert no_rag == []
@@ -115,7 +119,7 @@ def test_syringes_are_not_in_the_catalogue_and_list_what_is_stocked(
 
 def test_bare_product_after_not_found_retries_the_stock_tool(inventory, no_rag) -> None:
     first = run_agent("How much stock of unicorn dust?", session_id="s2")
-    assert first["answer"].startswith("We don't stock unicorn dust.")
+    assert first["answer"] == format_not_stocked_answer("unicorn dust")
 
     second = run_agent("face masks", session_id="s2")
 
@@ -130,27 +134,28 @@ def test_bare_product_still_missing_stays_a_normal_not_stocked_answer(
     run_agent("How much stock of syringes?", session_id="s3")
     second = run_agent("syringes", session_id="s3")
     assert len(inventory) == 2
-    assert second["answer"] == format_not_stocked_answer("syringes", CATALOGUE)
+    assert second["answer"] == format_not_stocked_answer("syringes")
     assert "I could not find that product" not in second["answer"]
     assert no_rag == []
 
 
-def test_similar_product_follow_up_lists_the_catalogue(inventory, no_rag) -> None:
+def test_similar_product_follow_up_stays_a_short_not_stocked_reply(
+    inventory, no_rag
+) -> None:
     first = run_agent("How much stock of syringes?", session_id="s4")
-    assert first["answer"].startswith("We don't stock syringes.")
+    assert first["answer"] == format_not_stocked_answer("syringes")
 
     second = run_agent("Is there one product in stock like that?", session_id="s4")
 
-    assert inventory[-1].list_all is True
-    assert second["answer"].startswith("We don't stock syringes.")
-    assert "Products currently in inventory:" in second["answer"]
-    assert "SKU HCR-PPE-001" in second["answer"]
+    assert second["answer"] == format_not_stocked_answer("syringes")
+    assert "SKU " not in second["answer"]
+    assert "Products currently in inventory" not in second["answer"]
     assert "I could not find that product" not in second["answer"]
     assert no_rag == []
 
 
 def test_not_found_follow_up_rewrites_and_skips_acknowledgements() -> None:
-    not_stocked = format_not_stocked_answer("unicorn dust", CATALOGUE)
+    not_stocked = format_not_stocked_answer("unicorn dust")
     agent_graph._remember_clarification("a", not_stocked)
     assert resolve_follow_up("a", "syringes") == "What is the current stock of syringes?"
 

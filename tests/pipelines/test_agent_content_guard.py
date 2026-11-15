@@ -183,31 +183,35 @@ def test_validate_output_blocks_phi_content() -> None:
     assert "1985-03-12" not in verdict.safe_answer
 
 
-def test_validate_output_allows_inventory_catalogue_with_diagnostics_category() -> None:
+def test_validate_output_allows_short_not_stocked_and_diagnostic_product_stock() -> None:
     from data.pipelines.agent_tools import (
         InventoryRecord,
+        describe_stock,
         format_not_stocked_answer,
         is_deterministic_inventory_answer,
     )
 
-    catalogue = [
+    answer = format_not_stocked_answer("syringes")
+    assert answer == (
+        "We don't currently have syringes in stock. "
+        "You can search the inventory page manually."
+    )
+    assert is_deterministic_inventory_answer(answer) is True
+    verdict = guard.validate_output(answer)
+    assert verdict.allowed is True
+    assert verdict.safe_answer == answer
+
+    # A successful match may still name a diagnostics-category product.
+    stock = describe_stock(
         InventoryRecord(
             id=4, name="Test rápido de estreptococo", sku="HCR-DIAG-001",
             category="diagnostics", unit="unit", country="US", current_stock=50,
-        ),
-        InventoryRecord(
-            id=6, name="Solución salina 0,9% 500ml", sku="HCR-MED-001",
-            category="medications", unit="vial", country="US", current_stock=80,
-        ),
-    ]
-    answer = format_not_stocked_answer("syringes", catalogue)
-    assert is_deterministic_inventory_answer(answer) is True
-    # Even if a category label leaked into the reply, it is still catalogue data.
-    leaked = answer[:-1] + ", category diagnostics."
-    for text in (answer, leaked):
-        verdict = guard.validate_output(text)
-        assert verdict.allowed is True, text
-        assert verdict.safe_answer == text
+        )
+    )
+    assert is_deterministic_inventory_answer(stock) is True
+    stock_verdict = guard.validate_output(stock)
+    assert stock_verdict.allowed is True
+    assert stock_verdict.safe_answer == stock
 
 
 def test_validate_output_still_blocks_free_text_clinical_advice() -> None:

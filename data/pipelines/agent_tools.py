@@ -315,32 +315,29 @@ def inventory_lookup_complete(result: InventoryToolOutput) -> bool:
     return bool(result.ok) or result.error == "not_found"
 
 
-def product_catalogue_label(item: InventoryRecord) -> str:
-    """``Mascarilla quirúrgica (pack de 50) (SKU HCR-PPE-002)``."""
-    from data.pipelines import agent_content_guard
-
-    name = agent_content_guard.sanitize_tool_text(item.name).strip() or "Unnamed product"
-    sku = (item.sku or "").strip()
-    return f"{name} (SKU {sku})" if sku else name
-
-
-def format_catalogue_listing(products: list[InventoryRecord]) -> str:
-    """Coordinator-facing catalogue list (name + SKU), or an empty-inventory note."""
-    if not products:
-        return "There are no products in the inventory right now."
-    items = ", ".join(product_catalogue_label(item) for item in products)
-    return f"Products currently in inventory: {items}."
+# The backoffice has Inventory > Supplies at /inventory/products (navConfig).
+HAS_INVENTORY_PAGE = True
+INVENTORY_SEARCH_HINT = "You can search the inventory page manually."
+INVENTORY_NOT_STOCKED_PREFIX = "We don't currently have "
 
 
 def format_not_stocked_answer(
-    queried_name: str | None, catalogue: list[InventoryRecord]
+    queried_name: str | None, catalogue: list[InventoryRecord] | None = None
 ) -> str:
-    """Successful answer when the requested product is not in the catalogue."""
+    """Short reply when the requested product is not in the catalogue.
+
+    ``catalogue`` is ignored: chat never lists every product in stock.
+    When the backoffice has an inventory page, a one-line manual-search
+    hint is appended.
+    """
     from data.pipelines import agent_content_guard
 
     label = agent_content_guard.sanitize_tool_text(queried_name or "").strip()
     label = label or "that product"
-    return f"We don't stock {label}. {format_catalogue_listing(catalogue)}"
+    answer = f"{INVENTORY_NOT_STOCKED_PREFIX}{label} in stock."
+    if HAS_INVENTORY_PAGE:
+        return f"{answer} {INVENTORY_SEARCH_HINT}"
+    return answer
 
 
 # Memory confirmations that may be appended after a stock/catalogue answer.
@@ -360,20 +357,17 @@ _STOCK_SENTENCE_RE = re.compile(
 
 
 def is_deterministic_inventory_answer(text: str) -> bool:
-    """True when ``text`` is a stock or catalogue reply from the inventory tool.
+    """True when ``text`` is a stock or not-in-stock reply from the inventory tool.
 
-    These answers name medical supplies as catalogue data, not as clinical
+    These answers name medical supplies as inventory data, not as clinical
     advice, so the output guard must not reject them for ``clinical_content``.
     """
     body = _MEMORY_SUFFIX_RE.sub("", (text or "").strip()).strip()
     if not body:
         return False
-    if body.startswith("We don't stock ") and (
-        "Products currently in inventory:" in body
-        or body.endswith("There are no products in the inventory right now.")
-    ):
+    if body.startswith(INVENTORY_NOT_STOCKED_PREFIX) and " in stock." in body:
         return True
-    if body.startswith("Products currently in inventory:"):
+    if body == INVENTORY_SEARCH_HINT:
         return True
     pieces = _STOCK_SENTENCE_RE.findall(body)
     if not pieces:
@@ -385,9 +379,9 @@ def is_deterministic_inventory_answer(text: str) -> bool:
 def format_inventory_answer(result: InventoryToolOutput) -> str:
     """Turn an inventory tool result into a coordinator-facing answer.
 
-    A missing product is a normal answer (the current catalogue), not a
-    tool failure. Free-text fields pass the content-isolation guard —
-    external tool text is data, never instructions.
+    A missing product is a short, successful answer (no catalogue dump),
+    not a tool failure. Free-text fields pass the content-isolation guard
+    — external tool text is data, never instructions.
     """
     from data.pipelines import agent_content_guard
 
@@ -398,10 +392,11 @@ def format_inventory_answer(result: InventoryToolOutput) -> str:
     if result.products:
         return " ".join(describe_stock(item) for item in result.products)
     if (result.queried_name or "").strip() or result.error == "not_found":
-        return format_not_stocked_answer(result.queried_name, list(result.catalogue or []))
-    if result.catalogue:
-        return format_catalogue_listing(list(result.catalogue))
-    return format_not_stocked_answer(result.queried_name, [])
+        return format_not_stocked_answer(result.queried_name)
+    # A catalogue-only / list-all call has no specific product to name.
+    if result.catalogue and HAS_INVENTORY_PAGE:
+        return INVENTORY_SEARCH_HINT
+    return format_not_stocked_answer(result.queried_name)
 
 
 def _quantity(count: int, unit: str) -> str:

@@ -1831,8 +1831,10 @@ def resolve_inventory_topic_clarification(session_id: str, message: str) -> str:
 
 
 def _is_not_stocked_answer(answer: str) -> bool:
+    from data.pipelines.agent_tools import INVENTORY_NOT_STOCKED_PREFIX
+
     text = (answer or "").strip()
-    return text.startswith("We don't stock ")
+    return text.startswith(INVENTORY_NOT_STOCKED_PREFIX) and " in stock." in text
 
 
 def _clarification_kind(answer: str) -> str | None:

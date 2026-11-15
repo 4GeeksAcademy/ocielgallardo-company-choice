@@ -138,7 +138,7 @@ def test_numbered_questions_are_answered_separately_even_if_one_fails(
 
     answer = result["answer"]
     assert result["route"] == "multi"
-    assert answer.startswith("**1.** We don't stock unicorn dust.")
+    assert answer.startswith("**1.** We don't currently have unicorn dust in stock.")
     assert f"**2.** {agent_graph.MULTI_PART_FAILURE_MESSAGE}" in answer
     assert "**3.** Ticket #8" in answer
     assert len(result["parts"]) == 3

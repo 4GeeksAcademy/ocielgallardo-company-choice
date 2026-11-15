@@ -94,20 +94,29 @@ def _assert_not_blocked(result: dict) -> None:
 
 
 @pytest.mark.parametrize(
-    ("question", "expected"),
+    ("question", "expected", "expect_sku"),
     [
-        ("How much stock of syringes?", "We don't stock syringes."),
-        ("¿Cuántos guantes de nitrilo quedan?", "Guantes de nitrilo"),
-        ("How many face masks do we have in stock?", "Mascarilla quirúrgica"),
+        (
+            "How much stock of syringes?",
+            "We don't currently have syringes in stock. You can search the inventory page manually.",
+            False,
+        ),
+        ("¿Cuántos guantes de nitrilo quedan?", "Guantes de nitrilo", True),
+        ("How many face masks do we have in stock?", "Mascarilla quirúrgica", True),
     ],
 )
 def test_full_inventory_replies_pass_the_content_guard(
-    inventory, no_rag, question, expected
+    inventory, no_rag, question, expected, expect_sku
 ) -> None:
     result = run_agent(question, session_id="guard")
     _assert_not_blocked(result)
     assert expected in result["answer"]
-    assert "SKU " in result["answer"]
+    if expect_sku:
+        assert "SKU " in result["answer"]
+    else:
+        assert result["answer"] == expected
+        assert "SKU " not in result["answer"]
+        assert "Products currently in inventory" not in result["answer"]
     assert no_rag == []
     summary = guard.get_activation_summary()
     assert "output_rejected" not in summary
@@ -156,8 +165,12 @@ def test_inventory_clarification_retries_the_last_stock_question(inventory, no_r
     second = run_agent("This question is about inventory.", session_id="retry")
 
     _assert_not_blocked(second)
-    assert second["answer"].startswith("We don't stock syringes.")
-    assert "Test rápido de estreptococo (SKU HCR-DIAG-001)" in second["answer"]
+    assert second["answer"] == (
+        "We don't currently have syringes in stock. "
+        "You can search the inventory page manually."
+    )
+    assert "SKU " not in second["answer"]
+    assert "Test rápido de estreptococo" not in second["answer"]
     assert no_rag == generated_before
 
 
@@ -185,18 +198,20 @@ def test_inventory_clarification_retries_after_a_blocked_stock_reply(
 
     second = run_agent("This quest is about inventory.", session_id="blocked")
 
-    assert second["answer"].startswith("We don't stock syringes.")
+    assert second["answer"].startswith("We don't currently have syringes in stock.")
+    assert "SKU " not in second["answer"]
     assert "I can't share that response" not in second["answer"]
     assert no_rag == []
 
 
-def test_clarification_without_a_prior_stock_question_lists_the_catalogue(
+def test_clarification_without_a_prior_stock_question_points_to_the_inventory_page(
     inventory, no_rag
 ) -> None:
     result = run_agent("This question is about inventory.", session_id="fresh")
     _assert_not_blocked(result)
-    assert result["answer"].startswith("Products currently in inventory:")
-    assert "SKU HCR-PPE-001" in result["answer"]
+    assert result["answer"] == "You can search the inventory page manually."
+    assert "SKU " not in result["answer"]
+    assert "Products currently in inventory" not in result["answer"]
     assert no_rag == []
 
 
