@@ -344,6 +344,14 @@ export function KnowledgeQueryPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // WebSocket closed with 4401 (or no valid token): the session is gone, so
+  // clear it and send the user to login instead of leaving a dead chat.
+  useEffect(() => {
+    if (wsStatus === "unauthorized") {
+      clearSessionAndRedirectToLogin();
+    }
+  }, [wsStatus]);
+
   // Keep the newest message in view.
   useEffect(() => {
     const list = listRef.current;

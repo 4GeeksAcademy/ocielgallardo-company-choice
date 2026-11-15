@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:auth": "node --test lib/auth/session.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.45.0",

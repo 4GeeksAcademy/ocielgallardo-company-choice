@@ -4,7 +4,7 @@
  */
 
 import {
-  getAccessToken,
+  getValidAccessToken,
   HEALTHCORE_API_BASE_URL,
 } from "@/lib/services/healthcoreClient";
 
@@ -145,7 +145,7 @@ export function createAgentChatSocket(options: {
 
   const connect = () => {
     if (stopped) return;
-    const token = getAccessToken();
+    const token = getValidAccessToken();
     if (!token) {
       stopped = true;
       handlers.onStatus?.("unauthorized");

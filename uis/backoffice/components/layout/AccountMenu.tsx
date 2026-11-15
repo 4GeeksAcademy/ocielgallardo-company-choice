@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { ACCOUNT_MENU_ITEMS, isPathActive } from "@/components/layout/navConfig";
-import { clearSessionAndRedirectToLogin } from "@/lib/services/healthcoreClient";
+import { signOut } from "@/lib/services/healthcoreClient";
 import { track } from "@/lib/services/telemetry";
 
 function ProfileAvatarIcon() {
@@ -33,9 +33,12 @@ export function AccountMenu() {
   const rootRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
 
-  useEffect(() => {
+  // Close the menu on navigation (state adjusted during render, not in an effect).
+  const [menuPathname, setMenuPathname] = useState(pathname);
+  if (menuPathname !== pathname) {
+    setMenuPathname(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     if (!open) {
@@ -110,7 +113,7 @@ export function AccountMenu() {
             onClick={() => {
               setOpen(false);
               track("logout_completed", { path: window.location.pathname });
-              clearSessionAndRedirectToLogin();
+              signOut();
             }}
           >
             <LogOut size={14} strokeWidth={2} aria-hidden="true" />

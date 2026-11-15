@@ -7,11 +7,17 @@ import { Button } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/FormMessage";
 import { Input } from "@/components/ui/Input";
 import { useFormSubmit } from "@/hooks/useFormSubmit";
+import { safeNextPath } from "@/lib/auth/session";
 import { login } from "@/lib/services/authApi";
 import { HealthcoreApiError } from "@/lib/services/healthcoreClient";
 import { track } from "@/lib/services/telemetry";
 
-export function LoginForm() {
+interface LoginFormProps {
+  /** Where to go after signing in (already validated; re-checked here). */
+  nextPath?: string;
+}
+
+export function LoginForm({ nextPath }: LoginFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,7 +34,7 @@ export function LoginForm() {
     await runSubmit(async () => {
       try {
         await login({ email: email.trim(), password });
-        router.replace("/");
+        router.replace(safeNextPath(nextPath));
       } catch (err) {
         const status = err instanceof HealthcoreApiError ? err.status : 0;
         track("login_failed", {
