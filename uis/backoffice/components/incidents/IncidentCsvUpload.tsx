@@ -7,8 +7,14 @@ interface IncidentCsvUploadProps {
   onFileSelected: (file: File) => void;
 }
 
+const MAX_INCIDENT_CSV_BYTES = 5 * 1024 * 1024;
+
 function isCsvFile(file: File): boolean {
   return file.name.toLowerCase().endsWith(".csv");
+}
+
+function isWithinSizeLimit(file: File): boolean {
+  return file.size <= MAX_INCIDENT_CSV_BYTES;
 }
 
 export function IncidentCsvUpload({
@@ -32,6 +38,11 @@ export function IncidentCsvUpload({
       }
       if (file.size === 0) {
         setLocalError("The selected file is empty.");
+        setSelectedName(null);
+        return;
+      }
+      if (!isWithinSizeLimit(file)) {
+        setLocalError("The CSV file exceeds the 5 MB size limit.");
         setSelectedName(null);
         return;
       }
@@ -95,7 +106,8 @@ export function IncidentCsvUpload({
           Drag and drop a CSV file here, or click to browse
         </p>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          Field name sent to the API: <code>file</code> (multipart/form-data)
+          CSV only, up to 5 MB. Field name sent to the API:{" "}
+          <code>file</code> (multipart/form-data)
         </p>
         {selectedName ? (
           <p className="mt-3 text-sm text-blue-700 dark:text-blue-300">Selected: {selectedName}</p>
