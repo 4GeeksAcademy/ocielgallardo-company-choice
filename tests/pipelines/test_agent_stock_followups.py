@@ -104,7 +104,7 @@ def test_syringes_are_not_in_the_catalogue_and_get_a_short_reply(
     assert result["answer"] == format_not_stocked_answer("syringes")
     assert result["answer"] == (
         "We don't currently have syringes in stock. "
-        "You can search the inventory page manually."
+        "You can search the inventory page manually to be sure."
     )
     assert "SKU " not in result["answer"]
     assert "Products currently in inventory" not in result["answer"]

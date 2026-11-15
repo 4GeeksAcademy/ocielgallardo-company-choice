@@ -317,7 +317,7 @@ def inventory_lookup_complete(result: InventoryToolOutput) -> bool:
 
 # The backoffice has Inventory > Supplies at /inventory/products (navConfig).
 HAS_INVENTORY_PAGE = True
-INVENTORY_SEARCH_HINT = "You can search the inventory page manually."
+INVENTORY_SEARCH_HINT = "You can search the inventory page manually to be sure."
 INVENTORY_NOT_STOCKED_PREFIX = "We don't currently have "
 
 

@@ -173,7 +173,7 @@ def test_inventory_miss_is_a_short_not_stocked_answer() -> None:
     answer = format_inventory_answer(out)
     assert answer == (
         "We don't currently have syringes in stock. "
-        "You can search the inventory page manually."
+        "You can search the inventory page manually to be sure."
     )
     assert "Guantes de nitrilo" not in answer
     assert "SKU " not in answer

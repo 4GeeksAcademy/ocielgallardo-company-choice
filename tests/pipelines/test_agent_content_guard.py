@@ -194,7 +194,7 @@ def test_validate_output_allows_short_not_stocked_and_diagnostic_product_stock()
     answer = format_not_stocked_answer("syringes")
     assert answer == (
         "We don't currently have syringes in stock. "
-        "You can search the inventory page manually."
+        "You can search the inventory page manually to be sure."
     )
     assert is_deterministic_inventory_answer(answer) is True
     verdict = guard.validate_output(answer)

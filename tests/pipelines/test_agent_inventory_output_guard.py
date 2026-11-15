@@ -98,7 +98,7 @@ def _assert_not_blocked(result: dict) -> None:
     [
         (
             "How much stock of syringes?",
-            "We don't currently have syringes in stock. You can search the inventory page manually.",
+            "We don't currently have syringes in stock. You can search the inventory page manually to be sure.",
             False,
         ),
         ("¿Cuántos guantes de nitrilo quedan?", "Guantes de nitrilo", True),
@@ -167,7 +167,7 @@ def test_inventory_clarification_retries_the_last_stock_question(inventory, no_r
     _assert_not_blocked(second)
     assert second["answer"] == (
         "We don't currently have syringes in stock. "
-        "You can search the inventory page manually."
+        "You can search the inventory page manually to be sure."
     )
     assert "SKU " not in second["answer"]
     assert "Test rápido de estreptococo" not in second["answer"]
@@ -209,7 +209,7 @@ def test_clarification_without_a_prior_stock_question_points_to_the_inventory_pa
 ) -> None:
     result = run_agent("This question is about inventory.", session_id="fresh")
     _assert_not_blocked(result)
-    assert result["answer"] == "You can search the inventory page manually."
+    assert result["answer"] == "You can search the inventory page manually to be sure."
     assert "SKU " not in result["answer"]
     assert "Products currently in inventory" not in result["answer"]
     assert no_rag == []
