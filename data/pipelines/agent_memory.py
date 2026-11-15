@@ -67,6 +67,7 @@ ACTION_DEFAULT_REJECTED = "default_rejected"
 ACTION_EXPIRED_DEFAULT_REJECTED = "expired_default_rejected"
 ACTION_SKIPPED_PENDING = "skipped_pending"
 ACTION_CONSOLIDATED = "consolidated"
+ACTION_DELETED = "deleted"
 
 STATUS_PENDING = "pending"
 STATUS_FINAL = "final"
@@ -442,6 +443,8 @@ class MemoryStore(Protocol):
 
     def put_entry(self, entry: MemoryEntry) -> list[dict]: ...
 
+    def delete_entry(self, entry_id: str) -> MemoryEntry | None: ...
+
     def append_audit(self, record: AuditRecord) -> None: ...
 
     def list_audit(self) -> list[AuditRecord]: ...
@@ -526,6 +529,17 @@ class InMemoryMemoryStore:
                 )
             )
         return dropped
+
+    def delete_entry(self, entry_id: str) -> MemoryEntry | None:
+        for key, bucket in list(self._entries.items()):
+            for index, entry in enumerate(bucket):
+                if entry.id != entry_id:
+                    continue
+                removed = bucket.pop(index)
+                if not bucket:
+                    self._entries.pop(key, None)
+                return removed.model_copy(deep=True)
+        return None
 
     def append_audit(self, record: AuditRecord) -> None:
         self._audit.append(record.model_copy(deep=True))
@@ -653,6 +667,29 @@ class RedisMemoryStore:
                 )
             )
         return dropped
+
+    def delete_entry(self, entry_id: str) -> MemoryEntry | None:
+        for key in list(self._client.smembers(self._index_key())):
+            _assert_agent_namespace(key)
+            bucket: list[MemoryEntry] = []
+            removed: MemoryEntry | None = None
+            for raw in self._client.lrange(key, 0, -1):
+                existing = MemoryEntry.model_validate(json.loads(raw))
+                if existing.id == entry_id and removed is None:
+                    removed = existing
+                    continue
+                bucket.append(existing)
+            if removed is None:
+                continue
+            self._client.delete(key)
+            for survivor in bucket:
+                self._client.rpush(key, survivor.model_dump_json())
+            if bucket:
+                self._client.expire(key, self.settings.entry_ttl_days * 86400)
+            else:
+                self._client.srem(self._index_key(), key)
+            return removed
+        return None
 
     def append_audit(self, record: AuditRecord) -> None:
         key = self._audit_key()

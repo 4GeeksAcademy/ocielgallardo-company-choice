@@ -290,6 +290,7 @@ def lookup_inventory_via_mcp(
             "supply_id": payload.supply_id,
             "sku": payload.sku,
             "name_query": payload.name_query,
+            "list_all": True if payload.list_all else None,
         }.items()
         if value
     }

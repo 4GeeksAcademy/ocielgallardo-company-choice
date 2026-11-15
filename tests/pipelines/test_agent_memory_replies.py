@@ -47,6 +47,7 @@ def llm(monkeypatch):
     monkeypatch.setattr(rag_pipeline, "retrieve", lambda q, **kw: [{"text": "ctx"}])
     monkeypatch.setattr(memory_proposer, "classify_decision", _decide)
     agent_graph._PENDING_CLARIFICATIONS.clear()
+    agent_graph._LAST_INVENTORY_MISS.clear()
     return state
 
 
@@ -137,3 +138,74 @@ def test_bare_yes_is_not_rewritten_as_a_product_follow_up(store, llm) -> None:
 
     agent_graph._remember_clarification("s", INVENTORY_NOT_FOUND_MESSAGE)
     assert agent_graph.resolve_follow_up("s", "Save it") == "Save it"
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "do you have that info in ur memory saved?",
+        "What's in your memory?",
+        "What do you remember?",
+        "Do you have anything saved in your memory?",
+    ],
+)
+def test_memory_recall_questions_are_detected(message) -> None:
+    assert agent_graph.is_memory_recall_question(message)
+    assert not agent_graph.is_memory_revoke_request(message)
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "I have change my mind, dont save it",
+        "I have changed my mind, don't save it",
+        "forget that",
+        "delete it",
+        "Don't save it",
+        "olvídalo",
+    ],
+)
+def test_memory_revoke_requests_are_detected(message) -> None:
+    assert agent_graph.is_memory_revoke_request(message)
+
+
+def test_recall_lists_saved_preferences(store, llm) -> None:
+    _propose("recall")
+    run_agent("Yes, save that for next time.", session_id="recall")
+    generated_before = len(llm["generate"])
+
+    result = run_agent("do you have that info in ur memory saved?", session_id="recall")
+
+    assert result["answer"].startswith("Yes, I have this saved in memory:")
+    assert PROPOSAL["fact"] in result["answer"]
+    assert "don't have a persistent memory" not in result["answer"].lower()
+    assert len(llm["generate"]) == generated_before
+    assert result["route"] == "memory_reply"
+
+
+def test_recall_when_nothing_is_saved(store, llm) -> None:
+    result = run_agent("What's in your memory?", session_id="empty")
+    assert result["answer"] == "I don't have anything saved in memory yet."
+    assert llm["generate"] == []
+
+
+def test_change_of_mind_removes_the_latest_saved_memory(store, llm) -> None:
+    _propose("revoke")
+    saved = run_agent("Yes, save that for next time.", session_id="revoke")
+    assert saved["answer"] == "Got it, I saved that for next time."
+    assert [entry.fact for entry in store.list_entries()] == [PROPOSAL["fact"]]
+    generated_before = len(llm["generate"])
+
+    result = run_agent("I have change my mind, dont save it", session_id="revoke")
+
+    assert result["answer"] == "Understood, I removed that from memory."
+    assert store.list_entries() == []
+    assert any(record.action == agent_memory.ACTION_DELETED for record in store.list_audit())
+    assert len(llm["generate"]) == generated_before
+    assert "knowledge base" not in result["answer"].lower()
+
+
+def test_revoke_with_nothing_saved_says_so(store, llm) -> None:
+    result = run_agent("forget that", session_id="none")
+    assert result["answer"] == "I don't have anything saved in memory to remove."
+    assert llm["generate"] == []

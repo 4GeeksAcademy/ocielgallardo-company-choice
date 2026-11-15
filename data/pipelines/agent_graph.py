@@ -85,6 +85,7 @@ from data.pipelines.agent_tools import (
     format_incident_answer,
     format_inventory_answer,
     format_rfp_answer,
+    inventory_lookup_complete,
 )
 
 logger = logging.getLogger(__name__)
@@ -212,6 +213,14 @@ MEMORY_ASK_CORRECTION_EN = (
 MEMORY_ASK_CORRECTION_ES = (
     "Claro, dime la versión correcta y guardaré esa en su lugar."
 )
+MEMORY_REMOVED_EN = "Understood, I removed that from memory."
+MEMORY_REMOVED_ES = "Entendido, lo he eliminado de la memoria."
+MEMORY_NOTHING_TO_REMOVE_EN = "I don't have anything saved in memory to remove."
+MEMORY_NOTHING_TO_REMOVE_ES = "No tengo nada guardado en la memoria para eliminar."
+MEMORY_EMPTY_EN = "I don't have anything saved in memory yet."
+MEMORY_EMPTY_ES = "Todavía no tengo nada guardado en la memoria."
+MEMORY_LIST_INTRO_EN = "Yes, I have this saved in memory:"
+MEMORY_LIST_INTRO_ES = "Sí, tengo esto guardado en la memoria:"
 
 _MEMORY_REPLY_STRIP_RE = re.compile(r"[¡!¿?.,;:—–\-\"()]+")
 _MEMORY_APPROVE_KEYS = frozenset(
@@ -271,6 +280,119 @@ def bare_memory_reply(message: str) -> str | None:
         return "reject"
     if has_approve:
         return "approve"
+    return None
+
+
+_MEMORY_RECALL_RE = re.compile(
+    r"(?:"
+    r"(?:do|did|have)\s+you\s+have\b.*\b(?:memory|saved|remember)\b"
+    r"|\bin\s+(?:ur|your|the)\s+memory\b"
+    r"|\b(?:ur|your)\s+memory\b"
+    r"|\bwhat\s+do\s+you\s+remember\b"
+    r"|\bwhat(?:'s|s| is)\s+(?:saved|in\s+(?:ur|your)\s+memory)\b"
+    r"|\btienes\s+.*\bmemoria\b"
+    r"|\bqu[eé]\s+recuerdas\b"
+    r"|\ben\s+tu\s+memoria\b"
+    r")",
+    re.IGNORECASE | re.DOTALL,
+)
+_MEMORY_REVOKE_RE = re.compile(
+    r"(?:"
+    r"\bchang(?:e|ed)\s+my\s+mind\b"
+    r"|\b(?:don'?t|do\s+not|dont)\s+(?:save|store|keep|remember)\b"
+    r"|\bforget\s+(?:that|it|this|what\s+you\s+saved)\b"
+    r"|\b(?:delete|remove|unsave)\s+(?:it|that|this|what\s+you\s+saved)\b"
+    r"|\bno\s+lo\s+guardes\b"
+    r"|\bme\s+he\s+arrepentido\b"
+    r"|\bcambi[eé]\s+de\s+opini[oó]n\b"
+    r"|\bolv[ií]da(?:lo|te)\b"
+    r"|\bb[oó]rra(?:lo|la)?\b"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def is_memory_recall_question(message: str) -> bool:
+    """True when the user asks what is already saved in memory."""
+    text = (message or "").strip()
+    return bool(text) and bool(_MEMORY_RECALL_RE.search(text))
+
+
+def is_memory_revoke_request(message: str) -> bool:
+    """True when the user wants to undo a just-saved memory.
+
+    Handles typos and short phrasing: "dont save it", "change my mind",
+    "forget that", "delete it".
+    """
+    text = (message or "").strip()
+    if not text or len(text) > 200:
+        return False
+    if is_memory_recall_question(text):
+        return False
+    return bool(_MEMORY_REVOKE_RE.search(text))
+
+
+def _session_memory_entries(store, session_id: str):
+    """Approved facts saved in this session, oldest first."""
+    entries = [
+        entry
+        for entry in store.list_entries()
+        if entry.session_id == session_id
+    ]
+    return sorted(entries, key=lambda entry: entry.created_at or "")
+
+
+def format_memory_recall_answer(entries, *, spanish: bool) -> str:
+    if not entries:
+        return MEMORY_EMPTY_ES if spanish else MEMORY_EMPTY_EN
+    intro = MEMORY_LIST_INTRO_ES if spanish else MEMORY_LIST_INTRO_EN
+    bullets = "\n".join(f"- {entry.fact}" for entry in entries)
+    return f"{intro}\n{bullets}"
+
+
+def _handle_memory_user_request(session_id: str, question: str) -> dict | None:
+    """Standalone recall / revoke, used after pending proposals are resolved."""
+    if is_memory_revoke_request(question):
+        store = agent_memory.get_store()
+        spanish = _is_spanish(question)
+        entries = _session_memory_entries(store, session_id)
+        if not entries:
+            return {
+                "action": "nothing_to_remove",
+                "standalone_answer": (
+                    MEMORY_NOTHING_TO_REMOVE_ES if spanish else MEMORY_NOTHING_TO_REMOVE_EN
+                ),
+            }
+        removed = store.delete_entry(entries[-1].id)
+        if removed is None:
+            return {
+                "action": "nothing_to_remove",
+                "standalone_answer": (
+                    MEMORY_NOTHING_TO_REMOVE_ES if spanish else MEMORY_NOTHING_TO_REMOVE_EN
+                ),
+            }
+        store.append_audit(
+            agent_memory.make_audit(
+                agent_memory.ACTION_DELETED,
+                session_id=session_id,
+                scope=removed.scope,
+                category=removed.category,
+                fact=removed.fact,
+                decision="revoke",
+            )
+        )
+        return {
+            "action": "deleted",
+            "standalone_answer": MEMORY_REMOVED_ES if spanish else MEMORY_REMOVED_EN,
+        }
+    if is_memory_recall_question(question):
+        store = agent_memory.get_store()
+        entries = _session_memory_entries(store, session_id)
+        spanish = _is_spanish(question)
+        return {
+            "action": "recalled",
+            "standalone_answer": format_memory_recall_answer(entries, spanish=spanish),
+        }
     return None
 
 
@@ -464,6 +586,30 @@ def asks_stock_by_quantity(text: str) -> bool:
         and inventory_search.mentions_product_noun(text or "")
         and not has_policy_signal(text or "")
     )
+
+
+# "Is there one product in stock like that?", "something similar",
+# "What products are currently in inventory?"
+_CATALOGUE_REQUEST_RE = re.compile(
+    r"\b(?:"
+    r"like\s+that|like\s+this|something\s+similar|anything\s+similar|"
+    r"any(?:thing)?\s+like|similar\s+product|"
+    r"what\s+products|which\s+products|"
+    r"products?\s+currently\s+in\s+inventory|"
+    r"list\s+(?:all\s+)?(?:the\s+)?products|"
+    r"everything\s+in\s+(?:the\s+)?(?:stock|inventory)|"
+    r"algo\s+parecido|algo\s+similar|qu[eé]\s+productos"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def asks_for_product_catalogue(text: str) -> bool:
+    """True when the user asks for the catalogue or for something similar."""
+    if not _CATALOGUE_REQUEST_RE.search(text or ""):
+        return False
+    # "something similar to gloves" should still search for gloves.
+    return not inventory_search.mentions_product_noun(text or "")
 
 
 def _needs_inventory_tool(text: str) -> bool:
@@ -811,18 +957,32 @@ def lookup_inventory_node(state: AgentState) -> dict:
     tool_payload: dict = {}
     sources = list(state.get("sources_used") or [])
     try:
-        sku = extract_sku(state["question"])
-        name_query = None if sku else extract_inventory_name_query(state["question"])
-        payload = InventoryToolInput(sku=sku, name_query=name_query)
-        result = mcp_client.lookup_inventory_via_mcp(payload)
+        question = state["question"]
+        if asks_for_product_catalogue(question):
+            result = mcp_client.lookup_inventory_via_mcp(
+                InventoryToolInput(list_all=True)
+            )
+            # After "we don't stock X", keep that product name on a catalogue list.
+            session_id = str(state.get("session_id") or "")
+            miss = _inventory_miss_for(session_id)
+            if miss and not result.queried_name:
+                result.queried_name = miss.get("queried_name")
+        else:
+            sku = extract_sku(question)
+            name_query = None if sku else extract_inventory_name_query(question)
+            result = mcp_client.lookup_inventory_via_mcp(
+                InventoryToolInput(sku=sku, name_query=name_query)
+            )
         tool_payload = result.model_dump()
         if "inventory" not in sources:
             sources = [*sources, "inventory"]
         answer = format_inventory_answer(result)
+        complete = inventory_lookup_complete(result)
+        _remember_inventory_miss(str(state.get("session_id") or ""), result)
         return {
             "tool_result": tool_payload,
             "sources_used": sources,
-            "answer": answer if result.ok else "",
+            "answer": answer if complete else "",
         }
     finally:
         _record_span(
@@ -860,7 +1020,7 @@ def _tool_facts_text(tool_result: dict, sources_used: list[str]) -> tuple[str, b
             result = InventoryToolOutput.model_validate(tool_result or {})
         except Exception:
             return INVENTORY_TOOL_FALLBACK, False
-        return format_inventory_answer(result), bool(result.ok)
+        return format_inventory_answer(result), inventory_lookup_complete(result)
     from data.pipelines.agent_tools import IncidentToolOutput as _IncidentOut
 
     try:
@@ -1382,6 +1542,23 @@ def _run_agent_once(
                 question, session_id, trace, started, resolution, str(standalone)
             )
 
+        # 1b) After a saved fact: "what's in memory?" / "don't save it".
+        if memory_enabled and not pre_jailbreak:
+            try:
+                memory_request = _handle_memory_user_request(session_id, question)
+            except Exception:
+                logger.exception("memory: recall or revoke failed")
+                memory_request = None
+            if memory_request and memory_request.get("standalone_answer"):
+                return _memory_reply_result(
+                    question,
+                    session_id,
+                    trace,
+                    started,
+                    memory_request,
+                    str(memory_request["standalone_answer"]),
+                )
+
         # 2) Load approved facts relevant to this question (explicit store read).
         # Skipped for jailbreak attempts: injection text must not receive
         # memory-injected context.
@@ -1559,12 +1736,56 @@ _ACK_REPLY_RE = re.compile(
 )
 
 
+_LAST_INVENTORY_MISS: OrderedDict[str, dict] = OrderedDict()
+
+
+def _inventory_miss_for(session_id: str) -> dict | None:
+    """Most recent 'we don't stock X' for this session, if still fresh."""
+    if not session_id:
+        return None
+    pending = _LAST_INVENTORY_MISS.get(session_id)
+    if not pending:
+        return None
+    if time.time() - float(pending.get("at", 0)) > _CLARIFICATION_TTL_SECONDS:
+        _LAST_INVENTORY_MISS.pop(session_id, None)
+        return None
+    return pending
+
+
+def _remember_inventory_miss(session_id: str, result) -> None:
+    """Keep the last unmatched product query so a follow-up can list the catalogue."""
+    if not session_id:
+        return
+    from data.pipelines.agent_tools import InventoryToolOutput
+
+    if not isinstance(result, InventoryToolOutput):
+        return
+    if result.products or not inventory_lookup_complete(result):
+        _LAST_INVENTORY_MISS.pop(session_id, None)
+        return
+    if not ((result.queried_name or "").strip() or result.catalogue or result.error == "not_found"):
+        _LAST_INVENTORY_MISS.pop(session_id, None)
+        return
+    _LAST_INVENTORY_MISS[session_id] = {
+        "queried_name": (result.queried_name or "").strip() or None,
+        "at": time.time(),
+    }
+    while len(_LAST_INVENTORY_MISS) > _MAX_CLARIFICATIONS:
+        _LAST_INVENTORY_MISS.popitem(last=False)
+
+
+def _is_not_stocked_answer(answer: str) -> bool:
+    text = (answer or "").strip()
+    return text.startswith("We don't stock ")
+
+
 def _clarification_kind(answer: str) -> str | None:
     """Which detail the agent just asked for (ticket id / product), if any.
 
-    A "not found" answer counts too: the user usually replies with a
-    corrected ticket number or product name ("syringes", "8"), which must be
-    retried against the same tool instead of going to the knowledge base.
+    A "not found" / "we don't stock X" answer counts too: the user usually
+    replies with a corrected product name ("syringes") or asks whether
+    anything similar is in stock, which must be retried against the same
+    tool instead of going to the knowledge base.
     """
     from data.pipelines.agent_tools import (
         INCIDENT_NOT_FOUND_MESSAGE,
@@ -1578,7 +1799,7 @@ def _clarification_kind(answer: str) -> str | None:
         return "ticket"
     if text.startswith(
         (INVENTORY_TOOL_NEEDS_PRODUCT_MESSAGE, INVENTORY_NOT_FOUND_MESSAGE)
-    ):
+    ) or _is_not_stocked_answer(text):
         return "product"
     return None
 
@@ -1619,6 +1840,8 @@ def resolve_follow_up(session_id: str, message: str) -> str:
             return f"What is the status of ticket {int(match.group(1))}?"
         return message
     if pending.get("kind") == "product":
+        if asks_for_product_catalogue(text):
+            return "What products are currently in inventory?"
         words = re.sub(r"[¿?¡!.,;:]", " ", text).split()
         if (
             0 < len(words) <= _MAX_PRODUCT_REPLY_WORDS
@@ -1875,7 +2098,10 @@ def route_after_tool(
     if is_hybrid_route(state.get("route")):
         return "retrieve"
     tool_result = state.get("tool_result") or {}
-    if tool_result.get("ok"):
+    if tool_result.get("ok") or (
+        tool_result.get("error") == "not_found"
+        and ("inventory" in (state.get("sources_used") or []) or "products" in tool_result)
+    ):
         return "answer_from_tool"
     return "tool_fallback"
 

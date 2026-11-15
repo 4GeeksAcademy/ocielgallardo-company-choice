@@ -17,6 +17,7 @@ from data.pipelines.agent_tools import (
     INVENTORY_NOT_FOUND_MESSAGE,
     InventoryRecord,
     InventoryToolOutput,
+    format_not_stocked_answer,
 )
 from data.pipelines.inventory_search import filter_products
 
@@ -34,8 +35,10 @@ CATALOGUE = [
 def _mcp_on(monkeypatch):
     monkeypatch.setenv("MCP_SERVER_URL", "http://127.0.0.1:8100/mcp")
     agent_graph._PENDING_CLARIFICATIONS.clear()
+    agent_graph._LAST_INVENTORY_MISS.clear()
     yield
     agent_graph._PENDING_CLARIFICATIONS.clear()
+    agent_graph._LAST_INVENTORY_MISS.clear()
 
 
 @pytest.fixture
@@ -45,10 +48,18 @@ def inventory(monkeypatch):
 
     def _lookup(payload, **kw):
         seen.append(payload)
+        if payload.list_all:
+            return InventoryToolOutput(ok=True, products=[], catalogue=list(CATALOGUE))
         products = filter_products(CATALOGUE, payload.name_query or "")
+        if payload.sku:
+            sku = payload.sku.strip().upper()
+            products = [item for item in CATALOGUE if item.sku.upper() == sku]
         if not products:
             return InventoryToolOutput(
-                ok=False, error="not_found", message=INVENTORY_NOT_FOUND_MESSAGE
+                ok=True,
+                products=[],
+                catalogue=list(CATALOGUE),
+                queried_name=payload.name_query or payload.sku,
             )
         return InventoryToolOutput(ok=True, products=products)
 
@@ -83,10 +94,18 @@ def test_face_masks_question_answers_with_the_surgical_mask(inventory, no_rag) -
     assert no_rag == []
 
 
-def test_syringes_are_not_in_the_catalogue_and_fail_honestly(inventory, no_rag) -> None:
+def test_syringes_are_not_in_the_catalogue_and_list_what_is_stocked(
+    inventory, no_rag
+) -> None:
     result = run_agent("How much stock of syringes?", session_id="s1")
     assert inventory[-1].name_query == "syringes"
-    assert result["answer"].startswith(INVENTORY_NOT_FOUND_MESSAGE)
+    assert result["answer"] == format_not_stocked_answer("syringes", CATALOGUE)
+    assert result["answer"].startswith("We don't stock syringes.")
+    assert "SKU HCR-PPE-001" in result["answer"]
+    assert "SKU HCR-PPE-002" in result["answer"]
+    assert "I could not find that product" not in result["answer"]
+    assert "Could not complete this" not in result["answer"]
+    assert no_rag == []
 
 
 # --- Fix 2: the reply after "could not find that product" retries the stock tool ---
@@ -94,7 +113,7 @@ def test_syringes_are_not_in_the_catalogue_and_fail_honestly(inventory, no_rag) 
 
 def test_bare_product_after_not_found_retries_the_stock_tool(inventory, no_rag) -> None:
     first = run_agent("How much stock of unicorn dust?", session_id="s2")
-    assert first["answer"].startswith(INVENTORY_NOT_FOUND_MESSAGE)
+    assert first["answer"].startswith("We don't stock unicorn dust.")
 
     second = run_agent("face masks", session_id="s2")
 
@@ -103,25 +122,52 @@ def test_bare_product_after_not_found_retries_the_stock_tool(inventory, no_rag) 
     assert no_rag == []  # never sent to the knowledge base
 
 
-def test_bare_product_still_missing_stays_an_honest_not_found(inventory, no_rag) -> None:
+def test_bare_product_still_missing_stays_a_normal_not_stocked_answer(
+    inventory, no_rag
+) -> None:
     run_agent("How much stock of syringes?", session_id="s3")
     second = run_agent("syringes", session_id="s3")
     assert len(inventory) == 2
-    assert second["answer"].startswith(INVENTORY_NOT_FOUND_MESSAGE)
+    assert second["answer"] == format_not_stocked_answer("syringes", CATALOGUE)
+    assert "I could not find that product" not in second["answer"]
+    assert no_rag == []
+
+
+def test_similar_product_follow_up_lists_the_catalogue(inventory, no_rag) -> None:
+    first = run_agent("How much stock of syringes?", session_id="s4")
+    assert first["answer"].startswith("We don't stock syringes.")
+
+    second = run_agent("Is there one product in stock like that?", session_id="s4")
+
+    assert inventory[-1].list_all is True
+    assert second["answer"].startswith("We don't stock syringes.")
+    assert "Products currently in inventory:" in second["answer"]
+    assert "SKU HCR-PPE-001" in second["answer"]
+    assert "I could not find that product" not in second["answer"]
     assert no_rag == []
 
 
 def test_not_found_follow_up_rewrites_and_skips_acknowledgements() -> None:
-    agent_graph._remember_clarification("a", INVENTORY_NOT_FOUND_MESSAGE)
+    not_stocked = format_not_stocked_answer("unicorn dust", CATALOGUE)
+    agent_graph._remember_clarification("a", not_stocked)
     assert resolve_follow_up("a", "syringes") == "What is the current stock of syringes?"
 
-    agent_graph._remember_clarification("a", INVENTORY_NOT_FOUND_MESSAGE)
+    agent_graph._remember_clarification("a", not_stocked)
     assert resolve_follow_up("a", "thanks") == "thanks"
 
-    agent_graph._remember_clarification("a", INVENTORY_NOT_FOUND_MESSAGE)
+    agent_graph._remember_clarification("a", not_stocked)
     assert resolve_follow_up("a", "What is the cancellation fee?") == (
         "What is the cancellation fee?"
     )
+
+    agent_graph._remember_clarification("a", not_stocked)
+    assert resolve_follow_up("a", "Is there one product in stock like that?") == (
+        "What products are currently in inventory?"
+    )
+
+    # Legacy wording still rewrites a bare product name.
+    agent_graph._remember_clarification("a", INVENTORY_NOT_FOUND_MESSAGE)
+    assert resolve_follow_up("a", "syringes") == "What is the current stock of syringes?"
 
 
 def test_ticket_not_found_follow_up_reads_a_bare_number() -> None:

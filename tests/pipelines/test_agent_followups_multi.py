@@ -14,7 +14,6 @@ from data.pipelines.agent_graph import (
 )
 from data.pipelines.agent_tools import (
     INCIDENT_TOOL_NEEDS_ID_MESSAGE,
-    INVENTORY_NOT_FOUND_MESSAGE,
     IncidentRecord,
     IncidentToolOutput,
     InventoryToolOutput,
@@ -119,7 +118,7 @@ def test_numbered_questions_are_answered_separately_even_if_one_fails(
 ) -> None:
     def _inventory(payload, **kw):
         return InventoryToolOutput(
-            ok=False, error="not_found", message=INVENTORY_NOT_FOUND_MESSAGE
+            ok=True, products=[], queried_name="unicorn dust"
         )
 
     def _incident(payload, **kw):
@@ -139,7 +138,7 @@ def test_numbered_questions_are_answered_separately_even_if_one_fails(
 
     answer = result["answer"]
     assert result["route"] == "multi"
-    assert answer.startswith(f"**1.** {INVENTORY_NOT_FOUND_MESSAGE}")
+    assert answer.startswith("**1.** We don't stock unicorn dust.")
     assert f"**2.** {agent_graph.MULTI_PART_FAILURE_MESSAGE}" in answer
     assert "**3.** Ticket #8" in answer
     assert len(result["parts"]) == 3

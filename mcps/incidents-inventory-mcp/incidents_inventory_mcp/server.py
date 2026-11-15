@@ -456,9 +456,11 @@ def build_server() -> FastMCP:
     @mcp.tool(
         name="get_inventory_stock",
         description=(
-            "Read current stock for a product by id, exact SKU or name substring. "
-            "Read-only: stock levels cannot be changed through this server. "
-            "Requires the inventory:read scope."
+            "Read current stock for a product by id, exact SKU or name, or "
+            "list the full catalogue. A name or SKU that is not in inventory "
+            "returns the current catalogue (not a tool failure). Read-only: "
+            "stock levels cannot be changed through this server. Requires "
+            "the inventory:read scope."
         ),
         structured_output=True,
     )
@@ -479,17 +481,30 @@ def build_server() -> FastMCP:
                 )
             ),
         ] = None,
+        list_all: Annotated[
+            bool,
+            Field(
+                description=(
+                    "If true, return the full product catalogue (name and SKU) "
+                    "instead of matching a single product."
+                )
+            ),
+        ] = False,
     ) -> InventoryToolOutput:
         permissions.require_scopes("inventory:read")
-        if supply_id is None and not sku and not name_query:
+        if supply_id is None and not sku and not name_query and not list_all:
             return _inventory_failure("invalid_input", INVENTORY_TOOL_FALLBACK)
         try:
-            if supply_id is not None:
+            if supply_id is not None and not list_all:
                 payload = await backend_client.get_product(supply_id)
                 return InventoryToolOutput(ok=True, products=[_supply_from_api(payload)])
 
             rows = await backend_client.get_products()
-            products: list[InventoryRecord] = [_supply_from_api(row) for row in rows]
+            catalogue: list[InventoryRecord] = [_supply_from_api(row) for row in rows]
+            if list_all:
+                return InventoryToolOutput(ok=True, products=[], catalogue=catalogue)
+            products = list(catalogue)
+            queried_name = name_query or sku
             if sku:
                 sku_upper = sku.strip().upper()
                 products = [item for item in products if item.sku.upper() == sku_upper]
@@ -501,7 +516,13 @@ def build_server() -> FastMCP:
         except backend_client.BackendError as exc:
             return _inventory_error(exc)
         if not products:
-            return _inventory_failure("not_found", INVENTORY_NOT_FOUND_MESSAGE)
+            # Honest miss: the lookup worked; we just do not stock that item.
+            return InventoryToolOutput(
+                ok=True,
+                products=[],
+                catalogue=catalogue,
+                queried_name=queried_name,
+            )
         return InventoryToolOutput(ok=True, products=products)
 
     @mcp.tool(

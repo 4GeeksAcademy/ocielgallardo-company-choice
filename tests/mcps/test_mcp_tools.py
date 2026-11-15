@@ -350,8 +350,10 @@ def test_inventory_name_query_is_substring_and_not_found_is_honest(
     miss = tool_payload(
         call_tool(app_client, "get_inventory_stock", {"name_query": "mask"}, READ_TOKEN)
     )
-    assert miss["ok"] is False
-    assert miss["error"] == "not_found"
+    assert miss["ok"] is True
+    assert miss["products"] == []
+    assert miss["queried_name"] == "mask"
+    assert [item["sku"] for item in miss["catalogue"]] == ["HCR-PPE-001"]
 
 
 def test_inventory_name_query_matches_every_term_in_any_order(
@@ -374,7 +376,26 @@ def test_inventory_name_query_matches_every_term_in_any_order(
             app_client, "get_inventory_stock", {"name_query": "guantes latex"}, READ_TOKEN
         )
     )
-    assert miss["error"] == "not_found"
+    assert miss["ok"] is True
+    assert miss["products"] == []
+    assert miss["queried_name"] == "guantes latex"
+    assert miss["catalogue"]
+
+
+
+def test_inventory_list_all_returns_the_catalogue(app_client, monkeypatch) -> None:
+    async def _fake() -> list[dict]:
+        return [dict(PRODUCT_ROW), {**PRODUCT_ROW, "id": 4, "sku": "HCR-PPE-999", "name": "Mask"}]
+
+    monkeypatch.setattr(backend_client, "get_products", _fake)
+
+    payload = tool_payload(
+        call_tool(app_client, "get_inventory_stock", {"list_all": True}, READ_TOKEN)
+    )
+
+    assert payload["ok"] is True
+    assert payload["products"] == []
+    assert [item["sku"] for item in payload["catalogue"]] == ["HCR-PPE-001", "HCR-PPE-999"]
 
 
 def test_inventory_tool_without_arguments_is_invalid_input(app_client, monkeypatch) -> None:
@@ -469,7 +490,10 @@ def test_inventory_name_query_understands_english_terms(app_client, monkeypatch)
             app_client, "get_inventory_stock", {"name_query": "dental implants"}, READ_TOKEN
         )
     )
-    assert miss["error"] == "not_found"
+    assert miss["ok"] is True
+    assert miss["products"] == []
+    assert miss["queried_name"] == "dental implants"
+    assert len(miss["catalogue"]) == 2
 
 
 # --- Latest incident / latest RFP ticket ---

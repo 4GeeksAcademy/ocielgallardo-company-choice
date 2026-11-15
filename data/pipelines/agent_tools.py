@@ -259,6 +259,10 @@ class InventoryToolInput(BaseModel):
         description="Case-insensitive substring match against product name",
     )
     supply_id: int | None = Field(default=None, ge=1)
+    list_all: bool = Field(
+        default=False,
+        description="Return the full product catalogue (name and SKU), not a stock match",
+    )
 
 
 class InventoryRecord(BaseModel):
@@ -274,10 +278,17 @@ class InventoryRecord(BaseModel):
 
 
 class InventoryToolOutput(BaseModel):
-    """Typed inventory result: success payload or honest failure."""
+    """Typed inventory result: success payload or honest failure.
+
+    A product that is simply not in the catalogue is not a tool failure:
+    ``ok`` stays true, ``products`` is empty, and ``catalogue`` holds the
+    current inventory so the agent can answer normally.
+    """
 
     ok: bool
     products: list[InventoryRecord] = Field(default_factory=list)
+    catalogue: list[InventoryRecord] = Field(default_factory=list)
+    queried_name: str | None = None
     error: (
         Literal["not_found", "timeout", "unavailable", "invalid_input", "auth"]
         | None
@@ -297,22 +308,59 @@ def _supply_from_api(payload: dict) -> InventoryRecord:
     )
 
 
+def inventory_lookup_complete(result: InventoryToolOutput) -> bool:
+    """True when the tool answered, including an honest 'we do not stock that'."""
+    return bool(result.ok) or result.error == "not_found"
+
+
+def product_catalogue_label(item: InventoryRecord) -> str:
+    """``Mascarilla quirúrgica (pack de 50) (SKU HCR-PPE-002)``."""
+    from data.pipelines import agent_content_guard
+
+    name = agent_content_guard.sanitize_tool_text(item.name).strip() or "Unnamed product"
+    sku = (item.sku or "").strip()
+    return f"{name} (SKU {sku})" if sku else name
+
+
+def format_catalogue_listing(products: list[InventoryRecord]) -> str:
+    """Coordinator-facing catalogue list (name + SKU), or an empty-inventory note."""
+    if not products:
+        return "There are no products in the inventory right now."
+    items = ", ".join(product_catalogue_label(item) for item in products)
+    return f"Products currently in inventory: {items}."
+
+
+def format_not_stocked_answer(
+    queried_name: str | None, catalogue: list[InventoryRecord]
+) -> str:
+    """Successful answer when the requested product is not in the catalogue."""
+    from data.pipelines import agent_content_guard
+
+    label = agent_content_guard.sanitize_tool_text(queried_name or "").strip()
+    label = label or "that product"
+    return f"We don't stock {label}. {format_catalogue_listing(catalogue)}"
+
+
 def format_inventory_answer(result: InventoryToolOutput) -> str:
     """Turn an inventory tool result into a coordinator-facing answer.
 
-    Free-text fields (product name, failure message) pass the content-
-    isolation guard — external tool text is data, never instructions.
+    A missing product is a normal answer (the current catalogue), not a
+    tool failure. Free-text fields pass the content-isolation guard —
+    external tool text is data, never instructions.
     """
     from data.pipelines import agent_content_guard
 
-    if not result.ok:
+    if not inventory_lookup_complete(result):
         return agent_content_guard.sanitize_tool_text(
             result.message or INVENTORY_TOOL_FALLBACK
         )
-    if not result.products:
-        return INVENTORY_NOT_FOUND_MESSAGE
-
-    return " ".join(describe_stock(item) for item in result.products)
+    if result.products:
+        return " ".join(describe_stock(item) for item in result.products)
+    if (result.queried_name or "").strip() or result.error == "not_found":
+        return format_not_stocked_answer(result.queried_name, list(result.catalogue or []))
+    if result.catalogue:
+        return format_catalogue_listing(list(result.catalogue))
+    return format_not_stocked_answer(result.queried_name, [])
 
 
 def _quantity(count: int, unit: str) -> str:
