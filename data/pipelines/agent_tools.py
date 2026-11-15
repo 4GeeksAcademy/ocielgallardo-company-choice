@@ -19,6 +19,8 @@ unavailable | invalid_input | auth``.
 
 from __future__ import annotations
 
+import re
+
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -339,6 +341,45 @@ def format_not_stocked_answer(
     label = agent_content_guard.sanitize_tool_text(queried_name or "").strip()
     label = label or "that product"
     return f"We don't stock {label}. {format_catalogue_listing(catalogue)}"
+
+
+# Memory confirmations that may be appended after a stock/catalogue answer.
+_MEMORY_SUFFIX_RE = re.compile(
+    r"(?:\n\n(?:Do you want me to remember this for next time\?.*"
+    r"|¿Quieres que recuerde esto para la próxima vez\?.*"
+    r"|Saved to my memory\."
+    r"|Guardado en mi memoria\."
+    r"|Understood — I won't store it\."
+    r"|Entendido, no lo guardaré\.))\s*$",
+    re.DOTALL,
+)
+_STOCK_SENTENCE_RE = re.compile(
+    r"(?:We currently have .+? \(SKU \S+\) in stock(?: in (?:the )?[^.]+)?\."
+    r"|.+? \(SKU \S+\) is out of stock(?: in (?:the )?[^.]+)?\.)"
+)
+
+
+def is_deterministic_inventory_answer(text: str) -> bool:
+    """True when ``text`` is a stock or catalogue reply from the inventory tool.
+
+    These answers name medical supplies as catalogue data, not as clinical
+    advice, so the output guard must not reject them for ``clinical_content``.
+    """
+    body = _MEMORY_SUFFIX_RE.sub("", (text or "").strip()).strip()
+    if not body:
+        return False
+    if body.startswith("We don't stock ") and (
+        "Products currently in inventory:" in body
+        or body.endswith("There are no products in the inventory right now.")
+    ):
+        return True
+    if body.startswith("Products currently in inventory:"):
+        return True
+    pieces = _STOCK_SENTENCE_RE.findall(body)
+    if not pieces:
+        return False
+    rebuilt = " ".join(pieces)
+    return rebuilt == body
 
 
 def format_inventory_answer(result: InventoryToolOutput) -> str:

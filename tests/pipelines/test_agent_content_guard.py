@@ -183,6 +183,47 @@ def test_validate_output_blocks_phi_content() -> None:
     assert "1985-03-12" not in verdict.safe_answer
 
 
+def test_validate_output_allows_inventory_catalogue_with_diagnostics_category() -> None:
+    from data.pipelines.agent_tools import (
+        InventoryRecord,
+        format_not_stocked_answer,
+        is_deterministic_inventory_answer,
+    )
+
+    catalogue = [
+        InventoryRecord(
+            id=4, name="Test rápido de estreptococo", sku="HCR-DIAG-001",
+            category="diagnostics", unit="unit", country="US", current_stock=50,
+        ),
+        InventoryRecord(
+            id=6, name="Solución salina 0,9% 500ml", sku="HCR-MED-001",
+            category="medications", unit="vial", country="US", current_stock=80,
+        ),
+    ]
+    answer = format_not_stocked_answer("syringes", catalogue)
+    assert is_deterministic_inventory_answer(answer) is True
+    # Even if a category label leaked into the reply, it is still catalogue data.
+    leaked = answer[:-1] + ", category diagnostics."
+    for text in (answer, leaked):
+        verdict = guard.validate_output(text)
+        assert verdict.allowed is True, text
+        assert verdict.safe_answer == text
+
+
+def test_validate_output_still_blocks_free_text_clinical_advice() -> None:
+    advice = (
+        "Based on those symptoms, the diagnosis is streptococcal pharyngitis. "
+        "I recommend starting antibiotics today."
+    )
+    verdict = guard.validate_output(advice)
+    assert verdict.allowed is False
+    assert verdict.failure_type == guard.FAILURE_CONTENT
+    assert "clinical_content" in verdict.reasons
+    assert verdict.safe_answer == guard.OUTPUT_FALLBACK_EN
+    assert "diagnosis" not in verdict.safe_answer
+    assert "symptoms" not in verdict.safe_answer
+
+
 # --- Observability: counters + CLI summary ---
 
 

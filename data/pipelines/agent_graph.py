@@ -1635,7 +1635,16 @@ def _run_agent_once(
         # Catches empty answers, leaked internal prompt markers and
         # PHI-like content; fail-closed with a safe bilingual fallback
         # (never echoing the rejected text).
-        output_verdict = agent_content_guard.validate_output(answer)
+        # Inventory tool replies name supplies (including "diagnostics"
+        # products) as catalogue data, not clinical advice.
+        skip_reasons = (
+            ("clinical_content",)
+            if str(result.get("route") or "") == "inventory"
+            else ()
+        )
+        output_verdict = agent_content_guard.validate_output(
+            answer, skip_reasons=skip_reasons
+        )
         if not output_verdict.allowed:
             answer = output_verdict.safe_answer
             result["answer"] = answer
@@ -1737,6 +1746,19 @@ _ACK_REPLY_RE = re.compile(
 
 
 _LAST_INVENTORY_MISS: OrderedDict[str, dict] = OrderedDict()
+_LAST_INVENTORY_QUESTION: OrderedDict[str, dict] = OrderedDict()
+
+# "This question is about inventory." / typo "This quest is about inventory."
+_INVENTORY_TOPIC_CLARIFICATION_RE = re.compile(
+    r"^\s*(?:(?:ok(?:ay)?|yes|yeah|wait|sorry|no)[,.\s]+)*"
+    r"(?:(?:this|that|the)\s+(?:question|quest|query|one|request)s?\s+"
+    r"(?:is|was|es)\s+about\s+inventory"
+    r"|it(?:'s| is| was)\s+about\s+inventory"
+    r"|(?:es|era)\s+(?:una?\s+)?pregunta\s+de\s+inventario"
+    r"|(?:es|era)\s+de\s+inventario)"
+    r"\s*[.!]?\s*$",
+    re.IGNORECASE,
+)
 
 
 def _inventory_miss_for(session_id: str) -> dict | None:
@@ -1772,6 +1794,40 @@ def _remember_inventory_miss(session_id: str, result) -> None:
     }
     while len(_LAST_INVENTORY_MISS) > _MAX_CLARIFICATIONS:
         _LAST_INVENTORY_MISS.popitem(last=False)
+
+
+def _remember_inventory_question(session_id: str, question: str) -> None:
+    """Keep the last inventory-routed question so a later clarification can retry it."""
+    text = (question or "").strip()
+    if not session_id or not text:
+        return
+    if is_inventory_topic_clarification(text):
+        return
+    _LAST_INVENTORY_QUESTION[session_id] = {"question": text, "at": time.time()}
+    while len(_LAST_INVENTORY_QUESTION) > _MAX_CLARIFICATIONS:
+        _LAST_INVENTORY_QUESTION.popitem(last=False)
+
+
+def is_inventory_topic_clarification(message: str) -> bool:
+    """True when the user is saying the previous turn was about inventory."""
+    return bool(_INVENTORY_TOPIC_CLARIFICATION_RE.match(message or ""))
+
+
+def resolve_inventory_topic_clarification(session_id: str, message: str) -> str:
+    """Replay the last stock question, or list the catalogue if we have none.
+
+    After the output guard has blocked a stock reply, staff often clarify
+    with "This question is about inventory." That must not go to the
+    knowledge base as a new product name.
+    """
+    if not is_inventory_topic_clarification(message):
+        return message
+    pending = _LAST_INVENTORY_QUESTION.get(session_id)
+    if pending and time.time() - float(pending.get("at", 0)) <= _CLARIFICATION_TTL_SECONDS:
+        return str(pending.get("question") or "").strip() or (
+            "What products are currently in inventory?"
+        )
+    return "What products are currently in inventory?"
 
 
 def _is_not_stocked_answer(answer: str) -> bool:
@@ -1976,7 +2032,10 @@ def run_agent(question: str, session_id: str | None = None) -> dict:
         _PENDING_CLARIFICATIONS.pop(session, None)
         return _run_multi(question, parts, session)
     effective = resolve_follow_up(session, question)
+    effective = resolve_inventory_topic_clarification(session, effective)
     result = _run_agent_once(effective, session)
+    if str(result.get("route") or "") == "inventory":
+        _remember_inventory_question(session, effective)
     _remember_clarification(session, str(result.get("answer") or ""))
     return result
 

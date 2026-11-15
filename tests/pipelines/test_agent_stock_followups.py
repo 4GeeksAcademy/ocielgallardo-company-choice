@@ -36,9 +36,11 @@ def _mcp_on(monkeypatch):
     monkeypatch.setenv("MCP_SERVER_URL", "http://127.0.0.1:8100/mcp")
     agent_graph._PENDING_CLARIFICATIONS.clear()
     agent_graph._LAST_INVENTORY_MISS.clear()
+    agent_graph._LAST_INVENTORY_QUESTION.clear()
     yield
     agent_graph._PENDING_CLARIFICATIONS.clear()
     agent_graph._LAST_INVENTORY_MISS.clear()
+    agent_graph._LAST_INVENTORY_QUESTION.clear()
 
 
 @pytest.fixture
